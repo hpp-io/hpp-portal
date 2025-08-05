@@ -1,4 +1,5 @@
 import React from 'react';
+import { useRouter } from 'next/navigation';
 
 interface NavItem {
   label: string;
@@ -15,10 +16,28 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ navItems, communityLinks, isOpen, onClose }: SidebarProps) {
+  const router = useRouter();
+
+  const handleNavigation = (item: NavItem) => {
+    if (item.external && item.href) {
+      // 외부 링크는 새 탭에서 열기
+      window.open(item.href, '_blank', 'noopener,noreferrer');
+    } else if (!item.external) {
+      // Home은 '/'로, 나머지는 /portal/{page} 형태로 이동
+      if (item.label.toLowerCase() === 'home') {
+        router.push('/');
+      } else {
+        const page = item.label.toLowerCase().replace(/\s+/g, '-');
+        router.push(`/${page}`);
+      }
+    }
+    onClose();
+  };
+
   return (
     <>
       {/* Mobile overlay */}
-      {isOpen && <div className="fixed inset-0 bg-opacity-30 z-40 lg:hidden" onClick={onClose} />}
+      {isOpen && <div className="fixed inset-0 bg-transparent z-40 lg:hidden" onClick={onClose} />}
 
       {/* Sidebar */}
       <div
@@ -42,40 +61,23 @@ export default function Sidebar({ navItems, communityLinks, isOpen, onClose }: S
           <ul className="space-y-2">
             {navItems.map((item, index) => (
               <li key={index}>
-                {item.href ? (
-                  <a
-                    href={item.href}
-                    target={item.external ? '_blank' : undefined}
-                    rel={item.external ? 'noopener noreferrer' : undefined}
-                    className="flex items-center space-x-3 px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                    onClick={() => {
-                      if (item.external) {
-                        onClose();
-                      }
-                    }}
-                  >
-                    <span className="w-5 h-5">{item.icon}</span>
-                    <span className="flex-1">{item.label}</span>
-                    {item.external && (
-                      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                        />
-                      </svg>
-                    )}
-                  </a>
-                ) : (
-                  <button
-                    className="flex items-center space-x-3 px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors w-full text-left"
-                    onClick={() => onClose()}
-                  >
-                    <span className="w-5 h-5">{item.icon}</span>
-                    <span className="flex-1">{item.label}</span>
-                  </button>
-                )}
+                <button
+                  className="flex items-center space-x-3 px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors w-full text-left cursor-pointer"
+                  onClick={() => handleNavigation(item)}
+                >
+                  <span className="w-5 h-5">{item.icon}</span>
+                  <span className="flex-1">{item.label}</span>
+                  {item.external && (
+                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                      />
+                    </svg>
+                  )}
+                </button>
               </li>
             ))}
           </ul>
