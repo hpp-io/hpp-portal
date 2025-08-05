@@ -46,10 +46,8 @@ export default function Sidebar({ navItems, communityLinks, isOpen, onClose }: S
       >
         {/* Logo */}
         <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">HPP</span>
-            </div>
+          <div className="flex items-center space-x-3">
+            <img src="/HPPMainnet_Logo.svg" alt="HPP Mainnet" className="w-8 h-8 filter brightness-0" />
             <span className="text-xl font-bold text-gray-900">HPP Portal</span>
           </div>
         </div>
