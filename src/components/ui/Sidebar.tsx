@@ -18,7 +18,7 @@ export default function Sidebar({ navItems, communityLinks, isOpen, onClose }: S
   return (
     <>
       {/* Mobile overlay */}
-      {isOpen && <div className="fixed inset-0 bg-opacity-30 z-40 lg:hidden" onClick={onClose} />}
+      {isOpen && <div className="fixed inset-0 bg-black bg-opacity-30 z-40 lg:hidden" onClick={onClose} />}
 
       {/* Sidebar */}
       <div
