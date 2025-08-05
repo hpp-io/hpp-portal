@@ -20,10 +20,8 @@ export default function Sidebar({ navItems, communityLinks, isOpen, onClose }: S
 
   const handleNavigation = (item: NavItem) => {
     if (item.external && item.href) {
-      // 외부 링크는 새 탭에서 열기
       window.open(item.href, '_blank', 'noopener,noreferrer');
     } else if (!item.external) {
-      // Home은 '/'로, 나머지는 /portal/{page} 형태로 이동
       if (item.label.toLowerCase() === 'home') {
         router.push('/');
       } else {
