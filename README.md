@@ -26,7 +26,7 @@ npm install @reown/appkit @reown/appkit-adapter-wagmi wagmi viem @tanstack/react
 ```bash
 # Reown AppKit Project ID
 # Get your project ID from https://dashboard.reown.com
-NEXT_PUBLIC_PROJECT_ID=your_project_id_here
+NEXT_PUBLIC_APP_KIT_PROJECT_ID=your_appkit_project_id_here
 ```
 
 3. Get your Project ID:
