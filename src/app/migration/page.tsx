@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Sidebar from '@/components/ui/Sidebar';
 import Button from '@/components/ui/Button';
+import NeedHelp from '@/components/ui/NeedHelp';
 
 export default function MigrationPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -59,8 +60,6 @@ export default function MigrationPage() {
     },
     {
       label: 'Ecosystem',
-      href: '#',
-      external: true,
       icon: (
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
@@ -126,21 +125,20 @@ export default function MigrationPage() {
 
   const migrationPaths = [
     {
-      title: 'Aergo (Mainnet) → HPP (Ethereum)',
+      title: 'AERGO (Mainnet) → HPP (ETH)',
       description:
-        'If you hold AERGO on the Aergo mainnet, use the official Aergo Bridge to migrate to HPP via Ethereum.',
+        'If you hold AERGO on the **AERGO mainnet**, use the official Aergo Bridge to migrate to HPP via Ethereum.',
       flow: [
-        { name: 'AERGO (Aergo Mainnet)', icon: '🔗' },
-        { name: 'Aergo Bridge', icon: '🌉' },
-        { name: 'ETH (Ethereum)', icon: '⚡' },
-        { name: 'HPP Bridge', icon: '🌉' },
-        { name: 'HPP (HPP Layer2)', icon: '🚀' },
+        { name: 'AERGO', label: 'AERGO Mainnet' },
+        { name: 'Aergo Bridge', label: '' },
+        { name: 'HPP', label: 'HPP (ETH)' },
       ],
       buttons: [
         {
           text: 'Go to Aergo Bridge',
           variant: 'primary' as const,
           external: true,
+          className: '',
           icon: (
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -155,47 +153,7 @@ export default function MigrationPage() {
         {
           text: 'View Step-by-Step Guide',
           variant: 'outline' as const,
-          icon: (
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-              />
-            </svg>
-          ),
-        },
-      ],
-    },
-    {
-      title: 'AERGO (Ethereum) → HPP (Ethereum)',
-      description:
-        "If your AERGO tokens are already on Ethereum, use HPP's migration bridge to move them directly to the HPP network.",
-      flow: [
-        { name: 'AERGO (Ethereum)', icon: '⚡' },
-        { name: 'HPP Bridge', icon: '🌉' },
-        { name: 'HPP (HPP Layer2)', icon: '🚀' },
-      ],
-      buttons: [
-        {
-          text: 'Go to HPP Bridge',
-          variant: 'primary' as const,
-          external: true,
-          icon: (
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-              />
-            </svg>
-          ),
-        },
-        {
-          text: 'View Step-by-Step Guide',
-          variant: 'outline' as const,
+          className: '',
           icon: (
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -210,6 +168,35 @@ export default function MigrationPage() {
       ],
     },
   ];
+
+  const completeMigration = {
+    title: 'Complete Your Migration',
+    description:
+      'Once you have HPP tokens on Ethereum, bridge them to the native HPP network for full ecosystem access and benefits.',
+    flow: [
+      { name: 'HPP', label: 'Ethereum' },
+      { name: 'Arbitrum Canonical Bridge', label: '' },
+      { name: 'HPP', label: 'Native' },
+    ],
+    buttons: [
+      {
+        text: 'Go to Arbitrum Canonical Bridge',
+        variant: 'primary' as const,
+        external: true,
+        className: '',
+        icon: (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+            />
+          </svg>
+        ),
+      },
+    ],
+  };
 
   return (
     <div className="flex h-screen bg-white">
@@ -228,10 +215,8 @@ export default function MigrationPage() {
         {/* Mobile Header with Hamburger */}
         <div className="lg:hidden bg-white border-b border-gray-200 px-4 py-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">HPP</span>
-              </div>
+            <div className="flex items-center space-x-3">
+              <img src="/HPPMainnet_Logo.svg" alt="HPP Mainnet" className="w-8 h-8 filter brightness-0" />
               <span className="text-lg font-bold text-gray-900">HPP Portal</span>
             </div>
             <button onClick={() => setSidebarOpen(true)} className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
@@ -254,90 +239,225 @@ export default function MigrationPage() {
 
           {/* Migration Paths */}
           <div className="space-y-8">
-            {migrationPaths.map((path, index) => (
-              <div key={index} className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-                <div className="mb-6">
-                  <h2 className="text-xl font-semibold text-gray-900 mb-3">{path.title}</h2>
-                  <p className="text-gray-600 mb-6">{path.description}</p>
+            {/* AERGO (Mainnet) → HPP (ETH) - Step 1 */}
+            <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+              {/* Header with Step Number */}
+              <div className="flex items-start mb-6">
+                <div className="w-8 h-8 bg-gray-800 rounded flex items-center justify-center mr-4 flex-shrink-0">
+                  <span className="text-white font-semibold text-sm">1</span>
+                </div>
+                <div className="flex-1">
+                  <h2 className="text-xl font-semibold text-gray-900 mb-3">AERGO (Mainnet) → HPP (ETH)</h2>
+                  <p className="text-gray-600">
+                    If you hold AERGO on the AERGO mainnet, use the official Aergo Bridge to migrate to HPP via
+                    Ethereum.
+                  </p>
+                </div>
+              </div>
 
-                  {/* Flow Diagram */}
-                  <div className="flex items-center justify-center mb-6">
-                    <div className="flex items-center space-x-4">
-                      {path.flow.map((step, stepIndex) => (
-                        <React.Fragment key={stepIndex}>
-                          <div className="flex flex-col items-center">
-                            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-2">
-                              <span className="text-lg">{step.icon}</span>
-                            </div>
-                            <span className="text-xs text-gray-600 text-center max-w-20">{step.name}</span>
-                          </div>
-                          {stepIndex < path.flow.length - 1 && (
-                            <svg
-                              className="w-6 h-6 text-gray-400"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                            </svg>
-                          )}
-                        </React.Fragment>
-                      ))}
+              {/* Flow Diagram */}
+              <div className="flex items-center justify-center mb-6">
+                <div className="flex items-center space-x-4">
+                  <div className="flex flex-col items-center">
+                    <div className="w-16 h-12 bg-gray-800 rounded-lg flex items-center justify-center mb-2">
+                      <span className="text-white text-sm font-medium">AERGO</span>
                     </div>
+                    <span className="text-xs text-gray-600 text-center">AERGO Mainnet</span>
                   </div>
 
-                  {/* Action Buttons */}
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    {path.buttons.map((button, buttonIndex) => (
-                      <Button
-                        key={buttonIndex}
-                        variant={button.variant}
-                        size="md"
-                        className="flex items-center space-x-2"
-                      >
-                        {button.icon}
-                        <span>{button.text}</span>
-                      </Button>
-                    ))}
+                  <div className="flex flex-col items-center">
+                    <svg className="w-6 h-6 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                    <span className="text-xs text-gray-600 text-center">Aergo Bridge</span>
+                  </div>
+
+                  <div className="flex flex-col items-center">
+                    <div className="w-16 h-12 bg-gray-800 rounded-lg flex items-center justify-center mb-2">
+                      <span className="text-white text-sm font-medium">HPP</span>
+                    </div>
+                    <span className="text-xs text-gray-600 text-center">HPP (ETH)</span>
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
 
-          {/* Help Section */}
-          <div className="mt-12 bg-blue-50 border border-blue-200 rounded-lg p-6">
-            <div className="text-center">
-              <h3 className="text-lg font-semibold text-gray-900 mb-3">Need Help?</h3>
-              <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
-                If you're unsure about which migration path to use or need assistance, our support team is here to help.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <Button variant="outline" size="md" className="flex items-center space-x-2">
+              {/* Action Buttons - Vertical Layout */}
+              <div className="space-y-3">
+                <Button variant="outline" size="sm" className="flex items-center justify-center space-x-2">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth={2}
-                      d="M8.228 9c0-.438-.199-1.105-.568-1.802C7.354 6.374 6.299 6 5 6c-1.299 0-2.354.374-2.66 1.198C1.771 7.895 1.572 8.562 1.572 9c0 .438.199 1.105.568 1.802C2.646 11.626 3.701 12 5 12c1.299 0 2.354-.374 2.66-1.198C8.229 9.895 8.428 9.228 8.428 9zM15.228 9c0-.438-.199-1.105-.568-1.802C14.354 6.374 13.299 6 12 6c-1.299 0-2.354.374-2.66 1.198C8.771 7.895 8.572 8.562 8.572 9c0 .438.199 1.105.568 1.802C9.646 11.626 10.701 12 12 12c1.299 0 2.354-.374 2.66-1.198C15.229 9.895 15.428 9.228 15.428 9z"
+                      d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
                     />
                   </svg>
-                  <span>FAQ</span>
+                  <span>Go to Aergo Bridge</span>
                 </Button>
-                <Button variant="outline" size="md" className="flex items-center space-x-2">
+
+                <Button variant="outline" size="sm" className="flex items-center justify-center space-x-2">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth={2}
-                      d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192L5.636 18.364M12 2.25a9.75 9.75 0 109.75 9.75A9.75 9.75 0 0012 2.25z"
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                     />
                   </svg>
-                  <span>Contact Support</span>
+                  <span>View Step-by-Step Guide</span>
                 </Button>
               </div>
             </div>
+
+            {/* AERGO (ETH) → HPP (ETH) - Step 2 */}
+            <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+              {/* Header with Step Number */}
+              <div className="flex items-start mb-6">
+                <div className="w-8 h-8 bg-gray-800 rounded flex items-center justify-center mr-4 flex-shrink-0">
+                  <span className="text-white font-semibold text-sm">2</span>
+                </div>
+                <div className="flex-1">
+                  <h2 className="text-xl font-semibold text-gray-900 mb-3">AERGO (ETH) → HPP (ETH)</h2>
+                  <p className="text-gray-600">
+                    If your AERGO tokens are already on Ethereum, use HPP's migration bridge to move them directly to
+                    the HPP network.
+                  </p>
+                </div>
+              </div>
+
+              {/* Flow Diagram */}
+              <div className="flex items-center justify-center mb-6">
+                <div className="flex items-center space-x-4">
+                  <div className="flex flex-col items-center">
+                    <div className="w-16 h-12 bg-gray-800 rounded-lg flex items-center justify-center mb-2">
+                      <span className="text-white text-sm font-medium">AERGO</span>
+                    </div>
+                    <span className="text-xs text-gray-600 text-center">Ethereum</span>
+                  </div>
+
+                  <div className="flex flex-col items-center">
+                    <svg className="w-6 h-6 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                    <span className="text-xs text-gray-600 text-center">HPP Bridge</span>
+                  </div>
+
+                  <div className="flex flex-col items-center">
+                    <div className="w-16 h-12 bg-gray-800 rounded-lg flex items-center justify-center mb-2">
+                      <span className="text-white text-sm font-medium">HPP</span>
+                    </div>
+                    <span className="text-xs text-gray-600 text-center">HPP (ETH)</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons - Vertical Layout */}
+              <div className="space-y-3">
+                <Button variant="outline" size="sm" className="flex items-center justify-center space-x-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
+                  </svg>
+                  <span>View Step-by-Step Guide</span>
+                </Button>
+
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                        />
+                      </svg>
+                      <span className="text-gray-700">Connect your wallet to start migration</span>
+                    </div>
+                    <Button variant="primary" size="sm" className="flex items-center space-x-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                        />
+                      </svg>
+                      <span>Connect Wallet</span>
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
+
+          {/* Complete Your Migration Section */}
+          <div className="mt-12">
+            <div className="text-center mb-8">
+              <h2 className="text-3xl font-bold text-gray-900 mb-4">Complete Your Migration</h2>
+              <p className="text-lg text-gray-600 max-w-3xl mx-auto">
+                Once you have HPP tokens on Ethereum, bridge them to the native HPP network for full ecosystem access
+                and benefits.
+              </p>
+            </div>
+
+            <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm max-w-2xl mx-auto">
+              <div className="mb-6">
+                <h3 className="text-xl font-semibold text-gray-900 mb-3">HPP (ETH) → HPP Native</h3>
+                <p className="text-gray-600 mb-6">
+                  Use the Arbitrum Canonical Bridge to move your tokens to the native HPP network.
+                </p>
+
+                {/* Flow Diagram */}
+                <div className="flex items-center justify-center mb-6">
+                  <div className="flex items-center space-x-4">
+                    <div className="flex flex-col items-center">
+                      <div className="w-16 h-12 bg-gray-800 rounded-lg flex items-center justify-center mb-2">
+                        <span className="text-white text-sm font-medium">HPP</span>
+                      </div>
+                      <span className="text-xs text-gray-600 text-center">Ethereum</span>
+                    </div>
+
+                    <div className="flex flex-col items-center">
+                      <svg className="w-6 h-6 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                      <span className="text-xs text-gray-600 text-center">Arbitrum Canonical Bridge</span>
+                    </div>
+
+                    <div className="flex flex-col items-center">
+                      <div className="w-16 h-12 bg-gray-800 rounded-lg flex items-center justify-center mb-2">
+                        <span className="text-white text-sm font-medium">HPP</span>
+                      </div>
+                      <span className="text-xs text-gray-600 text-center">Native</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Button */}
+                <div className="text-center">
+                  <Button variant="primary" size="md" className="flex items-center space-x-2 mx-auto">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                      />
+                    </svg>
+                    <span>Go to Arbitrum Canonical Bridge</span>
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Need Help Section */}
+          <NeedHelp />
         </div>
       </main>
     </div>
