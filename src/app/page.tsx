@@ -48,6 +48,16 @@ export default function Home() {
       ),
     },
     {
+      label: 'Bridge',
+      href: '#',
+      external: true,
+      icon: (
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+        </svg>
+      ),
+    },
+    {
       label: 'Ecosystem',
       icon: (
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -57,16 +67,6 @@ export default function Home() {
             strokeWidth={2}
             d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
           />
-        </svg>
-      ),
-    },
-    {
-      label: 'Bridge',
-      href: '#',
-      external: true,
-      icon: (
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
         </svg>
       ),
     },
@@ -291,10 +291,8 @@ export default function Home() {
         {/* Mobile Header with Hamburger */}
         <div className="lg:hidden bg-white border-b border-gray-200 px-4 py-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">HPP</span>
-              </div>
+            <div className="flex items-center space-x-3">
+              <img src="/HPPMainnet_Logo.svg" alt="HPP Mainnet" className="w-8 h-8 filter brightness-0" />
               <span className="text-lg font-bold text-gray-900">HPP Portal</span>
             </div>
             <button onClick={() => setSidebarOpen(true)} className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
@@ -304,6 +302,7 @@ export default function Home() {
             </button>
           </div>
         </div>
+
         <div className="p-4 lg:p-8 max-w-7xl mx-auto">
           {/* Welcome Section */}
           <div className="mb-12">
@@ -314,7 +313,7 @@ export default function Home() {
             </p>
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {/* <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
               {stats.map((stat, index) => (
                 <div key={index} className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
                   <div className="flex items-center justify-between mb-4">
@@ -329,7 +328,7 @@ export default function Home() {
 
             <Button variant="primary" size="lg">
               View on Explorer
-            </Button>
+            </Button> */}
           </div>
           {/* Quick Actions */}
           <div className="mb-12">
