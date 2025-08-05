@@ -307,7 +307,7 @@ export default function Home() {
           </div>
         </div>
         <div className="p-4 lg:p-8 max-w-7xl mx-auto">
-          {/* Welcome Section */}3
+          {/* Welcome Section */}
           <div className="mb-12">
             <h1 className="text-4xl font-bold text-gray-900 mb-4">Welcome to HPP Portal</h1>
             <p className="text-lg text-gray-600 mb-8 max-w-3xl">
