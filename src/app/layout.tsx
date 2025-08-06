@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
-import { headers } from 'next/headers';
 import ContextProvider from '@/context';
 
 const inter = Inter({
@@ -10,26 +9,20 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'HPP Portal - Layer2 Blockchain Network',
+  title: 'HPP Portal',
   description:
-    'Interact with the HPP Layer2 network — from bridging assets to participating in governance. Experience fast, secure, and cost-effective transactions.',
+    'Interact with the HPP Mainnet network — from bridging assets to participating in governance. Experience fast, secure, and cost-effective transactions.',
 };
 
-// Force dynamic rendering for headers() usage
-export const dynamic = 'force-dynamic';
-
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const headersObj = await headers();
-  const cookies = headersObj.get('cookie');
-
   return (
     <html lang="en">
       <body className={`${inter.variable} antialiased`}>
-        <ContextProvider cookies={cookies}>{children}</ContextProvider>
+        <ContextProvider cookies={null}>{children}</ContextProvider>
       </body>
     </html>
   );
