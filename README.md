@@ -12,8 +12,7 @@ Interact with the HPP Mainnet network — from bridging assets to participating 
 ### Supported Networks
 
 - Ethereum Mainnet
-- Arbitrum
-- HPP Layer2 (custom network)
+- HPP Mainnet
 
 ### Wallet Features
 
