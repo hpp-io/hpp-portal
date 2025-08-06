@@ -47,7 +47,7 @@ Open [https://localhost:3000](https://localhost:3000) to view the application.
 
 1. **AERGO (Mainnet) → HPP (ETH)**: Use the official Aergo Bridge
 2. **AERGO (ETH) → HPP (ETH)**: Use HPP's migration bridge
-3. **HPP (ETH) → HPP Native**: Use Arbitrum Canonical Bridge
+3. **HPP (ETH) → HPP (HPP Mainnet)**: Use Arbitrum Canonical Bridge
 
 ## Technologies Used
 
