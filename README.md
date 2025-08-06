@@ -41,7 +41,7 @@ NEXT_PUBLIC_APP_KIT_PROJECT_ID=your_appkit_project_id_here
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to view the application.
+Open [https://localhost:3000](https://localhost:3000) to view the application.
 
 ## Migration Process
 
