@@ -1,10 +1,10 @@
 # HPP Portal
 
-Interact with the HPP Layer2 network — from bridging assets to participating in governance. Experience fast, secure, and cost-effective transactions on our cutting-edge blockchain infrastructure.
+Interact with the HPP Mainnet network — from bridging assets to participating in governance. Experience fast, secure, and cost-effective transactions on our cutting-edge blockchain infrastructure.
 
 ## Features
 
-- **Asset Bridging**: Transfer tokens between Ethereum and HPP Layer2 with minimal fees
+- **Asset Bridging**: Transfer tokens between Ethereum and HPP Mainnet with minimal fees
 - **Governance Participation**: Vote on proposals and shape the future of the HPP network
 - **Token Migration**: Seamless migration from AERGO to HPP tokens
 
@@ -26,7 +26,7 @@ NEXT_PUBLIC_APP_KIT_PROJECT_ID=your_appkit_project_id_here
 ### Supported Networks
 
 - Ethereum Mainnet
-- HPP Layer2
+- HPP Mainnet
 
 ### Wallet Features
 
