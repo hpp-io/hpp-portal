@@ -1,36 +1,71 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# HPP Portal
 
-## Getting Started
+Interact with the HPP Layer2 network — from bridging assets to participating in governance. Experience fast, secure, and cost-effective transactions on our cutting-edge blockchain infrastructure.
 
-First, run the development server:
+## Features
+
+- **Asset Bridging**: Transfer tokens between Ethereum and HPP Layer2 with minimal fees
+- **Governance Participation**: Vote on proposals and shape the future of the HPP network
+- **Token Migration**: Seamless migration from AERGO to HPP tokens
+- **Web3 Integration**: Built with Reown AppKit for seamless wallet connectivity
+
+## Web3 Wallet Setup
+
+This project uses [Reown AppKit](https://docs.reown.com/appkit/next/core/installation) for Web3 wallet integration.
+
+### Prerequisites
+
+1. Install required dependencies:
+
+```bash
+npm install @reown/appkit @reown/appkit-adapter-wagmi wagmi viem @tanstack/react-query
+```
+
+2. Create a `.env.local` file in the root directory:
+
+```bash
+# Reown AppKit Project ID
+# Get your project ID from https://dashboard.reown.com
+NEXT_PUBLIC_APP_KIT_PROJECT_ID=your_appkit_project_id_here
+```
+
+3. Get your Project ID:
+   - Visit [Reown Dashboard](https://dashboard.reown.com)
+   - Create a new project
+   - Copy the Project ID and add it to your `.env.local` file
+
+### Supported Networks
+
+- Ethereum Mainnet
+- Arbitrum
+- HPP Layer2 (custom network)
+
+### Wallet Features
+
+- **Multi-wallet Support**: Connect with MetaMask, WalletConnect, Coinbase Wallet, and more
+- **Smart Account Support**: Enhanced security with smart accounts
+- **Cross-chain Transactions**: Seamless bridging between networks
+- **Transaction History**: Track all your migration and bridging activities
+
+## Development
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) to view the application.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Migration Process
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. **AERGO (Mainnet) → HPP (ETH)**: Use the official Aergo Bridge
+2. **AERGO (ETH) → HPP (ETH)**: Use HPP's migration bridge
+3. **HPP (ETH) → HPP Native**: Use Arbitrum Canonical Bridge
 
-## Learn More
+## Technologies Used
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **Next.js 15**: React framework with App Router
+- **TypeScript**: Type-safe development
+- **Tailwind CSS**: Utility-first CSS framework
+- **Reown AppKit**: Web3 wallet integration
+- **Wagmi**: React hooks for Ethereum
+- **Viem**: TypeScript interface for Ethereum
