@@ -1,18 +1,45 @@
 'use client';
 
-import { config } from '@/config';
+import { wagmiAdapter, projectId } from '@/config';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { createAppKit } from '@reown/appkit/react';
+import { mainnet, arbitrum } from '@reown/appkit/networks';
 import React, { type ReactNode } from 'react';
 import { cookieToInitialState, WagmiProvider, type Config } from 'wagmi';
 
 // Set up queryClient
 const queryClient = new QueryClient();
 
+if (!projectId) {
+  throw new Error('Project ID is not defined');
+}
+
+// Set up metadata
+const metadata = {
+  name: 'HPP Portal',
+  description: 'HPP Portal - Web3 Migration Platform',
+  url: 'https://hpp-portal.com', // origin must match your domain & subdomain
+  icons: ['https://avatars.githubusercontent.com/u/179229932'],
+};
+
+// Create the AppKit
+const appKit = createAppKit({
+  adapters: [wagmiAdapter],
+  projectId,
+  networks: [mainnet, arbitrum],
+  defaultNetwork: mainnet,
+  metadata: metadata,
+  themeMode: 'light',
+  features: {
+    analytics: true, // Optional - defaults to your Cloud configuration
+  },
+});
+
 function ContextProvider({ children, cookies }: { children: ReactNode; cookies: string | null }) {
-  const initialState = cookieToInitialState(config as Config, cookies);
+  const initialState = cookieToInitialState(wagmiAdapter.wagmiConfig as Config, cookies);
 
   return (
-    <WagmiProvider config={config as Config} initialState={initialState}>
+    <WagmiProvider config={wagmiAdapter.wagmiConfig as Config} initialState={initialState}>
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     </WagmiProvider>
   );
