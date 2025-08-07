@@ -9,7 +9,7 @@ export default function AirdropClient() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="flex h-screen bg-white">
+    <div className="flex h-screen bg-white overflow-x-hidden" style={{ width: '100vw', maxWidth: '100vw' }}>
       <Sidebar
         navItems={navItems}
         communityLinks={communityLinks}
@@ -24,7 +24,7 @@ export default function AirdropClient() {
       >
         <MobileHeader onMenuClick={() => setSidebarOpen(true)} />
 
-        <div className="flex items-center justify-center min-h-screen p-4">
+        <div className="flex items-center justify-center min-h-screen p-4" style={{ width: '100%', maxWidth: '100%' }}>
           <div className="text-center max-w-md mx-auto">
             {/* Gift Icon */}
             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -48,7 +48,7 @@ export default function AirdropClient() {
             <h1 className="text-3xl font-medium text-black mb-4">Airdrop Coming Soon</h1>
 
             {/* Body Text */}
-            <p className="text-gray-600 text-sm leading-relaxed mb-8">
+            <p className="text-gray-700 text-sm leading-relaxed mb-8">
               We're preparing something special for our
               <br />
               community. Stay tuned for updates on the HPP
@@ -57,7 +57,7 @@ export default function AirdropClient() {
             </p>
 
             {/* Button */}
-            <button className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-600 rounded-lg border border-gray-200 hover:bg-gray-200 transition-colors text-sm">
+            <button className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg border border-gray-200 hover:bg-gray-200 transition-colors text-sm whitespace-nowrap">
               <svg
                 className="w-3 h-3"
                 fill="none"
