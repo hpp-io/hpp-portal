@@ -6,6 +6,7 @@ import Button from '@/components/ui/Button';
 import NeedHelp from '@/components/ui/NeedHelp';
 import WalletButton from '@/components/ui/WalletButton';
 import MobileHeader from '@/components/ui/MobileHeader';
+import { useToast } from '@/hooks/useToast';
 import { useAccount } from 'wagmi';
 import { navItems, communityLinks } from '@/config/navigation';
 
@@ -13,7 +14,29 @@ export default function MigrationClient() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [fromAmount, setFromAmount] = useState('0.0');
   const [toAmount, setToAmount] = useState('0.0');
+  const { showToast, hideToast } = useToast();
   const { isConnected, address } = useAccount();
+
+  // Utility function to create Etherscan link
+  const createEtherscanLink = (txHash: string, network: 'mainnet' | 'sepolia' = 'mainnet') => {
+    const baseUrl = network === 'mainnet' ? 'https://etherscan.io' : 'https://sepolia.etherscan.io';
+    return `${baseUrl}/tx/${txHash}`;
+  };
+
+  // Utility function to handle successful migration
+  const handleMigrationSuccess = (txHash: string, network: 'mainnet' | 'sepolia' = 'mainnet') => {
+    const etherscanUrl = createEtherscanLink(txHash, network);
+
+    showToast('Migration completed', 'Your tokens have been successfully migrated to HPP network.', 'success', {
+      text: 'View on Etherscan',
+      url: etherscanUrl,
+    });
+  };
+
+  // Utility function to handle migration error
+  const handleMigrationError = (error: string) => {
+    showToast('Migration failed', error, 'error');
+  };
 
   const handleFromAmountChange = (value: string) => {
     setFromAmount(value);
@@ -25,6 +48,40 @@ export default function MigrationClient() {
   const handleMaxClick = () => {
     setFromAmount('1234.56');
     setToAmount('3025.67');
+  };
+
+  const handleMigrationClick = () => {
+    // Show approval toast first
+    showToast('Approving...', 'Please wait while we process your transaction...', 'loading');
+
+    // Simulate approval process
+    setTimeout(() => {
+      showToast('Approval transaction sent', 'Waiting for confirmation...', 'loading');
+
+      // Simulate transaction completion with actual transaction hash
+      setTimeout(() => {
+        // Generate a mock transaction hash (in real app, this would come from the blockchain)
+        const mockTxHash = '0x' + Math.random().toString(16).substr(2, 64);
+
+        // Simulate successful migration
+        handleMigrationSuccess(mockTxHash, 'mainnet');
+
+        // In a real implementation, you would:
+        // 1. Call your smart contract function
+        // 2. Wait for transaction confirmation
+        // 3. Get the actual transaction hash from the blockchain
+        // 4. Call handleMigrationSuccess with the real txHash
+
+        // Example of error handling:
+        // try {
+        //   const tx = await migrateTokens(fromAmount);
+        //   await tx.wait();
+        //   handleMigrationSuccess(tx.hash);
+        // } catch (error) {
+        //   handleMigrationError(error.message);
+        // }
+      }, 3000);
+    }, 2000);
   };
 
   const transactionHistory = [
@@ -403,7 +460,12 @@ export default function MigrationClient() {
                         </div>
 
                         {/* Migrate Button */}
-                        <Button variant="primary" size="lg" className="w-full whitespace-nowrap">
+                        <Button
+                          variant="primary"
+                          size="lg"
+                          className="w-full whitespace-nowrap"
+                          onClick={handleMigrationClick}
+                        >
                           Migrate Tokens
                         </Button>
                       </div>
@@ -532,6 +594,9 @@ export default function MigrationClient() {
           </div>
         </div>
       </main>
+
+      {/* Toast Component */}
+      {/* The Toast component is now managed by the useToast hook */}
     </div>
   );
 }
