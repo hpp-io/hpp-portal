@@ -71,11 +71,13 @@ export default function HomeClient() {
                     key={index}
                     className="bg-white rounded-lg p-6 border border-gray-200 hover:shadow-md transition-shadow w-full lg:max-w-[400px]"
                   >
-                    <div className="flex items-center mb-2">
-                      <div className="text-gray-800">{project.icon}</div>
-                      <h3 className="text-lg font-normal text-gray-900 ml-2">{project.name}</h3>
+                    <div className="flex items-center space-x-3 mb-3">
+                      <div className="w-8 h-8 bg-gray-800 rounded flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                        {project.icon}
+                      </div>
+                      <h3 className="text-lg font-normal text-gray-900">{project.name}</h3>
                     </div>
-                    <p className="text-gray-700">{project.description}</p>
+                    <p className="text-gray-700 text-sm leading-relaxed">{project.description}</p>
                   </div>
                 ))}
               </div>

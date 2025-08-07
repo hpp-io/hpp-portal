@@ -45,36 +45,36 @@ export const homeData = {
     {
       name: 'Aergo',
       description: 'Legacy hybrid infrastructure at the core of HPP, now transitioning into an AI-native foundation.',
-      icon: <div className="w-6 h-6 bg-gray-800 rounded"></div>,
+      icon: 'AG',
     },
     {
       name: 'AQT (Alpha Quark)',
       description: 'RWA and NFT valuation layer enabling AI-driven asset discovery, pricing, and strategy execution.',
-      icon: <div className="w-6 h-6 bg-gray-800 rounded"></div>,
+      icon: 'AQ',
     },
     {
       name: 'BOOOST',
       description:
         'Personhood verification and Sybil resistance powered by AI-based deepfake detection and biometrics.',
-      icon: <div className="w-6 h-6 bg-gray-800 rounded"></div>,
+      icon: 'BO',
     },
     {
       name: 'W3DB',
       description:
         'Model and data verification layer with staking-based validation for AI training, inference, and trust.',
-      icon: <div className="w-6 h-6 bg-gray-800 rounded"></div>,
+      icon: 'W3',
     },
     {
       name: 'ArenAI',
       description:
         'A crypto asset management portal that combines AI agents, CEX/DEX integration, and natural language strategy execution across DeFi.',
-      icon: <div className="w-6 h-6 bg-gray-800 rounded"></div>,
+      icon: 'AR',
     },
     {
       name: 'Noosphere',
       description:
         'A verifiable intelligence layer that enables smart contracts to delegate AI tasks — from inference to simulation — with secure off-chain computation and result verification.',
-      icon: <div className="w-6 h-6 bg-gray-800 rounded"></div>,
+      icon: 'NO',
     },
   ],
 };
