@@ -1,5 +1,5 @@
 import React from 'react';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 interface NavItem {
   label: string;
@@ -16,20 +16,18 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ navItems, communityLinks, isOpen, onClose }: SidebarProps) {
-  const router = useRouter();
-
-  const handleNavigation = (item: NavItem) => {
+  const getInternalHref = (item: NavItem) => {
     if (item.external && item.href) {
-      window.open(item.href, '_blank', 'noopener,noreferrer');
+      return item.href;
     } else if (!item.external) {
       if (item.label.toLowerCase() === 'home') {
-        router.push('/');
+        return '/';
       } else {
         const page = item.label.toLowerCase().replace(/\s+/g, '-');
-        router.push(`/${page}`);
+        return `/${page}`;
       }
     }
-    onClose();
+    return '#';
   };
 
   return (
@@ -55,27 +53,47 @@ export default function Sidebar({ navItems, communityLinks, isOpen, onClose }: S
         {/* Navigation */}
         <nav className="flex-1 p-4">
           <ul className="space-y-2">
-            {navItems.map((item, index) => (
-              <li key={index}>
-                <button
-                  className="flex items-center space-x-3 px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors w-full text-left cursor-pointer"
-                  onClick={() => handleNavigation(item)}
-                >
-                  <span className="w-5 h-5">{item.icon}</span>
-                  <span className="flex-1">{item.label}</span>
-                  {item.external && (
-                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                      />
-                    </svg>
-                  )}
-                </button>
-              </li>
-            ))}
+            {navItems.map((item, index) => {
+              const href = getInternalHref(item);
+
+              if (item.external && item.href) {
+                return (
+                  <li key={index}>
+                    <a
+                      href={item.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center space-x-3 px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors w-full text-left cursor-pointer"
+                      onClick={onClose}
+                    >
+                      <span className="w-5 h-5">{item.icon}</span>
+                      <span className="flex-1">{item.label}</span>
+                      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                        />
+                      </svg>
+                    </a>
+                  </li>
+                );
+              }
+
+              return (
+                <li key={index}>
+                  <Link
+                    href={href}
+                    className="flex items-center space-x-3 px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors w-full text-left cursor-pointer"
+                    onClick={onClose}
+                  >
+                    <span className="w-5 h-5">{item.icon}</span>
+                    <span className="flex-1">{item.label}</span>
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         </nav>
 
