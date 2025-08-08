@@ -13,7 +13,7 @@ export default function HomeClient() {
   const router = useRouter();
 
   return (
-    <div className="flex h-screen bg-white overflow-x-hidden" style={{ width: '100vw', maxWidth: '100vw' }}>
+    <div className="flex h-screen bg-white overflow-x-hidden">
       <Sidebar
         navItems={navItems}
         communityLinks={communityLinks}
@@ -28,7 +28,7 @@ export default function HomeClient() {
       >
         <MobileHeader onMenuClick={() => setSidebarOpen(true)} />
 
-        <div className="p-4 lg:p-8 max-w-6xl mx-auto" style={{ width: '100%', maxWidth: '100%' }}>
+        <div className="p-4 lg:p-8 max-w-6xl mx-auto">
           <div className="lg:max-w-full 2xl:max-w-[80%] mx-auto">
             {/* Welcome Section */}
             <div className="mb-16">

@@ -175,12 +175,6 @@ export default function MigrationClient() {
       return;
     }
 
-    if (numericValue > 1000000) {
-      setInputError('Amount cannot exceed 1,000,000');
-      setToAmount('');
-      return;
-    }
-
     try {
       const fromAmountBig = new Big(value);
 
@@ -196,11 +190,6 @@ export default function MigrationClient() {
       setToAmount('');
       setInputError('Invalid amount format');
     }
-  };
-
-  const handleMaxClick = () => {
-    setFromAmount('1234.56');
-    setToAmount('3025.67');
   };
 
   const handleMigrationClick = async () => {
@@ -357,7 +346,7 @@ export default function MigrationClient() {
   ];
 
   return (
-    <div className="flex h-screen bg-white overflow-x-hidden" style={{ width: '100vw', maxWidth: '100vw' }}>
+    <div className="flex h-screen bg-white overflow-x-hidden">
       <Sidebar
         navItems={navItems}
         communityLinks={communityLinks}
@@ -372,7 +361,7 @@ export default function MigrationClient() {
       >
         <MobileHeader onMenuClick={() => setSidebarOpen(true)} />
 
-        <div className="p-4 lg:p-8 max-w-6xl mx-auto" style={{ width: '100%', maxWidth: '100%' }}>
+        <div className="p-4 lg:p-8 max-w-6xl mx-auto">
           <div className="lg:max-w-full 2xl:max-w-[80%] mx-auto">
             {/* Header Section */}
             <div className="text-center mb-8">

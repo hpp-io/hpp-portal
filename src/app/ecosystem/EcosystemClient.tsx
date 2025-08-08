@@ -13,7 +13,7 @@ export default function EcosystemClient() {
   const router = useRouter();
 
   return (
-    <div className="flex h-screen bg-white overflow-x-hidden" style={{ width: '100vw', maxWidth: '100vw' }}>
+    <div className="flex h-screen bg-white overflow-x-hidden">
       <Sidebar
         navItems={navItems}
         communityLinks={communityLinks}
