@@ -9,7 +9,7 @@ export default function AirdropClient() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="flex h-screen bg-white overflow-x-hidden" style={{ width: '100vw', maxWidth: '100vw' }}>
+    <div className="flex h-screen bg-white overflow-x-hidden">
       <Sidebar
         navItems={navItems}
         communityLinks={communityLinks}
@@ -24,7 +24,7 @@ export default function AirdropClient() {
       >
         <MobileHeader onMenuClick={() => setSidebarOpen(true)} />
 
-        <div className="flex items-center justify-center min-h-screen p-4" style={{ width: '100%', maxWidth: '100%' }}>
+        <div className="flex items-center justify-center min-h-screen p-4">
           <div className="text-center max-w-md mx-auto">
             {/* Gift Icon */}
             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">

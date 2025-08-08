@@ -20,6 +20,7 @@
     "wagmi": "^2.16.1"
   },
   "devDependencies": {
+    "@svgr/webpack": "^8.1.0",
     "@tailwindcss/postcss": "^4",
     "@types/big.js": "^6.2.2",
     "@types/node": "^20",
