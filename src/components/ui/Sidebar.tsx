@@ -48,7 +48,7 @@ export default function Sidebar({ navItems, communityLinks, isOpen, onClose }: S
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center space-x-1 cursor-default">
             <img src="/HPPMainnet_Logo.svg" alt="HPP Mainnet" className="w-8 h-8 filter brightness-0" />
-            <span className="text-xl font-medium text-gray-900">HPP Portal</span>
+            <span className="text-xl font-semibold text-gray-900">HPP Portal</span>
           </div>
         </div>
 

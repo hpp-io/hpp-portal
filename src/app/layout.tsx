@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
-import ContextProvider from '@/context';
+import AppkitProvider from '@/context';
+import { ToastProvider } from '@/hooks/useToast';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -22,7 +23,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.variable} antialiased`}>
-        <ContextProvider cookies={null}>{children}</ContextProvider>
+        <AppkitProvider cookies={null}>
+          <ToastProvider>{children}</ToastProvider>
+        </AppkitProvider>
       </body>
     </html>
   );

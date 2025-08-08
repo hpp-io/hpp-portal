@@ -8,6 +8,7 @@ interface ButtonProps {
   onClick?: () => void;
   href?: string;
   external?: boolean;
+  disabled?: boolean;
 }
 
 export default function Button({
@@ -18,9 +19,10 @@ export default function Button({
   onClick,
   href,
   external = false,
+  disabled = false,
 }: ButtonProps) {
   const baseClasses =
-    'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2';
+    'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 cursor-pointer';
 
   const variantClasses = {
     primary: 'bg-gray-900 text-white hover:bg-gray-800 focus:ring-gray-700',
@@ -34,7 +36,9 @@ export default function Button({
     lg: 'px-6 py-3 text-base',
   };
 
-  const classes = `${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${className}`;
+  const classes = `${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${className} ${
+    disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+  }`;
 
   if (href) {
     return (
@@ -60,7 +64,7 @@ export default function Button({
   }
 
   return (
-    <button className={classes} onClick={onClick}>
+    <button className={classes} onClick={onClick} disabled={disabled}>
       {children}
     </button>
   );

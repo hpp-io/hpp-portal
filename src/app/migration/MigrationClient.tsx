@@ -1,31 +1,306 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Sidebar from '@/components/ui/Sidebar';
 import Button from '@/components/ui/Button';
 import NeedHelp from '@/components/ui/NeedHelp';
 import WalletButton from '@/components/ui/WalletButton';
 import MobileHeader from '@/components/ui/MobileHeader';
-import { useAccount } from 'wagmi';
+import { useToast } from '@/hooks/useToast';
+import { useAccount, useChainId, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { navItems, communityLinks } from '@/config/navigation';
+import Big from 'big.js';
+import { parseUnits, formatUnits, erc20Abi } from 'viem';
+
+// Constants
+const AERGO_DECIMAL = 18;
 
 export default function MigrationClient() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [fromAmount, setFromAmount] = useState('0.0');
-  const [toAmount, setToAmount] = useState('0.0');
+  const [fromAmount, setFromAmount] = useState('');
+  const [toAmount, setToAmount] = useState('');
+  const [isApproving, setIsApproving] = useState(false);
+  const [isSwapping, setIsSwapping] = useState(false);
+  const [approveHash, setApproveHash] = useState<`0x${string}` | null>(null);
+  const [migrationHash, setMigrationHash] = useState<`0x${string}` | null>(null);
+  const [inputError, setInputError] = useState('');
+  const [hppBalance, setHppBalance] = useState<string>('0');
+  const [aergoBalance, setAergoBalance] = useState<string>('0');
+  const { showToast, hideToast } = useToast();
   const { isConnected, address } = useAccount();
+  const chainId = useChainId();
+
+  // Token Contract Addresses
+  const HPP_TOKEN_ADDRESS = (
+    process.env.NEXT_PUBLIC_ENV === 'production'
+      ? process.env.NEXT_PUBLIC_MAINNET_ETH_HPP_TOKEN_CONTRACT!
+      : process.env.NEXT_PUBLIC_SEPOLIA_ETH_HPP_TOKEN_CONTRACT!
+  ) as `0x${string}`;
+
+  const AERGO_TOKEN_ADDRESS = (
+    process.env.NEXT_PUBLIC_ENV === 'production'
+      ? process.env.NEXT_PUBLIC_MAINNET_ETH_AERGO_TOKEN_CONTRACT!
+      : process.env.NEXT_PUBLIC_SEPOLIA_ETH_AERGO_TOKEN_CONTRACT!
+  ) as `0x${string}`;
+
+  // Contract hooks
+  const { writeContractAsync: approveTokens } = useWriteContract();
+  const { writeContractAsync: swapTokens } = useWriteContract();
+
+  // HPP Balance query
+  const {
+    data: hppBalanceData,
+    refetch: refetchHppBalance,
+    isLoading: isHppBalanceLoading,
+  } = useReadContract({
+    address: HPP_TOKEN_ADDRESS,
+    abi: erc20Abi,
+    functionName: 'balanceOf',
+    args: address ? [address] : undefined,
+    query: {
+      enabled: !!address && isConnected,
+    },
+  });
+
+  // AERGO Balance query
+  const {
+    data: aergoBalanceData,
+    refetch: refetchAergoBalance,
+    isLoading: isAergoBalanceLoading,
+  } = useReadContract({
+    address: AERGO_TOKEN_ADDRESS,
+    abi: erc20Abi,
+    functionName: 'balanceOf',
+    args: address ? [address] : undefined,
+    query: {
+      enabled: !!address && isConnected,
+    },
+  });
+
+  // Wait for approval transaction
+  const { isSuccess: isApproveSuccess } = useWaitForTransactionReceipt({
+    hash: approveHash as `0x${string}` | undefined,
+  });
+
+  // Wait for migration transaction
+  const { isSuccess: isMigrationSuccess } = useWaitForTransactionReceipt({
+    hash: migrationHash as `0x${string}` | undefined,
+  });
+
+  // Update HPP balance when data changes
+  useEffect(() => {
+    console.log('HPP Balance Data:', hppBalanceData);
+    console.log('Address:', address);
+    console.log('Is Connected:', isConnected);
+
+    if (hppBalanceData) {
+      const balance = formatUnits(hppBalanceData, AERGO_DECIMAL);
+      const formattedBalance = parseFloat(balance).toLocaleString('en-US', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
+      });
+      console.log('Formatted HPP Balance:', formattedBalance);
+      setHppBalance(formattedBalance);
+    }
+  }, [hppBalanceData, address, isConnected]);
+
+  // Update AERGO balance when data changes
+  useEffect(() => {
+    console.log('AERGO Balance Data:', aergoBalanceData);
+
+    if (aergoBalanceData) {
+      const balance = formatUnits(aergoBalanceData, AERGO_DECIMAL);
+      const formattedBalance = parseFloat(balance).toLocaleString('en-US', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
+      });
+      console.log('Formatted AERGO Balance:', formattedBalance);
+      setAergoBalance(formattedBalance);
+    }
+  }, [aergoBalanceData]);
+
+  // Refetch balance after successful migration
+  useEffect(() => {
+    if (isMigrationSuccess) {
+      refetchHppBalance();
+      refetchAergoBalance();
+    }
+  }, [isMigrationSuccess, refetchHppBalance, refetchAergoBalance]);
+
+  // Utility function to create Etherscan link
+  const createEtherscanLink = (txHash: string, network: 'mainnet' | 'sepolia' = 'mainnet') => {
+    const baseUrl = network === 'mainnet' ? 'https://etherscan.io' : 'https://sepolia.etherscan.io';
+    return `${baseUrl}/tx/${txHash}`;
+  };
+
+  // Utility function to handle successful migration
+  const handleMigrationSuccess = (txHash: string, network: 'mainnet' | 'sepolia' = 'mainnet') => {
+    const etherscanUrl = createEtherscanLink(txHash, network);
+
+    showToast('Migration completed', 'Your tokens have been successfully migrated to HPP network.', 'success', {
+      text: 'View on Etherscan',
+      url: etherscanUrl,
+    });
+
+    // Refetch balance after successful migration
+    refetchHppBalance();
+  };
+
+  // Utility function to handle migration error
+  const handleMigrationError = (error: string) => {
+    showToast('Migration failed', error, 'error');
+  };
 
   const handleFromAmountChange = (value: string) => {
+    // Prevent negative values
+    if (value.startsWith('-')) {
+      return;
+    }
+
     setFromAmount(value);
-    // Calculate to amount based on exchange rate (1 AERGO = 2.45 HPP)
-    const numericValue = parseFloat(value) || 0;
-    setToAmount((numericValue * 2.45).toFixed(2));
+    setInputError(''); // Clear previous errors
+
+    // Calculate to amount based on selectedToValue and exchange rate
+    if (value === '' || isNaN(parseFloat(value))) {
+      setToAmount('');
+      return;
+    }
+
+    const numericValue = parseFloat(value);
+
+    // Validate input
+    if (numericValue <= 0) {
+      setInputError('Amount must be greater than 0');
+      setToAmount('');
+      return;
+    }
+
+    if (numericValue > 1000000) {
+      setInputError('Amount cannot exceed 1,000,000');
+      setToAmount('');
+      return;
+    }
+
+    try {
+      const fromAmountBig = new Big(value);
+
+      // Only HPP conversion: 1 AERGO = 2.45 HPP
+      const exchangeRate = new Big('2.45');
+      const calculatedValue = fromAmountBig.times(exchangeRate);
+
+      // Format the result - remove trailing zeros after decimal point
+      const formattedValue = calculatedValue.toString();
+      setToAmount(formattedValue.replace(/\.?0+$/, ''));
+    } catch (error) {
+      console.error('Error calculating amount:', error);
+      setToAmount('');
+      setInputError('Invalid amount format');
+    }
   };
 
   const handleMaxClick = () => {
     setFromAmount('1234.56');
     setToAmount('3025.67');
   };
+
+  const handleMigrationClick = async () => {
+    if (!isConnected || !address) {
+      showToast('Error', 'Please connect your wallet first', 'error');
+      return;
+    }
+
+    if (!fromAmount || parseFloat(fromAmount) <= 0) {
+      setInputError('Please enter a valid amount');
+      return;
+    }
+
+    if (inputError) {
+      return; // Don't proceed if there's an input error
+    }
+
+    try {
+      setIsApproving(true);
+      setIsSwapping(false);
+
+      const aergoTokenContract =
+        process.env.NEXT_PUBLIC_ENV === 'production'
+          ? MAINNET_ETH_AERGO_TOKEN_CONTRACT
+          : SEPOLIA_ETH_AERGO_TOKEN_CONTRACT;
+
+      const hppMigrationContract =
+        process.env.NEXT_PUBLIC_ENV === 'production'
+          ? MAINNET_ETH_HPP_MIGRATION_CONTRACT
+          : SEPOLIA_ETH_HPP_MIGRATION_CONTRACT;
+
+      const amountInWei = parseUnits(fromAmount, 18); // AERGO has 18 decimals
+
+      // First, approve the migration contract to spend AERGO tokens
+      showToast('Approving...', 'Please wait while we approve the transaction...', 'loading');
+
+      const approveHash = await approveTokens({
+        address: aergoTokenContract as `0x${string}`,
+        abi: erc20Abi,
+        functionName: 'approve',
+        args: [hppMigrationContract as `0x${string}`, amountInWei],
+      });
+
+      setApproveHash(approveHash);
+      showToast('Approval sent', 'Waiting for approval confirmation...', 'loading');
+    } catch (error: any) {
+      console.error('Error approving tokens:', error);
+      showToast('Approval failed', error.message || 'Failed to approve tokens', 'error');
+      setIsApproving(false);
+    }
+  };
+
+  // Handle approval success and start migration
+  useEffect(() => {
+    if (isApproveSuccess && isApproving) {
+      setIsApproving(false);
+      setIsSwapping(true);
+      handleSwapAergoForHpp();
+    }
+  }, [isApproveSuccess, isApproving]);
+
+  const handleSwapAergoForHpp = async () => {
+    try {
+      const hppMigrationContract =
+        process.env.NEXT_PUBLIC_ENV === 'production'
+          ? MAINNET_ETH_HPP_MIGRATION_CONTRACT
+          : SEPOLIA_ETH_HPP_MIGRATION_CONTRACT;
+
+      const amountInWei = parseUnits(fromAmount, 18);
+
+      showToast('Migrating...', 'Starting HPP migration. Please wait...', 'loading');
+
+      const migrationHash = await swapTokens({
+        address: hppMigrationContract as `0x${string}`,
+        abi: hppMigrationABI,
+        functionName: 'swapAergoForHPP',
+        args: [amountInWei],
+      });
+
+      setMigrationHash(migrationHash);
+      showToast('Migration sent', 'Waiting for migration confirmation...', 'loading');
+    } catch (error: any) {
+      console.error('Error migrating tokens:', error);
+      showToast('Migration failed', error.message || 'Failed to migrate tokens', 'error');
+      setIsSwapping(false);
+    }
+  };
+
+  // Handle migration success
+  useEffect(() => {
+    if (isMigrationSuccess && migrationHash) {
+      setIsSwapping(false);
+      handleMigrationSuccess(migrationHash, chainId === 11155111 ? 'sepolia' : 'mainnet');
+      // Reset form
+      setFromAmount('');
+      setToAmount('');
+      setApproveHash(null);
+      setMigrationHash(null);
+    }
+  }, [isMigrationSuccess, migrationHash, chainId]);
 
   const transactionHistory = [
     {
@@ -35,7 +310,7 @@ export default function MigrationClient() {
       amount: '200 AERGO → 490 HPP',
       status: 'Pending',
       icon: (
-        <svg className="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -52,7 +327,7 @@ export default function MigrationClient() {
       amount: '100 AERGO → 245 HPP',
       status: 'Completed',
       icon: (
-        <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -69,7 +344,7 @@ export default function MigrationClient() {
       amount: '50 AERGO → 122.5 HPP',
       status: 'Completed',
       icon: (
-        <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -112,7 +387,7 @@ export default function MigrationClient() {
             {/* Migration Cards */}
             <div className="space-y-8">
               {/* Step 1 Card */}
-              <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
+              <div className="bg-white border border-gray-200 rounded-lg">
                 <div className="p-6">
                   <div className="flex items-start mb-6">
                     <div className="w-8 h-8 bg-gray-800 rounded flex items-center justify-center mr-4 flex-shrink-0">
@@ -202,7 +477,7 @@ export default function MigrationClient() {
               </div>
 
               {/* Step 2 Card */}
-              <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
+              <div className="bg-white border border-gray-200 rounded-lg">
                 <div className="p-6">
                   <div className="flex items-start mb-6">
                     <div className="w-8 h-8 bg-gray-800 rounded flex items-center justify-center mr-4 flex-shrink-0">
@@ -279,7 +554,7 @@ export default function MigrationClient() {
                     </Button>
 
                     {isConnected ? (
-                      <div className="bg-gray-50 rounded-lg p-4">
+                      <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                         <div className="flex items-center justify-between">
                           <div className="flex flex-col">
                             <div className="flex items-center space-x-3">
@@ -331,80 +606,117 @@ export default function MigrationClient() {
                   {/* Token Migration Form */}
                   {isConnected && (
                     <div className="mt-8">
-                      <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
+                      <div className="bg-white border border-gray-200 rounded-lg p-6">
                         {/* From Section */}
                         <div className="bg-gray-50 rounded-lg p-4 mb-4">
                           <div className="flex items-center justify-between mb-2">
-                            <label className="text-sm font-medium text-gray-700">From</label>
-                            <span className="text-sm text-gray-500">Balance: 1,234.56</span>
+                            <label className="text-sm font-medium text-gray-600">From</label>
+                            <span className="text-sm text-gray-500">
+                              Balance: {isAergoBalanceLoading ? 'Loading...' : `${aergoBalance || '0'} AERGO`}
+                            </span>
                           </div>
                           <div className="flex items-center space-x-3">
-                            <input
-                              type="number"
-                              value={fromAmount}
-                              onChange={(e) => handleFromAmountChange(e.target.value)}
-                              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                              placeholder="0.0"
-                            />
-                            <button
-                              onClick={handleMaxClick}
-                              className="px-3 py-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded hover:bg-blue-100"
-                            >
-                              MAX
+                            <div className="flex-1">
+                              <input
+                                type="number"
+                                min="0"
+                                value={fromAmount === '' ? '' : fromAmount}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  if (value === '' || parseFloat(value) >= 0) {
+                                    handleFromAmountChange(value);
+                                  }
+                                }}
+                                className={`w-full py-3 border-0 rounded-lg focus:outline-none focus:ring-0 text-lg bg-transparent pl-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                                  inputError ? 'border-red-500' : ''
+                                }`}
+                                placeholder="0.0"
+                              />
+                              {inputError && <div className="mt-1 text-sm text-red-600">{inputError}</div>}
+                            </div>
+                            <button className="flex items-center space-x-2 px-3 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                              <div className="w-5 h-5 bg-gray-700 rounded-full flex items-center justify-center">
+                                <span className="text-white text-xs font-medium">A</span>
+                              </div>
+                              <span className="text-sm font-medium text-gray-700">AERGO</span>
                             </button>
                           </div>
-                          <div className="mt-2 text-sm text-gray-700">AERGO</div>
                         </div>
 
-                        {/* Arrow */}
+                        {/* Direction Indicator */}
                         <div className="flex justify-center mb-4">
-                          <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M19 14l-7 7m0 0l-7-7m7 7V3"
-                            />
-                          </svg>
+                          <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
+                            <svg
+                              className="w-4 h-4 text-gray-700"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 14l-7 7m0 0l-7-7m7 7V3"
+                              />
+                            </svg>
+                          </div>
                         </div>
 
                         {/* To Section */}
                         <div className="bg-gray-50 rounded-lg p-4 mb-4">
                           <div className="flex items-center justify-between mb-2">
-                            <label className="text-sm font-medium text-gray-700">To</label>
-                            <span className="text-sm text-gray-500">Balance: 0.00</span>
+                            <label className="text-sm font-medium text-gray-600">To</label>
+                            <span className="text-sm text-gray-500">
+                              Balance: {isHppBalanceLoading ? 'Loading...' : `${hppBalance || '0'} HPP`}
+                            </span>
                           </div>
                           <div className="flex items-center space-x-3">
                             <input
                               type="number"
-                              value={toAmount}
+                              value={toAmount === '' ? '' : toAmount}
                               readOnly
-                              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-gray-100"
+                              className="flex-1 py-3 border-0 rounded-lg bg-transparent text-lg pl-0 cursor-default pointer-events-none"
                               placeholder="0.0"
+                              style={{ cursor: 'default' }}
                             />
+                            <div className="flex flex-col space-y-1">
+                              <button className="flex items-center space-x-2 px-3 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                                <div className="w-5 h-5 bg-gray-700 rounded-full flex items-center justify-center">
+                                  <span className="text-white text-xs font-medium">H</span>
+                                </div>
+                                <span className="text-sm font-medium text-gray-700">HPP</span>
+                              </button>
+                            </div>
                           </div>
-                          <div className="mt-2 text-sm text-gray-700">HPP</div>
                         </div>
 
-                        {/* Details */}
-                        <div className="space-y-2 mb-6">
-                          <div className="flex justify-between text-sm">
-                            <span className="text-gray-700">Exchange Rate:</span>
-                            <span className="text-gray-900">1 AERGO = 2.45 HPP</span>
-                          </div>
-                          <div className="flex justify-between text-sm">
-                            <span className="text-gray-700">Price Impact:</span>
-                            <span className="text-gray-900">0.05%</span>
-                          </div>
-                          <div className="flex justify-between text-sm">
-                            <span className="text-gray-700">Network Fee:</span>
-                            <span className="text-gray-900">~$2.50</span>
+                        {/* Transaction Details */}
+                        <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                          <div className="space-y-3">
+                            <div className="flex justify-between text-sm">
+                              <span className="text-gray-700">Exchange Rate:</span>
+                              <span className="text-gray-900">1 AERGO = 2.45 HPP</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                              <span className="text-gray-700">Price Impact:</span>
+                              <span className="text-gray-900">0.05%</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                              <span className="text-gray-700">Network Fee:</span>
+                              <span className="text-gray-900">~$2.50</span>
+                            </div>
                           </div>
                         </div>
 
                         {/* Migrate Button */}
-                        <Button variant="primary" size="lg" className="w-full whitespace-nowrap">
-                          Migrate Tokens
+                        <Button
+                          variant="primary"
+                          size="lg"
+                          className="w-full bg-gray-800 hover:bg-gray-900 text-white font-medium py-3 px-6 rounded-lg"
+                          onClick={handleMigrationClick}
+                          disabled={isApproving || isSwapping}
+                        >
+                          {isApproving ? 'Approving...' : isSwapping ? 'Migrating...' : 'Migrate Tokens'}
                         </Button>
                       </div>
                     </div>
@@ -413,23 +725,28 @@ export default function MigrationClient() {
                   {/* Transaction History */}
                   {isConnected && (
                     <div className="mt-8">
-                      <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-4">Transaction History</h3>
-                        <div className="space-y-3">
+                      <div className="bg-white border border-gray-100 rounded-lg p-6">
+                        <h3 className="text-lg font-medium text-gray-900 mb-4">Transaction History</h3>
+                        <div className="space-y-2">
                           {transactionHistory.map((tx) => (
-                            <div key={tx.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                            <div
+                              key={tx.id}
+                              className="flex items-center justify-between py-3 border-b border-gray-50 last:border-b-0"
+                            >
                               <div className="flex items-center space-x-3">
-                                {tx.icon}
+                                <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+                                  {tx.icon}
+                                </div>
                                 <div>
-                                  <div className="text-sm font-medium text-gray-900">{tx.type}</div>
+                                  <div className="text-sm font-normal text-gray-900">{tx.type}</div>
                                   <div className="text-xs text-gray-500">{tx.date}</div>
                                 </div>
                               </div>
                               <div className="text-right">
-                                <div className="text-sm font-medium text-gray-900">{tx.amount}</div>
+                                <div className="text-sm font-normal text-gray-900">{tx.amount}</div>
                                 <div
-                                  className={`text-xs ${
-                                    tx.status === 'Completed' ? 'text-green-600' : 'text-yellow-600'
+                                  className={`text-xs font-medium ${
+                                    tx.status === 'Completed' ? 'text-gray-600' : 'text-gray-500'
                                   }`}
                                 >
                                   {tx.status}
@@ -439,7 +756,7 @@ export default function MigrationClient() {
                           ))}
                         </div>
                         <div className="mt-4 text-center">
-                          <a href="#" className="text-sm text-blue-600 hover:text-blue-800">
+                          <a href="#" className="text-sm text-gray-600 hover:text-gray-800 cursor-pointer">
                             View All Transactions
                           </a>
                         </div>
@@ -532,6 +849,29 @@ export default function MigrationClient() {
           </div>
         </div>
       </main>
+
+      {/* Toast Component */}
+      {/* The Toast component is now managed by the useToast hook */}
     </div>
   );
 }
+
+// Contract addresses and ABIs
+const MAINNET_ETH_AERGO_TOKEN_CONTRACT = process.env.NEXT_PUBLIC_MAINNET_ETH_AERGO_TOKEN_CONTRACT!;
+const SEPOLIA_ETH_AERGO_TOKEN_CONTRACT = process.env.NEXT_PUBLIC_SEPOLIA_ETH_AERGO_TOKEN_CONTRACT!;
+const MAINNET_ETH_HPP_TOKEN_CONTRACT = process.env.NEXT_PUBLIC_MAINNET_ETH_HPP_TOKEN_CONTRACT!;
+const SEPOLIA_ETH_HPP_TOKEN_CONTRACT = process.env.NEXT_PUBLIC_SEPOLIA_ETH_HPP_TOKEN_CONTRACT!;
+const MAINNET_ETH_HPP_MIGRATION_CONTRACT = process.env.NEXT_PUBLIC_MAINNET_ETH_HPP_MIGRATION_CONTRACT!;
+const SEPOLIA_ETH_HPP_MIGRATION_CONTRACT = process.env.NEXT_PUBLIC_SEPOLIA_ETH_HPP_MIGRATION_CONTRACT!;
+
+// HPP Migration Contract ABI
+const hppMigrationABI = [
+  {
+    name: 'swapAergoForHPP',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [{ name: 'amount', type: 'uint256' }],
+    outputs: [],
+    modifiers: ['nonReentrant', 'whenNotPaused'],
+  },
+] as const;

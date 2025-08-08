@@ -35,7 +35,7 @@ const appKit = createAppKit({
   },
 });
 
-function ContextProvider({ children, cookies }: { children: ReactNode; cookies: string | null }) {
+function AppkitProvider({ children, cookies }: { children: ReactNode; cookies: string | null }) {
   const initialState = cookieToInitialState(wagmiAdapter.wagmiConfig as Config, cookies);
 
   return (
@@ -45,4 +45,4 @@ function ContextProvider({ children, cookies }: { children: ReactNode; cookies: 
   );
 }
 
-export default ContextProvider;
+export default AppkitProvider;
