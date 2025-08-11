@@ -679,24 +679,6 @@ export default function MigrationClient() {
                           </div>
                         </div>
 
-                        {/* Transaction Details */}
-                        <div className="bg-gray-50 rounded-lg p-4 mb-6">
-                          <div className="space-y-3">
-                            <div className="flex justify-between text-sm">
-                              <span className="text-gray-700">Exchange Rate:</span>
-                              <span className="text-gray-900">1 AERGO = 2.45 HPP</span>
-                            </div>
-                            <div className="flex justify-between text-sm">
-                              <span className="text-gray-700">Price Impact:</span>
-                              <span className="text-gray-900">0.05%</span>
-                            </div>
-                            <div className="flex justify-between text-sm">
-                              <span className="text-gray-700">Network Fee:</span>
-                              <span className="text-gray-900">~$2.50</span>
-                            </div>
-                          </div>
-                        </div>
-
                         {/* Migrate Button */}
                         <Button
                           variant="primary"
