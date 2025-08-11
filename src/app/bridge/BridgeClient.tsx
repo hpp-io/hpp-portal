@@ -3,7 +3,6 @@
 import React, { useState } from 'react';
 import Sidebar from '@/components/ui/Sidebar';
 import Button from '@/components/ui/Button';
-import NeedHelp from '@/components/ui/NeedHelp';
 import MobileHeader from '@/components/ui/MobileHeader';
 import { navItems, communityLinks } from '@/config/navigation';
 
