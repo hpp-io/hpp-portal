@@ -28,7 +28,7 @@ export default function EcosystemClient() {
       >
         <MobileHeader onMenuClick={() => setSidebarOpen(true)} />
 
-        <div className="p-4 lg:p-8 max-w-6xl mx-auto" style={{ width: '100%', maxWidth: '100%' }}>
+        <div className="p-4 lg:p-8 max-w-6xl mx-auto">
           <div className="lg:max-w-full 2xl:max-w-[80%] mx-auto">
             {/* HPP Ecosystem Introduction */}
             <div className="mb-16">
@@ -48,7 +48,7 @@ export default function EcosystemClient() {
                 {ecosystemData.featuredPartners.map((partner, index) => (
                   <div
                     key={index}
-                    className="bg-white rounded-lg p-6 border border-gray-200 hover:shadow-md transition-shadow w-full lg:max-w-[400px]"
+                    className="bg-white rounded-lg p-6 border border-gray-200 hover:shadow-md transition-shadow w-full lg:max-w-[320px]"
                   >
                     <div className="flex items-center space-x-3 mb-3">
                       <div className="w-8 h-8 bg-gray-800 rounded flex items-center justify-center text-white text-xs font-bold flex-shrink-0">

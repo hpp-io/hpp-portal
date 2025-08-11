@@ -23,15 +23,29 @@ const metadata = {
 };
 
 // Create the AppKit
-const appKit = createAppKit({
+createAppKit({
   adapters: [wagmiAdapter],
   projectId,
   networks: [mainnet, sepolia],
   defaultNetwork: mainnet,
   metadata: metadata,
   themeMode: 'light',
+  allowUnsupportedChain: true,
+  featuredWalletIds: ['c57ca95b47569778a828d19178114f4db188b89b763c899ba0be274e97267d96'],
+  includeWalletIds: ['c57ca95b47569778a828d19178114f4db188b89b763c899ba0be274e97267d96'],
+  debug: process.env.NEXT_PUBLIC_ENV === 'production' ? false : true,
+  enableWalletGuide: true,
+  allWallets: 'HIDE',
+  enableWalletConnect: false,
+  termsConditionsUrl: 'https://www.mytermsandconditions.com',
+  privacyPolicyUrl: 'https://www.myprivacypolicy.com',
   features: {
+    legalCheckbox: true,
     analytics: true, // Optional - defaults to your Cloud configuration
+    swaps: false,
+    onramp: false,
+    socials: false,
+    email: false,
   },
 });
 
