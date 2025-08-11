@@ -103,6 +103,12 @@ export default function MigrationClient() {
     hash: approveHash as `0x${string}` | undefined,
   });
 
+  // Track approval status based on current allowance
+  const [approvalStatus, setApprovalStatus] = useState<'pending' | 'approved' | 'needs_approval'>('pending');
+
+  // Tracks if user has successfully approved tokens to prevent bypassing approval
+  const [localApprovalSuccess, setLocalApprovalSuccess] = useState(false);
+
   // Wait for migration transaction
   const { isSuccess: isMigrationSuccess } = useWaitForTransactionReceipt({
     hash: migrationHash as `0x${string}` | undefined,
@@ -110,32 +116,24 @@ export default function MigrationClient() {
 
   // Update HPP balance when data changes
   useEffect(() => {
-    console.log('HPP Balance Data:', hppBalanceData);
-    console.log('Address:', address);
-    console.log('Is Connected:', isConnected);
-
     if (hppBalanceData) {
       const balance = formatUnits(hppBalanceData, AERGO_DECIMAL);
       const formattedBalance = parseFloat(balance).toLocaleString('en-US', {
         minimumFractionDigits: 0,
         maximumFractionDigits: 2,
       });
-      console.log('Formatted HPP Balance:', formattedBalance);
       setHppBalance(formattedBalance);
     }
   }, [hppBalanceData, address, isConnected]);
 
   // Update AERGO balance when data changes
   useEffect(() => {
-    console.log('AERGO Balance Data:', aergoBalanceData);
-
     if (aergoBalanceData) {
       const balance = formatUnits(aergoBalanceData, AERGO_DECIMAL);
       const formattedBalance = parseFloat(balance).toLocaleString('en-US', {
         minimumFractionDigits: 0,
         maximumFractionDigits: 2,
       });
-      console.log('Formatted AERGO Balance:', formattedBalance);
       setAergoBalance(formattedBalance);
     }
   }, [aergoBalanceData]);
@@ -147,16 +145,19 @@ export default function MigrationClient() {
     }
   }, [address, isConnected, refetchAergoAllowance]);
 
-  // Log allowance data changes
+  // Update approval status based on current allowance and input amount
   useEffect(() => {
-    console.log('AERGO Allowance Data:', aergoAllowanceData);
-    console.log(
-      'AERGO Allowance Data (formatted):',
-      aergoAllowanceData ? formatUnits(aergoAllowanceData, 18) : 'No data'
-    );
-    console.log('Current Address:', address);
-    console.log('Is Connected:', isConnected);
-  }, [aergoAllowanceData, address, isConnected]);
+    if (aergoAllowanceData && fromAmount && parseFloat(fromAmount) > 0) {
+      const amountInWei = parseUnits(fromAmount, 18);
+      if (aergoAllowanceData >= amountInWei) {
+        setApprovalStatus('approved');
+      } else {
+        setApprovalStatus('needs_approval');
+      }
+    } else {
+      setApprovalStatus('pending');
+    }
+  }, [aergoAllowanceData, fromAmount]);
 
   // Refetch balance after successful migration
   useEffect(() => {
@@ -183,11 +184,6 @@ export default function MigrationClient() {
 
     // Refetch balance after successful migration
     refetchHppBalance();
-  };
-
-  // Utility function to handle migration error
-  const handleMigrationError = (error: string) => {
-    showToast('Migration failed', error, 'error');
   };
 
   const handleFromAmountChange = (value: string) => {
@@ -236,14 +232,18 @@ export default function MigrationClient() {
     try {
       const amountInWei = parseUnits(fromAmount, 18); // AERGO has 18 decimals
 
+      // First, refresh allowance data to get the latest state
+      await refetchAergoAllowance();
+
+      // Wait a bit for the data to update
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
       // Check if we have sufficient allowance
       if (aergoAllowanceData && aergoAllowanceData >= amountInWei) {
-        console.log('✅ Sufficient allowance exists, proceeding directly to migration');
         // Sufficient allowance exists, proceed directly to migration
         setIsSwapping(true);
         handleSwapAergoForHpp();
       } else {
-        console.log('⚠️ Insufficient allowance, need to approve first');
         // Need to approve first
         setIsApproving(true);
         setIsSwapping(false);
@@ -261,7 +261,6 @@ export default function MigrationClient() {
         showToast('Approval sent', 'Waiting for approval confirmation...', 'loading');
       }
     } catch (error: any) {
-      console.error('❌ Error in migration process:', error);
       showToast('Error', error.message || 'Failed to process migration', 'error');
       setIsApproving(false);
       setIsSwapping(false);
@@ -271,16 +270,24 @@ export default function MigrationClient() {
   // Handle approval success and start migration
   useEffect(() => {
     if (isApproveSuccess && isApproving) {
-      console.log('🎉 Approval transaction successful!');
+      setLocalApprovalSuccess(true);
       setIsApproving(false);
       // Refresh allowance data and then proceed to migration
       refetchAergoAllowance().then(() => {
-        console.log('🔄 Allowance refreshed after approval');
         setIsSwapping(true);
         handleSwapAergoForHpp();
       });
     }
   }, [isApproveSuccess, isApproving, refetchAergoAllowance]);
+
+  // Reset approval success when approval status changes to needs_approval
+  useEffect(() => {
+    if (approvalStatus === 'needs_approval' && localApprovalSuccess) {
+      // Reset local approval success to force re-approval
+      setLocalApprovalSuccess(false);
+      setApproveHash(null);
+    }
+  }, [approvalStatus, localApprovalSuccess]);
 
   const handleSwapAergoForHpp = async () => {
     try {
@@ -312,8 +319,6 @@ export default function MigrationClient() {
   // Handle migration success
   useEffect(() => {
     if (isMigrationSuccess && migrationHash) {
-      console.log('🎊 Migration transaction successful!');
-      console.log('Transaction Hash:', migrationHash);
       setIsSwapping(false);
       handleMigrationSuccess(migrationHash, chainId === 11155111 ? 'sepolia' : 'mainnet');
       // Reset form
@@ -321,8 +326,8 @@ export default function MigrationClient() {
       setToAmount('');
       setApproveHash(null);
       setMigrationHash(null);
+      setLocalApprovalSuccess(false);
       // Refresh balances and allowance
-      console.log('🔄 Refreshing balances and allowance...');
       refetchHppBalance();
       refetchAergoBalance();
       refetchAergoAllowance();
