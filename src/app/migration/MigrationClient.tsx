@@ -43,6 +43,12 @@ export default function MigrationClient() {
       : process.env.NEXT_PUBLIC_SEPOLIA_ETH_AERGO_TOKEN_CONTRACT!
   ) as `0x${string}`;
 
+  const HPP_MIGRATION_CONTRACT_ADDRESS = (
+    process.env.NEXT_PUBLIC_ENV === 'production'
+      ? process.env.NEXT_PUBLIC_MAINNET_ETH_HPP_MIGRATION_CONTRACT!
+      : process.env.NEXT_PUBLIC_SEPOLIA_ETH_HPP_MIGRATION_CONTRACT!
+  ) as `0x${string}`;
+
   // Contract hooks
   const { writeContractAsync: approveTokens } = useWriteContract();
   const { writeContractAsync: swapTokens } = useWriteContract();
@@ -72,6 +78,21 @@ export default function MigrationClient() {
     abi: erc20Abi,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
+    query: {
+      enabled: !!address && isConnected,
+    },
+  });
+
+  // AERGO Allowance query for migration contract
+  const {
+    data: aergoAllowanceData,
+    refetch: refetchAergoAllowance,
+    isLoading: isAergoAllowanceLoading,
+  } = useReadContract({
+    address: AERGO_TOKEN_ADDRESS,
+    abi: erc20Abi,
+    functionName: 'allowance',
+    args: address ? [address, HPP_MIGRATION_CONTRACT_ADDRESS] : undefined,
     query: {
       enabled: !!address && isConnected,
     },
@@ -118,6 +139,24 @@ export default function MigrationClient() {
       setAergoBalance(formattedBalance);
     }
   }, [aergoBalanceData]);
+
+  // Update allowance when address or contract changes
+  useEffect(() => {
+    if (address && isConnected) {
+      refetchAergoAllowance();
+    }
+  }, [address, isConnected, refetchAergoAllowance]);
+
+  // Log allowance data changes
+  useEffect(() => {
+    console.log('AERGO Allowance Data:', aergoAllowanceData);
+    console.log(
+      'AERGO Allowance Data (formatted):',
+      aergoAllowanceData ? formatUnits(aergoAllowanceData, 18) : 'No data'
+    );
+    console.log('Current Address:', address);
+    console.log('Is Connected:', isConnected);
+  }, [aergoAllowanceData, address, isConnected]);
 
   // Refetch balance after successful migration
   useEffect(() => {
@@ -175,21 +214,8 @@ export default function MigrationClient() {
       return;
     }
 
-    try {
-      const fromAmountBig = new Big(value);
-
-      // Only HPP conversion: 1 AERGO = 2.45 HPP
-      const exchangeRate = new Big('2.45');
-      const calculatedValue = fromAmountBig.times(exchangeRate);
-
-      // Format the result - remove trailing zeros after decimal point
-      const formattedValue = calculatedValue.toString();
-      setToAmount(formattedValue.replace(/\.?0+$/, ''));
-    } catch (error) {
-      console.error('Error calculating amount:', error);
-      setToAmount('');
-      setInputError('Invalid amount format');
-    }
+    // 1:1 conversion: 1 AERGO = 1 HPP
+    setToAmount(value);
   };
 
   const handleMigrationClick = async () => {
@@ -208,48 +234,53 @@ export default function MigrationClient() {
     }
 
     try {
-      setIsApproving(true);
-      setIsSwapping(false);
-
-      const aergoTokenContract =
-        process.env.NEXT_PUBLIC_ENV === 'production'
-          ? MAINNET_ETH_AERGO_TOKEN_CONTRACT
-          : SEPOLIA_ETH_AERGO_TOKEN_CONTRACT;
-
-      const hppMigrationContract =
-        process.env.NEXT_PUBLIC_ENV === 'production'
-          ? MAINNET_ETH_HPP_MIGRATION_CONTRACT
-          : SEPOLIA_ETH_HPP_MIGRATION_CONTRACT;
-
       const amountInWei = parseUnits(fromAmount, 18); // AERGO has 18 decimals
 
-      // First, approve the migration contract to spend AERGO tokens
-      showToast('Approving...', 'Please wait while we approve the transaction...', 'loading');
+      // Check if we have sufficient allowance
+      if (aergoAllowanceData && aergoAllowanceData >= amountInWei) {
+        console.log('✅ Sufficient allowance exists, proceeding directly to migration');
+        // Sufficient allowance exists, proceed directly to migration
+        setIsSwapping(true);
+        handleSwapAergoForHpp();
+      } else {
+        console.log('⚠️ Insufficient allowance, need to approve first');
+        // Need to approve first
+        setIsApproving(true);
+        setIsSwapping(false);
 
-      const approveHash = await approveTokens({
-        address: aergoTokenContract as `0x${string}`,
-        abi: erc20Abi,
-        functionName: 'approve',
-        args: [hppMigrationContract as `0x${string}`, amountInWei],
-      });
+        showToast('Approving...', 'Please wait while we approve the transaction...', 'loading');
 
-      setApproveHash(approveHash);
-      showToast('Approval sent', 'Waiting for approval confirmation...', 'loading');
+        const approveHash = await approveTokens({
+          address: AERGO_TOKEN_ADDRESS,
+          abi: erc20Abi,
+          functionName: 'approve',
+          args: [HPP_MIGRATION_CONTRACT_ADDRESS, amountInWei],
+        });
+
+        setApproveHash(approveHash);
+        showToast('Approval sent', 'Waiting for approval confirmation...', 'loading');
+      }
     } catch (error: any) {
-      console.error('Error approving tokens:', error);
-      showToast('Approval failed', error.message || 'Failed to approve tokens', 'error');
+      console.error('❌ Error in migration process:', error);
+      showToast('Error', error.message || 'Failed to process migration', 'error');
       setIsApproving(false);
+      setIsSwapping(false);
     }
   };
 
   // Handle approval success and start migration
   useEffect(() => {
     if (isApproveSuccess && isApproving) {
+      console.log('🎉 Approval transaction successful!');
       setIsApproving(false);
-      setIsSwapping(true);
-      handleSwapAergoForHpp();
+      // Refresh allowance data and then proceed to migration
+      refetchAergoAllowance().then(() => {
+        console.log('🔄 Allowance refreshed after approval');
+        setIsSwapping(true);
+        handleSwapAergoForHpp();
+      });
     }
-  }, [isApproveSuccess, isApproving]);
+  }, [isApproveSuccess, isApproving, refetchAergoAllowance]);
 
   const handleSwapAergoForHpp = async () => {
     try {
@@ -281,6 +312,8 @@ export default function MigrationClient() {
   // Handle migration success
   useEffect(() => {
     if (isMigrationSuccess && migrationHash) {
+      console.log('🎊 Migration transaction successful!');
+      console.log('Transaction Hash:', migrationHash);
       setIsSwapping(false);
       handleMigrationSuccess(migrationHash, chainId === 11155111 ? 'sepolia' : 'mainnet');
       // Reset form
@@ -288,8 +321,13 @@ export default function MigrationClient() {
       setToAmount('');
       setApproveHash(null);
       setMigrationHash(null);
+      // Refresh balances and allowance
+      console.log('🔄 Refreshing balances and allowance...');
+      refetchHppBalance();
+      refetchAergoBalance();
+      refetchAergoAllowance();
     }
-  }, [isMigrationSuccess, migrationHash, chainId]);
+  }, [isMigrationSuccess, migrationHash, chainId, refetchHppBalance, refetchAergoBalance, refetchAergoAllowance]);
 
   const transactionHistory = [
     {
@@ -600,9 +638,66 @@ export default function MigrationClient() {
                         <div className="bg-gray-50 rounded-lg p-4 mb-4">
                           <div className="flex items-center justify-between mb-2">
                             <label className="text-sm font-medium text-gray-600">From</label>
-                            <span className="text-sm text-gray-500">
-                              Balance: {isAergoBalanceLoading ? 'Loading...' : `${aergoBalance || '0'} AERGO`}
-                            </span>
+                            <div className="flex items-center space-x-2">
+                              <span className="text-sm text-gray-500">
+                                Balance: {isAergoBalanceLoading ? 'Loading...' : `${aergoBalance || '0'} AERGO`}
+                              </span>
+                              {/* Approval Status Check */}
+                              {isConnected && (
+                                <div className="relative group">
+                                  {isAergoAllowanceLoading ? (
+                                    <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
+                                  ) : aergoAllowanceData &&
+                                    fromAmount &&
+                                    parseFloat(fromAmount) > 0 &&
+                                    parseUnits(fromAmount, 18) <= aergoAllowanceData ? (
+                                    <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                                      <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                        <path
+                                          fillRule="evenodd"
+                                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                          clipRule="evenodd"
+                                        />
+                                      </svg>
+                                    </div>
+                                  ) : aergoAllowanceData && fromAmount && parseFloat(fromAmount) > 0 ? (
+                                    <div className="w-4 h-4 bg-orange-500 rounded-full flex items-center justify-center">
+                                      <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                        <path
+                                          fillRule="evenodd"
+                                          d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                                          clipRule="evenodd"
+                                        />
+                                      </svg>
+                                    </div>
+                                  ) : null}
+
+                                  {/* Popover */}
+                                  <div className="absolute bottom-full right-0 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                                    <div className="text-center">
+                                      <div className="font-medium mb-1">Approval Status</div>
+                                      {isAergoAllowanceLoading ? (
+                                        <div>Checking allowance...</div>
+                                      ) : aergoAllowanceData &&
+                                        fromAmount &&
+                                        parseFloat(fromAmount) > 0 &&
+                                        parseUnits(fromAmount, 18) <= aergoAllowanceData ? (
+                                        <div className="text-green-400">✓ Approved for this amount</div>
+                                      ) : aergoAllowanceData && fromAmount && parseFloat(fromAmount) > 0 ? (
+                                        <div className="text-orange-400">⚠ Needs approval</div>
+                                      ) : null}
+                                      {aergoAllowanceData && (
+                                        <div className="text-gray-300 mt-1">
+                                          Current allowance: {formatUnits(aergoAllowanceData, 18)} AERGO
+                                        </div>
+                                      )}
+                                    </div>
+                                    {/* Arrow */}
+                                    <div className="absolute top-full right-2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
                           </div>
                           <div className="flex items-center space-x-3">
                             <div className="flex-1">
