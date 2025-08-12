@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Sidebar from '@/components/ui/Sidebar';
 import Button from '@/components/ui/Button';
 import NeedHelp from '@/components/ui/NeedHelp';
@@ -9,11 +9,24 @@ import MobileHeader from '@/components/ui/MobileHeader';
 import { useToast } from '@/hooks/useToast';
 import { useAccount, useChainId, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { navItems, communityLinks } from '@/config/navigation';
-import Big from 'big.js';
 import { parseUnits, formatUnits, erc20Abi } from 'viem';
 
 // Constants
 const AERGO_DECIMAL = 18;
+const HISTORY_PAGE_SIZE = 20;
+const USE_CONTRACT_CENTRIC_HISTORY = true;
+
+// Transaction interface
+interface Transaction {
+  id: string;
+  type: 'Migration' | 'Approval' | 'Other';
+  date: string;
+  amount: string;
+  status: 'Pending' | 'Completed' | 'Failed';
+  hash: string;
+  icon: React.ReactNode;
+  network: 'mainnet' | 'sepolia';
+}
 
 export default function MigrationClient() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -26,25 +39,63 @@ export default function MigrationClient() {
   const [inputError, setInputError] = useState('');
   const [hppBalance, setHppBalance] = useState<string>('0');
   const [aergoBalance, setAergoBalance] = useState<string>('0');
-  const { showToast, hideToast } = useToast();
+  const [transactionHistory, setTransactionHistory] = useState<Transaction[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [showAllHistory, setShowAllHistory] = useState(false);
+  const approvalInFlightRef = useRef<boolean>(false);
+  const migrationInFlightRef = useRef<boolean>(false);
+
+  const { showToast } = useToast();
   const { isConnected, address } = useAccount();
   const chainId = useChainId();
 
-  // Token Contract Addresses
+  // Decide whether to swap to server list or keep current (to preserve local Pending until resolved)
+  const updateHistoryWithServer = (incoming: Transaction[]) => {
+    // Ensure newest first just in case
+    const sortedIncoming = [...incoming].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    setTransactionHistory((prev) => {
+      const pendingIds = new Set(prev.filter((t) => t.status === 'Pending').map((t) => t.id));
+      const pendingResolved = sortedIncoming.some((t) => pendingIds.has(t.id) && t.status !== 'Pending');
+
+      if (pendingResolved) {
+        // Swap to server list when any local pending is now resolved on server
+        return sortedIncoming;
+      }
+
+      // If there are no local pendings, swap whenever server data differs
+      if (pendingIds.size === 0) {
+        const prevNonPending = prev.filter((t) => t.status !== 'Pending');
+        const sameLength = prevNonPending.length === sortedIncoming.length;
+        const same =
+          sameLength &&
+          prevNonPending.every(
+            (t, i) =>
+              t.id === sortedIncoming[i].id &&
+              t.status === sortedIncoming[i].status &&
+              t.amount === sortedIncoming[i].amount
+          );
+        return same ? prev : sortedIncoming;
+      }
+
+      // Otherwise keep showing local pending until server confirms it
+      return prev;
+    });
+  };
+
+  // Token Contract Addresses (single source)
+  const isProd = process.env.NEXT_PUBLIC_ENV === 'production';
   const HPP_TOKEN_ADDRESS = (
-    process.env.NEXT_PUBLIC_ENV === 'production'
+    isProd
       ? process.env.NEXT_PUBLIC_MAINNET_ETH_HPP_TOKEN_CONTRACT!
       : process.env.NEXT_PUBLIC_SEPOLIA_ETH_HPP_TOKEN_CONTRACT!
   ) as `0x${string}`;
-
   const AERGO_TOKEN_ADDRESS = (
-    process.env.NEXT_PUBLIC_ENV === 'production'
+    isProd
       ? process.env.NEXT_PUBLIC_MAINNET_ETH_AERGO_TOKEN_CONTRACT!
       : process.env.NEXT_PUBLIC_SEPOLIA_ETH_AERGO_TOKEN_CONTRACT!
   ) as `0x${string}`;
-
   const HPP_MIGRATION_CONTRACT_ADDRESS = (
-    process.env.NEXT_PUBLIC_ENV === 'production'
+    isProd
       ? process.env.NEXT_PUBLIC_MAINNET_ETH_HPP_MIGRATION_CONTRACT!
       : process.env.NEXT_PUBLIC_SEPOLIA_ETH_HPP_MIGRATION_CONTRACT!
   ) as `0x${string}`;
@@ -110,7 +161,7 @@ export default function MigrationClient() {
   const [localApprovalSuccess, setLocalApprovalSuccess] = useState(false);
 
   // Wait for migration transaction
-  const { isSuccess: isMigrationSuccess } = useWaitForTransactionReceipt({
+  const { isSuccess: isMigrationSuccess, isError: isMigrationError } = useWaitForTransactionReceipt({
     hash: migrationHash as `0x${string}` | undefined,
   });
 
@@ -159,18 +210,150 @@ export default function MigrationClient() {
     }
   }, [aergoAllowanceData, fromAmount]);
 
-  // Refetch balance after successful migration
-  useEffect(() => {
-    if (isMigrationSuccess) {
-      refetchHppBalance();
-      refetchAergoBalance();
-    }
-  }, [isMigrationSuccess, refetchHppBalance, refetchAergoBalance]);
+  // Removed auto-refresh of history after migration success to preserve pending -> completed UX
 
   // Utility function to create Etherscan link
   const createEtherscanLink = (txHash: string, network: 'mainnet' | 'sepolia' = 'mainnet') => {
     const baseUrl = network === 'mainnet' ? 'https://etherscan.io' : 'https://sepolia.etherscan.io';
     return `${baseUrl}/tx/${txHash}`;
+  };
+
+  // No background polling: status changes only on explicit refresh/View All
+
+  // Decode first uint256 argument (amount) from contract call input
+  const decodeAmountFromInput = (input?: string): string | null => {
+    try {
+      if (!input || input.length < 10 + 64) return null;
+      const amountHex = input.slice(10, 10 + 64);
+      const amountBigInt = BigInt(`0x${amountHex}`);
+      const raw = formatUnits(amountBigInt, 18);
+      const num = parseFloat(raw);
+      if (isNaN(num)) return null;
+      return num.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    } catch {
+      return null;
+    }
+  };
+
+  // Fetch ALL migration history (no pagination in UI)
+  const fetchAllMigrationHistory = async (walletAddress: string) => {
+    if (!walletAddress) return;
+    setIsLoadingHistory(true);
+    try {
+      const network: 'mainnet' | 'sepolia' = chainId === 11155111 ? 'sepolia' : 'mainnet';
+      const apiKey = process.env.NEXT_PUBLIC_ETHERSCAN_API_KEY;
+      const baseUrl = network === 'mainnet' ? 'https://api.etherscan.io/api' : 'https://api-sepolia.etherscan.io/api';
+
+      const aggregated: Transaction[] = [];
+      const seen = new Set<string>();
+
+      if (USE_CONTRACT_CENTRIC_HISTORY) {
+        let page = 1;
+        while (true) {
+          const res = await fetch(
+            `${baseUrl}?module=account&action=txlist&address=${HPP_MIGRATION_CONTRACT_ADDRESS}&startblock=0&endblock=99999999&page=${page}&offset=${HISTORY_PAGE_SIZE}&sort=desc&apikey=${apiKey}`
+          );
+          const data = await res.json();
+          if (data.status !== '1') break;
+
+          const walletLc = walletAddress.toLowerCase();
+          const mapped: Transaction[] = (data.result || [])
+            .filter((tx: any) => tx.from?.toLowerCase() === walletLc)
+            .map((tx: any) => {
+              const type: Transaction['type'] = 'Migration';
+              let status: Transaction['status'] = 'Completed';
+              if (tx.confirmations === '0') status = 'Pending';
+              else if (tx.isError === '1') status = 'Failed';
+              const amt = decodeAmountFromInput(tx.input);
+              return {
+                id: tx.hash,
+                type,
+                date: new Date(parseInt(tx.timeStamp) * 1000).toLocaleString('ko-KR'),
+                amount: amt ? `${amt} AERGO → ${amt} HPP` : 'AERGO → HPP',
+                status,
+                hash: tx.hash,
+                network,
+                icon: getTransactionIcon(type, status),
+              } as Transaction;
+            });
+
+          for (const t of mapped) {
+            if (!seen.has(t.id)) {
+              seen.add(t.id);
+              aggregated.push(t);
+            }
+          }
+
+          const pageHasMore = Array.isArray(data.result) ? data.result.length === HISTORY_PAGE_SIZE : false;
+          if (!pageHasMore) break;
+          page += 1;
+          if (page > 100) break; // hard cap safety
+        }
+      } else {
+        let page = 1;
+        while (true) {
+          const normalTxResponse = await fetch(
+            `${baseUrl}?module=account&action=txlist&address=${walletAddress}&startblock=0&endblock=99999999&page=${page}&offset=${HISTORY_PAGE_SIZE}&sort=desc&apikey=${apiKey}`
+          );
+          const internalTxResponse = await fetch(
+            `${baseUrl}?module=account&action=txlistinternal&address=${walletAddress}&startblock=0&endblock=99999999&page=${page}&offset=${HISTORY_PAGE_SIZE}&sort=desc&apikey=${apiKey}`
+          );
+          const normalTxData = await normalTxResponse.json();
+          const internalTxData = await internalTxResponse.json();
+          if (normalTxData.status !== '1' && internalTxData.status !== '1') break;
+
+          const allTransactions = [...(normalTxData.result || []), ...(internalTxData.result || [])];
+          const filtered = allTransactions.filter(
+            (tx: any) => tx.to?.toLowerCase() === HPP_MIGRATION_CONTRACT_ADDRESS.toLowerCase()
+          );
+
+          const mapped: Transaction[] = filtered.map((tx: any) => {
+            const type: Transaction['type'] = 'Migration';
+            let status: Transaction['status'] = 'Completed';
+            if (tx.confirmations === '0') status = 'Pending';
+            else if (tx.isError === '1') status = 'Failed';
+            const amt = decodeAmountFromInput(tx.input);
+            return {
+              id: tx.hash,
+              type,
+              date: new Date(parseInt(tx.timeStamp) * 1000).toLocaleString('ko-KR'),
+              amount: amt ? `${amt} AERGO → ${amt} HPP` : 'AERGO → HPP',
+              status,
+              hash: tx.hash,
+              network,
+              icon: getTransactionIcon(type, status),
+            } as Transaction;
+          });
+
+          for (const t of mapped) {
+            if (!seen.has(t.id)) {
+              seen.add(t.id);
+              aggregated.push(t);
+            }
+          }
+
+          const normalHasMore = Array.isArray(normalTxData.result)
+            ? normalTxData.result.length === HISTORY_PAGE_SIZE
+            : false;
+          const internalHasMore = Array.isArray(internalTxData.result)
+            ? internalTxData.result.length === HISTORY_PAGE_SIZE
+            : false;
+          const mayHaveMore = normalHasMore || internalHasMore;
+          if (!mayHaveMore) break;
+          page += 1;
+          if (page > 100) break; // hard cap safety
+        }
+      }
+
+      // newest first
+      aggregated.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      updateHistoryWithServer(aggregated);
+    } catch (error) {
+      console.error('Failed to fetch ALL transaction history:', error);
+      showToast('Error', 'Failed to fetch ALL transaction history.', 'error');
+    } finally {
+      setIsLoadingHistory(false);
+    }
   };
 
   // Utility function to handle successful migration
@@ -184,6 +367,146 @@ export default function MigrationClient() {
 
     // Refetch balance after successful migration
     refetchHppBalance();
+  };
+
+  // Fetch transaction history from Etherscan (supports pagination)
+  const fetchTransactionHistory = async (walletAddress: string, options?: { page?: number; append?: boolean }) => {
+    if (!walletAddress) return;
+
+    const page = options?.page ?? 1;
+    setIsLoadingHistory(true);
+    try {
+      const network: 'mainnet' | 'sepolia' = chainId === 11155111 ? 'sepolia' : 'mainnet';
+      const apiKey = process.env.NEXT_PUBLIC_ETHERSCAN_API_KEY;
+      const baseUrl = network === 'mainnet' ? 'https://api.etherscan.io/api' : 'https://api-sepolia.etherscan.io/api';
+
+      if (USE_CONTRACT_CENTRIC_HISTORY) {
+        // Query only the migration contract txs, then filter by user address as the sender
+        const contractTxResponse = await fetch(
+          `${baseUrl}?module=account&action=txlist&address=${HPP_MIGRATION_CONTRACT_ADDRESS}&startblock=0&endblock=99999999&page=${page}&offset=${HISTORY_PAGE_SIZE}&sort=desc&apikey=${apiKey}`
+        );
+        const contractTxData = await contractTxResponse.json();
+
+        if (contractTxData.status === '1') {
+          const walletLc = walletAddress.toLowerCase();
+          const relevantTransactions = (contractTxData.result || [])
+            .filter((tx: any) => tx.from?.toLowerCase() === walletLc)
+            .map((tx: any) => {
+              const type: Transaction['type'] = 'Migration';
+              let status: Transaction['status'] = 'Completed';
+              if (tx.confirmations === '0') status = 'Pending';
+              else if (tx.isError === '1') status = 'Failed';
+              const amt = decodeAmountFromInput(tx.input);
+              return {
+                id: tx.hash,
+                type,
+                date: new Date(parseInt(tx.timeStamp) * 1000).toLocaleString('ko-KR'),
+                amount: amt ? `${amt} AERGO → ${amt} HPP` : 'AERGO → HPP',
+                status,
+                hash: tx.hash,
+                network,
+                icon: getTransactionIcon(type, status),
+              } as Transaction;
+            });
+
+          updateHistoryWithServer(relevantTransactions);
+        } else {
+          // No data; keep existing (e.g., preserve local pending)
+        }
+      } else {
+        // Legacy wallet-centric mode (fallback)
+        // Fetch normal transactions
+        const normalTxResponse = await fetch(
+          `${baseUrl}?module=account&action=txlist&address=${walletAddress}&startblock=0&endblock=99999999&page=${page}&offset=${HISTORY_PAGE_SIZE}&sort=desc&apikey=${apiKey}`
+        );
+        // Fetch internal transactions (for contract interactions)
+        const internalTxResponse = await fetch(
+          `${baseUrl}?module=account&action=txlistinternal&address=${walletAddress}&startblock=0&endblock=99999999&page=${page}&offset=${HISTORY_PAGE_SIZE}&sort=desc&apikey=${apiKey}`
+        );
+
+        const normalTxData = await normalTxResponse.json();
+        const internalTxData = await internalTxResponse.json();
+
+        if (normalTxData.status === '1' || internalTxData.status === '1') {
+          const allTransactions = [...(normalTxData.result || []), ...(internalTxData.result || [])];
+          const relevantTransactions = allTransactions
+            .filter((tx: any) => {
+              const toAddress = tx.to?.toLowerCase();
+              const isApproval = tx.input?.includes('0x095ea7b3'); // approve
+              if (isApproval) return false;
+              return toAddress === HPP_MIGRATION_CONTRACT_ADDRESS.toLowerCase();
+            })
+            .sort((a: any, b: any) => Number(b.timeStamp) - Number(a.timeStamp))
+            .map((tx: any) => {
+              const type: Transaction['type'] = 'Migration';
+              let status: Transaction['status'] = 'Completed';
+              if (tx.confirmations === '0') status = 'Pending';
+              else if (tx.isError === '1') status = 'Failed';
+              const amt = decodeAmountFromInput(tx.input);
+              return {
+                id: tx.hash,
+                type,
+                date: new Date(parseInt(tx.timeStamp) * 1000).toLocaleString('ko-KR'),
+                amount: amt ? `${amt} AERGO → ${amt} HPP` : 'AERGO → HPP',
+                status,
+                hash: tx.hash,
+                network,
+                icon: getTransactionIcon(type, status),
+              } as Transaction;
+            });
+
+          updateHistoryWithServer(relevantTransactions);
+        } else {
+          // No data; keep existing
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch transaction history:', error);
+      showToast('Error', 'Failed to fetch transaction history.', 'error');
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
+
+  // Get appropriate icon for transaction type and status
+  const getTransactionIcon = (type: Transaction['type'], status: Transaction['status']) => {
+    if (status === 'Pending') {
+      return (
+        <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+          />
+        </svg>
+      );
+    } else if (status === 'Completed') {
+      if (type === 'Migration') {
+        return (
+          <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+            />
+          </svg>
+        );
+      } else {
+        return (
+          <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+        );
+      }
+    } else {
+      return (
+        <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      );
+    }
   };
 
   const handleFromAmountChange = (value: string) => {
@@ -213,6 +536,17 @@ export default function MigrationClient() {
     // 1:1 conversion: 1 AERGO = 1 HPP
     setToAmount(value);
   };
+
+  // Fetch transaction history when wallet connects or chain changes
+  useEffect(() => {
+    if (isConnected && address) {
+      // reset paging state
+      setTransactionHistory([]);
+      setShowAllHistory(false);
+      // Initial history fetch is safe now due to merge logic
+      fetchTransactionHistory(address, { page: 1, append: false });
+    }
+  }, [isConnected, address, chainId]);
 
   const handleMigrationClick = async () => {
     if (!isConnected || !address) {
@@ -259,17 +593,25 @@ export default function MigrationClient() {
 
         setApproveHash(approveHash);
         showToast('Approval sent', 'Waiting for approval confirmation...', 'loading');
+        approvalInFlightRef.current = true;
+        setTimeout(() => {
+          if (approvalInFlightRef.current) {
+            showToast('Approval sent', 'The network may be busy. Please hold on a moment.', 'loading');
+          }
+        }, 7000);
       }
     } catch (error: any) {
       showToast('Error', error.message || 'Failed to process migration', 'error');
       setIsApproving(false);
       setIsSwapping(false);
+      approvalInFlightRef.current = false;
     }
   };
 
   // Handle approval success and start migration
   useEffect(() => {
     if (isApproveSuccess && isApproving) {
+      approvalInFlightRef.current = false;
       setLocalApprovalSuccess(true);
       setIsApproving(false);
       // Refresh allowance data and then proceed to migration
@@ -289,16 +631,18 @@ export default function MigrationClient() {
     }
   }, [approvalStatus, localApprovalSuccess]);
 
+  const lastSubmittedAmountRef = useRef<string>('');
+
   const handleSwapAergoForHpp = async () => {
     try {
-      const hppMigrationContract =
-        process.env.NEXT_PUBLIC_ENV === 'production'
-          ? MAINNET_ETH_HPP_MIGRATION_CONTRACT
-          : SEPOLIA_ETH_HPP_MIGRATION_CONTRACT;
+      const hppMigrationContract = HPP_MIGRATION_CONTRACT_ADDRESS;
 
       const amountInWei = parseUnits(fromAmount, 18);
 
       showToast('Migrating...', 'Starting HPP migration. Please wait...', 'loading');
+
+      // cache amount for later status updates
+      lastSubmittedAmountRef.current = fromAmount;
 
       const migrationHash = await swapTokens({
         address: hppMigrationContract as `0x${string}`,
@@ -309,84 +653,72 @@ export default function MigrationClient() {
 
       setMigrationHash(migrationHash);
       showToast('Migration sent', 'Waiting for migration confirmation...', 'loading');
+      migrationInFlightRef.current = true;
+      // Insert pending entry immediately
+      try {
+        const numeric = parseFloat(lastSubmittedAmountRef.current);
+        const formatted = isNaN(numeric)
+          ? lastSubmittedAmountRef.current
+          : numeric.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+        const network: 'mainnet' | 'sepolia' = chainId === 11155111 ? 'sepolia' : 'mainnet';
+        const pendingTx: Transaction = {
+          id: migrationHash,
+          type: 'Migration',
+          date: new Date().toLocaleString('ko-KR'),
+          amount: `${formatted} AERGO → ${formatted} HPP`,
+          status: 'Pending',
+          hash: migrationHash,
+          network,
+          icon: getTransactionIcon('Migration', 'Pending'),
+        } as Transaction;
+        setTransactionHistory((prev) => [pendingTx, ...prev.filter((t) => t.id !== migrationHash)]);
+      } catch {}
+      // Keep Pending until user refreshes history; no background polling
+
+      setTimeout(() => {
+        if (migrationInFlightRef.current) {
+          showToast('Migration sent', 'The network may be busy. Please hold on a moment.', 'loading');
+        }
+      }, 7000);
     } catch (error: any) {
       console.error('Error migrating tokens:', error);
       showToast('Migration failed', error.message || 'Failed to migrate tokens', 'error');
       setIsSwapping(false);
+      migrationInFlightRef.current = false;
     }
   };
 
-  // Handle migration success
+  // Handle migration success (do not force-complete locally); no auto history refresh
   useEffect(() => {
-    if (isMigrationSuccess && migrationHash) {
-      setIsSwapping(false);
-      handleMigrationSuccess(migrationHash, chainId === 11155111 ? 'sepolia' : 'mainnet');
-      // Reset form
-      setFromAmount('');
-      setToAmount('');
-      setApproveHash(null);
-      setMigrationHash(null);
-      setLocalApprovalSuccess(false);
-      // Refresh balances and allowance
-      refetchHppBalance();
-      refetchAergoBalance();
-      refetchAergoAllowance();
-    }
+    if (!(isMigrationSuccess && migrationHash)) return;
+
+    setIsSwapping(false);
+    migrationInFlightRef.current = false;
+    handleMigrationSuccess(migrationHash, chainId === 11155111 ? 'sepolia' : 'mainnet');
+    // Reset form fields only; keep history pending until explicit refresh/merge
+    setFromAmount('');
+    setToAmount('');
+    setApproveHash(null);
+    setMigrationHash(null);
+    setLocalApprovalSuccess(false);
+    // Keep balances refresh; avoids history overwrite
+    refetchHppBalance();
+    refetchAergoBalance();
+    refetchAergoAllowance();
+
+    // No automatic history refetch; user triggers refresh manually
   }, [isMigrationSuccess, migrationHash, chainId, refetchHppBalance, refetchAergoBalance, refetchAergoAllowance]);
 
-  const transactionHistory = [
-    {
-      id: 1,
-      type: 'Migration AERGO → HPP',
-      date: '2025-01-13 16:45:28',
-      amount: '200 AERGO → 490 HPP',
-      status: 'Pending',
-      icon: (
-        <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-          />
-        </svg>
-      ),
-    },
-    {
-      id: 2,
-      type: 'Migration AERGO → HPP',
-      date: '2025-01-15 14:32:15',
-      amount: '100 AERGO → 245 HPP',
-      status: 'Completed',
-      icon: (
-        <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
-          />
-        </svg>
-      ),
-    },
-    {
-      id: 3,
-      type: 'Migration AERGO → HPP',
-      date: '2025-01-14 09:15:42',
-      amount: '50 AERGO → 122.5 HPP',
-      status: 'Completed',
-      icon: (
-        <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
-          />
-        </svg>
-      ),
-    },
-  ];
+  // Handle migration error (failed) - keep status strictly from server/polling
+  useEffect(() => {
+    if (isMigrationError && migrationHash) {
+      setIsSwapping(false);
+      migrationInFlightRef.current = false;
+      // Do not force-fail in UI; rely on polling or manual refresh to reflect failure
+    }
+  }, [isMigrationError, migrationHash, chainId]);
+
+  // no timers to clean up; timeouts check a ref flag instead
 
   return (
     <div className="flex h-screen bg-white overflow-x-hidden">
@@ -651,7 +983,7 @@ export default function MigrationClient() {
                               {isConnected && (
                                 <div className="relative group">
                                   {isAergoAllowanceLoading ? (
-                                    <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
+                                    <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin"></div>
                                   ) : aergoAllowanceData &&
                                     fromAmount &&
                                     parseFloat(fromAmount) > 0 &&
@@ -707,19 +1039,26 @@ export default function MigrationClient() {
                           <div className="flex items-center space-x-3">
                             <div className="flex-1">
                               <input
-                                type="number"
-                                min="0"
+                                type="text"
+                                inputMode="decimal"
                                 value={fromAmount === '' ? '' : fromAmount}
                                 onChange={(e) => {
                                   const value = e.target.value;
-                                  if (value === '' || parseFloat(value) >= 0) {
+                                  // allow only digits and one decimal point
+                                  if (/^\d*(\.)?\d*$/.test(value) || value === '') {
                                     handleFromAmountChange(value);
                                   }
                                 }}
-                                className={`w-full py-3 border-0 rounded-lg focus:outline-none focus:ring-0 text-lg bg-transparent pl-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                                onWheel={(e) => {
+                                  // prevent accidental value changes by scroll
+                                  (e.target as HTMLInputElement).blur();
+                                }}
+                                className={`w-full py-3 border-0 rounded-lg focus:outline-none focus:ring-0 text-lg bg-transparent pl-0 ${
                                   inputError ? 'border-red-500' : ''
                                 }`}
                                 placeholder="0.0"
+                                autoComplete="off"
+                                spellCheck={false}
                               />
                               {inputError && <div className="mt-1 text-sm text-red-600">{inputError}</div>}
                             </div>
@@ -761,7 +1100,7 @@ export default function MigrationClient() {
                           </div>
                           <div className="flex items-center space-x-3">
                             <input
-                              type="number"
+                              type="text"
                               value={toAmount === '' ? '' : toAmount}
                               readOnly
                               className="flex-1 py-3 border-0 rounded-lg bg-transparent text-lg pl-0 cursor-default pointer-events-none"
@@ -797,40 +1136,106 @@ export default function MigrationClient() {
                   {isConnected && (
                     <div className="mt-8">
                       <div className="bg-white border border-gray-100 rounded-lg p-6">
-                        <h3 className="text-lg font-medium text-gray-900 mb-4">Transaction History</h3>
-                        <div className="space-y-2">
-                          {transactionHistory.map((tx) => (
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="text-lg font-medium text-gray-900">Transaction History</h3>
+                          <button
+                            onClick={() => address && fetchTransactionHistory(address)}
+                            disabled={isLoadingHistory}
+                            aria-label="Refresh"
+                            className="flex items-center px-3 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer"
+                            style={{ cursor: 'pointer' }}
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                              />
+                            </svg>
+                          </button>
+                        </div>
+
+                        {isLoadingHistory ? (
+                          <div className="flex items-center justify-center py-8">
                             <div
-                              key={tx.id}
-                              className="flex items-center justify-between py-3 border-b border-gray-50 last:border-b-0"
+                              aria-label="Loading"
+                              className="w-6 h-6 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin"
+                            ></div>
+                          </div>
+                        ) : transactionHistory.length > 0 ? (
+                          <div className="space-y-2">
+                            {(showAllHistory ? transactionHistory : transactionHistory.slice(0, 2)).map((tx) => (
+                              <div
+                                key={tx.id}
+                                className="flex items-center justify-between py-3 border-b border-gray-50 last:border-b-0 hover:bg-gray-50 transition-colors cursor-pointer"
+                                style={{ cursor: 'pointer' }}
+                                onClick={() => {
+                                  const etherscanUrl = createEtherscanLink(tx.hash, tx.network);
+                                  window.open(etherscanUrl, '_blank');
+                                }}
+                              >
+                                <div className="flex items-center space-x-3">
+                                  <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+                                    {tx.icon}
+                                  </div>
+                                  <div>
+                                    <div className="text-sm font-normal text-gray-900">{tx.type}</div>
+                                    <div className="text-xs text-gray-500">{tx.date}</div>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <div className="text-sm font-normal text-gray-900">{tx.amount}</div>
+                                  <div
+                                    className={`text-xs font-medium ${
+                                      tx.status === 'Completed'
+                                        ? 'text-green-600'
+                                        : tx.status === 'Pending'
+                                        ? 'text-yellow-600'
+                                        : 'text-red-600'
+                                    }`}
+                                  >
+                                    {tx.status}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center py-8 text-gray-500">
+                            <svg
+                              className="w-12 h-12 mx-auto mb-3 text-gray-300"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
                             >
-                              <div className="flex items-center space-x-3">
-                                <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
-                                  {tx.icon}
-                                </div>
-                                <div>
-                                  <div className="text-sm font-normal text-gray-900">{tx.type}</div>
-                                  <div className="text-xs text-gray-500">{tx.date}</div>
-                                </div>
-                              </div>
-                              <div className="text-right">
-                                <div className="text-sm font-normal text-gray-900">{tx.amount}</div>
-                                <div
-                                  className={`text-xs font-medium ${
-                                    tx.status === 'Completed' ? 'text-gray-600' : 'text-gray-500'
-                                  }`}
-                                >
-                                  {tx.status}
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                        <div className="mt-4 text-center">
-                          <a href="#" className="text-sm text-gray-600 hover:text-gray-800 cursor-pointer">
-                            View All Transactions
-                          </a>
-                        </div>
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                              />
+                            </svg>
+                            <p className="text-sm text-gray-400 mt-1">No transactions yet</p>
+                          </div>
+                        )}
+
+                        {transactionHistory.length > 2 && !showAllHistory && (
+                          <div className="mt-4 text-center space-y-3">
+                            <button
+                              onClick={() => {
+                                setShowAllHistory(true);
+                                if (address) {
+                                  fetchAllMigrationHistory(address);
+                                }
+                              }}
+                              className="text-sm text-gray-600 hover:text-gray-800 bg-transparent cursor-pointer px-2 py-1 focus:outline-none"
+                              style={{ cursor: 'pointer' }}
+                            >
+                              View All Transactions
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
@@ -928,12 +1333,7 @@ export default function MigrationClient() {
 }
 
 // Contract addresses and ABIs
-const MAINNET_ETH_AERGO_TOKEN_CONTRACT = process.env.NEXT_PUBLIC_MAINNET_ETH_AERGO_TOKEN_CONTRACT!;
-const SEPOLIA_ETH_AERGO_TOKEN_CONTRACT = process.env.NEXT_PUBLIC_SEPOLIA_ETH_AERGO_TOKEN_CONTRACT!;
-const MAINNET_ETH_HPP_TOKEN_CONTRACT = process.env.NEXT_PUBLIC_MAINNET_ETH_HPP_TOKEN_CONTRACT!;
-const SEPOLIA_ETH_HPP_TOKEN_CONTRACT = process.env.NEXT_PUBLIC_SEPOLIA_ETH_HPP_TOKEN_CONTRACT!;
-const MAINNET_ETH_HPP_MIGRATION_CONTRACT = process.env.NEXT_PUBLIC_MAINNET_ETH_HPP_MIGRATION_CONTRACT!;
-const SEPOLIA_ETH_HPP_MIGRATION_CONTRACT = process.env.NEXT_PUBLIC_SEPOLIA_ETH_HPP_MIGRATION_CONTRACT!;
+// Unused legacy constants removed (addresses are sourced above via isProd guard)
 
 // HPP Migration Contract ABI
 const hppMigrationABI = [
