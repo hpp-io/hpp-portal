@@ -26,25 +26,21 @@ export default function Header({ onMenuClick }: HeaderProps) {
             </button>
           </div>
           <div className="flex justify-center">
-            <Link href="/" className="flex items-center space-x-2 cursor-pointer">
-              <span className="text-sm font-semibold text-white">HPP Portal</span>
-            </Link>
+            <span className="text-sm font-semibold text-white cursor-default">HPP Portal</span>
           </div>
-          <div className="flex justify-end">
+          {/* <div className="flex justify-end">
             <WalletButton size="sm" labelOverride="Connect" />
-          </div>
+          </div> */}
         </div>
       </div>
 
       {/* ≥1200px */}
       <div className="min-[1200px]:block hidden bg-black border-b border-[#161616] px-6 py-3">
         <div className="flex items-center justify-between">
-          <Link href="/" className="flex items-center space-x-2 cursor-pointer">
-            <span className="text-base font-semibold text-white">HPP Portal</span>
-          </Link>
-          <div className="flex items-center">
+          <span className="text-base font-semibold text-white cursor-default">HPP Portal</span>
+          {/* <div className="flex items-center">
             <WalletButton />
-          </div>
+          </div> */}
         </div>
       </div>
     </>
