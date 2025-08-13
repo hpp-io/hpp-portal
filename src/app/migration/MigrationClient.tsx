@@ -723,7 +723,11 @@ export default function MigrationClient() {
 
   return (
     <div className="flex flex-col h-screen bg-white overflow-x-hidden">
-      <Header onMenuClick={() => setSidebarOpen(true)} />
+      <Header
+        onMenuClick={() => setSidebarOpen(true)}
+        isSidebarOpen={sidebarOpen}
+        onBackClick={() => setSidebarOpen(false)}
+      />
 
       <div className="flex flex-1 overflow-hidden">
         <Sidebar
@@ -824,7 +828,7 @@ export default function MigrationClient() {
                       </Button>
 
                       <Button
-                        variant="outline"
+                        variant="white"
                         size="md"
                         className="flex items-center justify-center space-x-2 whitespace-nowrap"
                       >
@@ -904,7 +908,7 @@ export default function MigrationClient() {
                     {/* Action Buttons */}
                     <div className="space-y-3">
                       <Button
-                        variant="outline"
+                        variant="white"
                         size="sm"
                         className="flex items-center justify-center space-x-2 whitespace-nowrap"
                       >
