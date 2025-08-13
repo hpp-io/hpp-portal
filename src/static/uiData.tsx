@@ -134,6 +134,11 @@ export const ecosystemData = {
         'A decentralized data availability layer integrated via EigenLayer, providing HPP with scalable, secure, and cost-efficient data storage for AI.',
       icon: 'ED',
     },
+    {
+      name: 'Orbiter Finance',
+      description: 'Cross-chain bridge for HPP enabling low-fee, fast asset transfers to major blockchains.',
+      icon: 'OF',
+    },
   ],
   benefits: [
     'Low transaction costs and fast finality',
