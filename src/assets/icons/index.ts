@@ -1,3 +1,30 @@
+// SVG
 export { default as BackIcon } from './Back.svg';
 export { default as MobileMenuIcon } from './MobileMenu.svg';
 export { default as HPPPortalIcon } from './HPPPortal.svg';
+export { default as ClockIcon } from './Clock.svg';
+export { default as TwitterIcon } from './Twitter.svg';
+export { default as MediumIcon } from './Medium.svg';
+export { default as TelegramIcon } from './Telegram.svg';
+export { default as CheckIcon } from './Check.svg';
+export { default as HomeIcon } from './Home.svg';
+export { default as MigrationIcon } from './Migration.svg';
+export { default as AirdropIcon } from './Airdrop.svg';
+export { default as BridgeIcon } from './Bridge.svg';
+export { default as EcosystemIcon } from './Ecosystem.svg';
+export { default as GovernanceIcon } from './Governance.svg';
+export { default as BuildIcon } from './Build.svg';
+export { default as BlockExplorerIcon } from './Block Explorer.svg';
+
+// PNG
+export { default as Aergo } from './Aergo.png';
+export { default as Aqt } from './Aqt.png';
+export { default as Booost } from './Booost.png';
+export { default as W3DB } from './W3DB.png';
+export { default as ArenAI } from './ArenAI.png';
+export { default as Noosphere } from './Noosphere.png';
+export { default as BitGO } from './BitGO.png';
+export { default as ARB } from './ARB.png';
+export { default as Eigen } from './Eigen.png';
+export { default as Orbiter } from './Orbiter.png';
+export { default as FooterHPPLogo } from './FooterHPPlogo.png';

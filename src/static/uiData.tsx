@@ -1,4 +1,5 @@
 import React from 'react';
+import { BitGO, ARB, Eigen, Orbiter, Aergo, Aqt, Booost, W3DB, ArenAI, Noosphere } from '@/assets/icons';
 
 // Home Page Data
 export const homeData = {
@@ -45,36 +46,36 @@ export const homeData = {
     {
       name: 'Aergo',
       description: 'Legacy hybrid infrastructure at the core of HPP, now transitioning into an AI-native foundation.',
-      icon: 'AG',
+      icon: Aergo,
     },
     {
       name: 'AQT (Alpha Quark)',
       description: 'RWA and NFT valuation layer enabling AI-driven asset discovery, pricing, and strategy execution.',
-      icon: 'AQ',
+      icon: Aqt,
     },
     {
       name: 'BOOOST',
       description:
         'Personhood verification and Sybil resistance powered by AI-based deepfake detection and biometrics.',
-      icon: 'BO',
+      icon: Booost,
     },
     {
       name: 'W3DB',
       description:
         'Model and data verification layer with staking-based validation for AI training, inference, and trust.',
-      icon: 'W3',
+      icon: W3DB,
     },
     {
       name: 'ArenAI',
       description:
         'A crypto asset management portal that combines AI agents, CEX/DEX integration, and natural language strategy execution across DeFi.',
-      icon: 'AR',
+      icon: ArenAI,
     },
     {
       name: 'Noosphere',
       description:
         'A verifiable intelligence layer that enables smart contracts to delegate AI tasks — from inference to simulation — with secure off-chain computation and result verification.',
-      icon: 'NO',
+      icon: Noosphere,
     },
   ],
 };
@@ -85,59 +86,59 @@ export const ecosystemData = {
     {
       name: 'Aergo',
       description: 'Legacy hybrid infrastructure at the core of HPP, now transitioning into an AI-native foundation.',
-      icon: 'AG',
+      icon: Aergo,
     },
     {
       name: 'AQT (Alpha Quark)',
       description: 'RWA and NFT valuation layer enabling AI-driven asset discovery, pricing, and strategy execution.',
-      icon: 'AQ',
+      icon: Aqt,
     },
     {
       name: 'BOOOST',
       description:
         'Personhood verification and Sybil resistance powered by AI-based deepfake detection and biometrics.',
-      icon: 'BO',
+      icon: Booost,
     },
     {
       name: 'W3DB',
       description:
         'Model and data verification layer with staking-based validation for AI training, inference, and trust.',
-      icon: 'W3',
+      icon: W3DB,
     },
     {
       name: 'ArenAI',
       description:
         'A crypto asset management portal that combines AI agents, CEX/DEX integration, and natural language strategy execution across DeFi.',
-      icon: 'AR',
+      icon: ArenAI,
     },
     {
       name: 'Noosphere',
       description:
         'A verifiable intelligence layer that enables smart contracts to delegate AI tasks — from inference to simulation — with secure off-chain computation and result verification.',
-      icon: 'NO',
+      icon: Noosphere,
     },
     {
       name: 'BitGo',
       description:
         'Institutional-grade custody provider securing HPP treasury and reserves with multi-sig control, insured protection, and regulatory compliance.',
-      icon: 'BG',
+      icon: BitGO,
     },
     {
       name: 'Arbitrum',
       description:
         "A high-performance Layer 2 rollup that powers HPP's scalable and low-cost infrastructure, built for verifiable AI and smart contract execution.",
-      icon: 'AB',
+      icon: ARB,
     },
     {
       name: 'EigenDA',
       description:
         'A decentralized data availability layer integrated via EigenLayer, providing HPP with scalable, secure, and cost-efficient data storage for AI.',
-      icon: 'ED',
+      icon: Eigen,
     },
     {
       name: 'Orbiter Finance',
       description: 'Cross-chain bridge for HPP enabling low-fee, fast asset transfers to major blockchains.',
-      icon: 'OF',
+      icon: Orbiter,
     },
   ],
   benefits: [

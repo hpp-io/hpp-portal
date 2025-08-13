@@ -10,6 +10,7 @@ interface ButtonProps {
   external?: boolean;
   disabled?: boolean;
   fullWidth?: boolean;
+  icon?: React.ReactNode;
 }
 
 export default function Button({
@@ -22,9 +23,10 @@ export default function Button({
   external = false,
   disabled = false,
   fullWidth = false,
+  icon,
 }: ButtonProps) {
   const baseClasses =
-    'inline-flex items-center justify-center font-medium rounded-3xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-0 cursor-pointer';
+    'inline-flex items-center justify-center font-medium rounded-3xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-0 cursor-pointer gap-1 whitespace-nowrap';
 
   const variantClasses = {
     primary: 'bg-primary text-white hover:brightness-110 focus:ring-transparent',
@@ -34,7 +36,7 @@ export default function Button({
 
   const sizeClasses = {
     sm: 'px-3 py-1.5 text-sm',
-    md: 'px-4 py-2 text-sm',
+    md: 'px-5 py-3 text-sm',
     lg: 'px-5 py-4 text-semibold leading-[1]',
   };
 
@@ -50,6 +52,7 @@ export default function Button({
         rel={external ? 'noopener noreferrer' : undefined}
         className={classes}
       >
+        {icon}
         {children}
         {external && (
           <svg className="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -67,6 +70,7 @@ export default function Button({
 
   return (
     <button className={classes} onClick={onClick} disabled={disabled}>
+      {icon}
       {children}
     </button>
   );

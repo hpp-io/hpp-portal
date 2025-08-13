@@ -9,6 +9,7 @@ import Header from '@/components/ui/Header';
 import Footer from '@/components/ui/Footer';
 import { navItems, communityLinks } from '@/config/navigation';
 import { homeData } from '@/static/uiData';
+import Image from 'next/image';
 
 export default function HomeClient() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -130,9 +131,9 @@ export default function HomeClient() {
                   key={index}
                   className="rounded-lg px-5 py-7.5 bg-[#111111] hover:bg-[#171717] transition-colors w-full lg:max-w-[400px]"
                 >
-                  <div className="flex items-center space-x-3 mb-2.5">
+                  <div className="flex items-center space-x-2.5 mb-2.5">
                     <div className="w-8 h-8 bg-[#1f2937] rounded flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                      {project.icon}
+                      <Image src={project.icon} alt={project.name} width={22} height={22} />
                     </div>
                     <h5 className="text-lg leading-[1.5] font-semibold text-white">{project.name}</h5>
                   </div>

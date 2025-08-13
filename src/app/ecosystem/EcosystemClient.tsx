@@ -1,12 +1,14 @@
 'use client';
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import Sidebar from '@/components/ui/Sidebar';
 import Button from '@/components/ui/Button';
 import Header from '@/components/ui/Header';
 import Footer from '@/components/ui/Footer';
 import { navItems, communityLinks } from '@/config/navigation';
 import { ecosystemData } from '@/static/uiData';
+import { CheckIcon } from '@/assets/icons';
 
 export default function EcosystemClient() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -55,9 +57,9 @@ export default function EcosystemClient() {
                     key={index}
                     className="rounded-lg px-5 py-7.5 bg-[#111111] hover:bg-[#171717] transition-colors w-full lg:max-w-[400px] border border-[#161616]"
                   >
-                    <div className="flex items-center space-x-3 mb-2.5">
+                    <div className="flex items-center space-x-2.5 mb-2.5">
                       <div className="w-8 h-8 bg-[#1f2937] rounded flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                        {partner.icon}
+                        <Image src={partner.icon} alt={partner.name} width={22} height={22} />
                       </div>
                       <h3 className="text-lg leading-[1.5] font-semibold text-white">{partner.name}</h3>
                     </div>
@@ -77,15 +79,11 @@ export default function EcosystemClient() {
             <div className="grid grid-cols-1 min-[810px]:grid-cols-2 gap-5">
               {/* Why Build on HPP */}
               <div className="bg-[#121212] rounded-sm p-6">
-                <h3 className="text-2xl font-medium text-white mb-6 text-center">Why Build on HPP?</h3>
+                <h3 className="text-2xl font-medium text-white mb-10 text-center">Why Build on HPP?</h3>
                 <div className="space-y-3 w-fit max-w-[720px] mx-auto text-left">
                   {ecosystemData.benefits.map((benefit, index) => (
                     <div key={index} className="flex items-start space-x-2.5">
-                      <div className="w-5 h-5 flex items-center justify-center flex-shrink-0 rounded bg-white">
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-3 h-3 text-black">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                      </div>
+                      <CheckIcon className="w-4.5 h-4.5" />
                       <h5 className="mt-0.5 text-white text-base font-regular leading-[1]">{benefit}</h5>
                     </div>
                   ))}
