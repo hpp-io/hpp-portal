@@ -41,3 +41,6 @@ yarn-error.log*
 next-env.d.ts
 
 certificates
+
+# large or design assets (kept out of git; use a CDN or design storage)
+src/assets/images/
