@@ -33,7 +33,11 @@ export default function HomeClient() {
 
   return (
     <div className="flex flex-col h-screen bg-black text-white overflow-x-hidden">
-      <Header onMenuClick={() => setSidebarOpen(true)} />
+      <Header
+        onMenuClick={() => setSidebarOpen(true)}
+        isSidebarOpen={sidebarOpen}
+        onBackClick={() => setSidebarOpen(false)}
+      />
 
       <div className="flex flex-1 overflow-hidden">
         <Sidebar
@@ -49,7 +53,7 @@ export default function HomeClient() {
           }`}
         >
           {/* Hero Section */}
-          <div className="bg-gradient-to-b from-[#0f0f10] to-[#1a1a1a] border-b border-[#161616] py-7.5">
+          <div className="bg-[#121212] border-b border-[#161616] py-7.5">
             <div className="px-4 max-w-6xl mx-auto">
               <h1 className="text-[50px] min-[1200px]:text-[70px] leading-[1.5] font-[900] text-white">
                 Welcome to <span className="inline max-[599px]:block">HPP Portal</span>
@@ -64,7 +68,7 @@ export default function HomeClient() {
           {/* Quick Actions */}
           <div className="px-4 max-w-6xl mx-auto mt-24">
             <h2 className="text-3xl leading-[1.5] font-[900] text-white mb-5">Quick Actions</h2>
-            <div className="grid grid-cols-1 min-[810px]:grid-cols-3 gap-6 justify-items-center">
+            <div className="grid grid-cols-1 min-[810px]:grid-cols-3 gap-5 justify-items-center">
               {homeData.quickActions.map((action, index) => {
                 const link = getQuickActionLink(action.title);
                 const CardContent = (
@@ -120,7 +124,7 @@ export default function HomeClient() {
               </Button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8 justify-items-center">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-8 justify-items-center">
               {homeData.ecosystemProjects.map((project, index) => (
                 <div
                   key={index}
@@ -138,7 +142,9 @@ export default function HomeClient() {
             </div>
           </div>
 
-          <Footer />
+          <div className="mt-25">
+            <Footer />
+          </div>
         </main>
       </div>
     </div>
