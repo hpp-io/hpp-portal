@@ -51,7 +51,9 @@ export default function HomeClient() {
           {/* Hero Section */}
           <div className="bg-gradient-to-b from-[#0f0f10] to-[#1a1a1a] border-b border-[#161616] py-7.5">
             <div className="px-4 max-w-6xl mx-auto">
-              <h1 className="text-4xl md:text-[70px] leading-[1.5] font-[900] text-white">Welcome to HPP Portal</h1>
+              <h1 className="text-[50px] min-[1200px]:text-[70px] leading-[1.5] font-[900] text-white">
+                Welcome to <span className="inline max-[599px]:block">HPP Portal</span>
+              </h1>
               <p className="text-xl text-[#bfbfbf] font-semibold leading-[1.5] max-w-7xl">
                 Welcome to the HPP Portal, where you can migrate your assets, bridge across networks, and start building
                 on AI-native Layer 2 infrastructure.
@@ -135,10 +137,10 @@ export default function HomeClient() {
               ))}
             </div>
           </div>
+
+          <Footer />
         </main>
       </div>
-
-      <Footer />
     </div>
   );
 }
