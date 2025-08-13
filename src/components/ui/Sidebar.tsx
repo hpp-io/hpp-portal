@@ -1,5 +1,8 @@
+'use client';
+
 import React from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 interface NavItem {
   label: string;
@@ -16,81 +19,89 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ navItems, communityLinks, isOpen, onClose }: SidebarProps) {
-  const getInternalHref = (item: NavItem) => {
+  const pathname = usePathname();
+  const getHrefAndExternal = (item: NavItem): { href: string; external: boolean } => {
     if (item.external && item.href) {
-      return item.href;
-    } else if (!item.external) {
-      if (item.label.toLowerCase() === 'home') {
-        return '/';
-      } else {
-        const page = item.label.toLowerCase().replace(/\s+/g, '-');
-        return `/${page}`;
-      }
+      return { href: item.href, external: true };
     }
-    return '#';
+    if (!item.external) {
+      if (item.label.toLowerCase() === 'home') {
+        return { href: '/', external: false };
+      }
+      const page = item.label.toLowerCase().replace(/\s+/g, '-');
+      return { href: `/${page}`, external: false };
+    }
+    return { href: '#', external: false };
   };
 
   return (
     <>
       {/* Mobile overlay */}
-      {isOpen && <div className="fixed inset-0 bg-opacity-30 z-40 lg:hidden" onClick={onClose} />}
+      {isOpen && (
+        <div
+          className="fixed left-0 right-0 bottom-0 opacity-30 z-40 min-[1200px]:hidden"
+          style={{ top: '56px', background: 'var(--color-primary)' }}
+          onClick={onClose}
+        />
+      )}
 
       {/* Sidebar */}
       <div
-        className={`
-          fixed lg:static inset-y-0 left-0 z-50 w-64 bg-gray-50 h-screen flex flex-col transform transition-transform duration-300 ease-in-out border-r border-[#E5E7EB]
-          ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-        `}
+        className={[
+          'fixed min-[1200px]:static left-0 z-50 w-screen min-[1200px]:w-64 flex flex-col transform transition-transform duration-300 ease-in-out border-r border-[#161616] bg-black',
+          isOpen ? 'translate-x-0' : '-translate-x-full min-[1200px]:translate-x-0',
+        ].join(' ')}
+        style={{ top: '56px', height: 'calc(100vh - 56px)' }}
       >
-        {/* Logo */}
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center space-x-1 cursor-default">
-            <img src="/HPPMainnet_Logo.svg" alt="HPP Mainnet" className="w-8 h-8 filter brightness-0" />
-            <span className="text-xl font-semibold text-gray-900">HPP Portal</span>
-          </div>
-        </div>
+        {/* Header space removed: logo moved to Header component */}
 
         {/* Navigation */}
-        <nav className="flex-1 p-4">
+        <nav className="flex-1">
           <ul className="space-y-2">
             {navItems.map((item, index) => {
-              const href = getInternalHref(item);
+              const { href, external } = getHrefAndExternal(item);
+              const isActive = !external && (pathname === href || (href !== '/' && pathname.startsWith(href + '/')));
+              const rowClass = [
+                'flex items-center space-x-3 px-2.5 py-2.5 rounded-lg transition-colors w-full text-left cursor-pointer',
+                isActive
+                  ? 'text-white bg-primary'
+                  : 'text-gray-200 hover:text-white hover:bg-primary active:text-white active:bg-primary',
+              ].join(' ');
 
-              if (item.external && item.href) {
-                return (
-                  <li key={index}>
-                    <a
-                      href={item.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center space-x-3 px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors w-full text-left cursor-pointer"
-                      onClick={onClose}
-                    >
-                      <span className="w-5 h-5">{item.icon}</span>
-                      <span className="flex-1">{item.label}</span>
-                      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                        />
-                      </svg>
-                    </a>
-                  </li>
-                );
-              }
+              const RightIcon = external ? (
+                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                  />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              );
+
+              const Content = (
+                <>
+                  <span className="w-5 h-5">{item.icon}</span>
+                  <span className="flex-1 text-base font-semibold">{item.label}</span>
+                  {RightIcon}
+                </>
+              );
 
               return (
                 <li key={index}>
-                  <Link
-                    href={href}
-                    className="flex items-center space-x-3 px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors w-full text-left cursor-pointer"
-                    onClick={onClose}
-                  >
-                    <span className="w-5 h-5">{item.icon}</span>
-                    <span className="flex-1">{item.label}</span>
-                  </Link>
+                  {external ? (
+                    <a href={href} target="_blank" rel="noopener noreferrer" className={rowClass} onClick={onClose}>
+                      {Content}
+                    </a>
+                  ) : (
+                    <Link href={href} className={rowClass} onClick={onClose}>
+                      {Content}
+                    </Link>
+                  )}
                 </li>
               );
             })}
@@ -98,16 +109,16 @@ export default function Sidebar({ navItems, communityLinks, isOpen, onClose }: S
         </nav>
 
         {/* Community Section */}
-        <div className="p-4 border-t border-gray-200">
+        <div className="p-4 border-t border-[#161616]">
           <div className="mb-4">
-            <h3 className="text-sm font-medium text-gray-900 mb-3">Community</h3>
+            <h3 className="text-sm font-medium text-gray-100 mb-3">Community</h3>
             <div className="flex space-x-3">
-              <a href="#" className="text-gray-400 hover:text-gray-700">
+              <a href="#" className="text-gray-500 hover:text-gray-300">
                 <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515a.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0a12.64 12.64 0 0 0-.617-1.25a.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057a19.9 19.9 0 0 0 5.993 3.03a.078.078 0 0 0 .084-.028a14.09 14.09 0 0 0 1.226-1.994a.076.076 0 0 0-.041-.106a13.107 13.107 0 0 1-1.872-.892a.077.077 0 0 1-.008-.128a10.2 10.2 0 0 0 .372-.292a.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127a12.299 12.299 0 0 1-1.873.892a.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028a19.839 19.839 0 0 0 6.002-3.03a.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.956-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.955-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.946 2.418-2.157 2.418z" />
                 </svg>
               </a>
-              <a href="#" className="text-gray-400 hover:text-gray-700">
+              <a href="#" className="text-gray-500 hover:text-gray-300">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     strokeLinecap="round"
@@ -117,7 +128,7 @@ export default function Sidebar({ navItems, communityLinks, isOpen, onClose }: S
                   />
                 </svg>
               </a>
-              <a href="#" className="text-gray-400 hover:text-gray-700">
+              <a href="#" className="text-gray-500 hover:text-gray-300">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     strokeLinecap="round"
@@ -141,7 +152,7 @@ export default function Sidebar({ navItems, communityLinks, isOpen, onClose }: S
               <a
                 key={index}
                 href={link.href}
-                className="block text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                className="block text-xs text-gray-400 hover:text-gray-200 transition-colors"
               >
                 {link.label}
               </a>
