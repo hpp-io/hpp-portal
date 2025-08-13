@@ -93,6 +93,7 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-pretendard);
+  --color-primary: #4949b4;
 }
 
 @media (prefers-color-scheme: dark) {
