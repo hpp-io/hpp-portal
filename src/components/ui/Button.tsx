@@ -22,10 +22,10 @@ export default function Button({
   disabled = false,
 }: ButtonProps) {
   const baseClasses =
-    'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 cursor-pointer';
+    'inline-flex items-center justify-center font-medium rounded-3xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 cursor-pointer';
 
   const variantClasses = {
-    primary: 'bg-gray-900 text-white hover:bg-gray-800 focus:ring-gray-700',
+    primary: 'bg-primary text-white hover:brightness-110 focus:ring-primary',
     secondary: 'bg-gray-100 text-gray-900 hover:bg-gray-200 focus:ring-gray-500',
     outline: 'border border-gray-300 text-gray-700 hover:bg-gray-50 focus:ring-gray-500',
   };
