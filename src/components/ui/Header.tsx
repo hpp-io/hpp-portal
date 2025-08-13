@@ -1,43 +1,45 @@
 'use client';
 
 import React from 'react';
-import Link from 'next/link';
-import WalletButton from '@/components/ui/WalletButton';
+import { MobileMenuIcon, BackIcon, HPPPortalIcon } from '@/assets/icons';
+// import WalletButton from '@/components/ui/WalletButton';
 
 interface HeaderProps {
   onMenuClick?: () => void;
+  isSidebarOpen?: boolean;
+  onBackClick?: () => void;
 }
 
-export default function Header({ onMenuClick }: HeaderProps) {
+export default function Header({ onMenuClick, isSidebarOpen = false, onBackClick }: HeaderProps) {
   return (
     <>
       {/* <1200px */}
-      <div className="max-[1200px]:block hidden bg-black border-b border-[#161616] px-4 h-14">
+      <div className="max-[1200px]:block hidden bg-black border-b border-[#161616] px-4 h-[66px]">
         <div className="grid grid-cols-3 items-center h-full">
           <div className="flex">
             <button
-              onClick={onMenuClick}
-              className="p-2 rounded-lg hover:bg-gray-900 transition-colors cursor-pointer"
-              aria-label="Open menu"
+              onClick={isSidebarOpen ? onBackClick : onMenuClick}
+              className="p-2 rounded-lg cursor-pointer"
+              aria-label={isSidebarOpen ? 'Close menu' : 'Open menu'}
             >
-              <svg className="w-6 h-6 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
+              {isSidebarOpen ? (
+                <BackIcon className="w-7.5 h-7.5 text-gray-300" />
+              ) : (
+                <MobileMenuIcon className="w-7.5 h-7.5 text-gray-300" />
+              )}
             </button>
           </div>
-          <div className="flex justify-center">
-            <span className="text-sm font-semibold text-white cursor-default">HPP Portal</span>
+          <div></div>
+          <div className="flex justify-end">
+            <HPPPortalIcon className="w-auto h-10" />
           </div>
-          {/* <div className="flex justify-end">
-            <WalletButton size="sm" labelOverride="Connect" />
-          </div> */}
         </div>
       </div>
 
       {/* ≥1200px */}
-      <div className="min-[1200px]:block hidden bg-black border-b border-[#161616] px-6 py-3">
-        <div className="flex items-center justify-between">
-          <span className="text-base font-semibold text-white cursor-default">HPP Portal</span>
+      <div className="min-[1200px]:block hidden bg-black border-b border-[#161616] px-6 h-[85px]">
+        <div className="flex items-center justify-between h-full">
+          <HPPPortalIcon className="w-auto h-10" />
           {/* <div className="flex items-center">
             <WalletButton />
           </div> */}
