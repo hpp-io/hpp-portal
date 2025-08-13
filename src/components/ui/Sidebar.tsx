@@ -48,16 +48,19 @@ export default function Sidebar({ navItems, communityLinks, isOpen, onClose }: S
       {/* Sidebar */}
       <div
         className={[
-          'fixed min-[1200px]:static left-0 z-50 w-screen min-[1200px]:w-64 flex flex-col transform transition-transform duration-300 ease-in-out border-r border-[#161616] bg-black',
-          isOpen ? 'translate-x-0' : '-translate-x-full min-[1200px]:translate-x-0',
+          // Position right for mobile/tablet so it slides from right to left
+          'fixed right-0 left-auto min-[1200px]:static min-[1200px]:left-0 z-50 w-screen min-[1200px]:w-64 flex flex-col border-l min-[1200px]:border-r border-[#161616] bg-black',
+          'transform transition-transform ease-in-out',
+          'min-[1200px]:transform-none min-[1200px]:transition-none',
+          isOpen
+            ? 'translate-x-0 max-[1199px]:duration-300'
+            : 'translate-x-full min-[1200px]:translate-x-0 max-[1199px]:duration-300',
         ].join(' ')}
         style={{ top: '56px', height: 'calc(100vh - 56px)' }}
       >
-        {/* Header space removed: logo moved to Header component */}
-
         {/* Navigation */}
-        <nav className="flex-1">
-          <ul className="space-y-2">
+        <nav className="flex-1 p-2">
+          <ul className={`space-y-2 ${isOpen ? 'max-[1199px]:space-y-4 max-[1199px]:pt-4' : ''}`}>
             {navItems.map((item, index) => {
               const { href, external } = getHrefAndExternal(item);
               const isActive = !external && (pathname === href || (href !== '/' && pathname.startsWith(href + '/')));
