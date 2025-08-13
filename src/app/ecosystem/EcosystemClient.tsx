@@ -1,111 +1,137 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Sidebar from '@/components/ui/Sidebar';
 import Button from '@/components/ui/Button';
-import MobileHeader from '@/components/ui/MobileHeader';
+import Header from '@/components/ui/Header';
+import Footer from '@/components/ui/Footer';
 import { navItems, communityLinks } from '@/config/navigation';
 import { ecosystemData } from '@/static/uiData';
 
 export default function EcosystemClient() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const router = useRouter();
 
   return (
-    <div className="flex h-screen bg-white overflow-x-hidden">
-      <Sidebar
-        navItems={navItems}
-        communityLinks={communityLinks}
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
+    <div className="flex flex-col h-screen bg-black text-white overflow-x-hidden">
+      <Header
+        onMenuClick={() => setSidebarOpen(true)}
+        isSidebarOpen={sidebarOpen}
+        onBackClick={() => setSidebarOpen(false)}
       />
 
-      <main
-        className={`flex-1 overflow-y-auto transition-all duration-300 ${
-          sidebarOpen ? 'opacity-50 lg:opacity-100' : ''
-        }`}
-      >
-        <MobileHeader onMenuClick={() => setSidebarOpen(true)} />
+      <div className="flex flex-1 overflow-hidden">
+        <Sidebar
+          navItems={navItems}
+          communityLinks={communityLinks}
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+        />
 
-        <div className="p-4 lg:p-8 max-w-6xl mx-auto">
-          <div className="lg:max-w-full 2xl:max-w-[80%] mx-auto">
-            {/* HPP Ecosystem Introduction */}
-            <div className="mb-16">
-              <div className="flex items-center mb-4">
-                <h1 className="text-4xl font-medium text-gray-900">HPP Ecosystem</h1>
-              </div>
-              <p className="text-lg text-gray-700 max-w-4xl">
+        <main
+          className={`flex-1 overflow-y-auto transition-all duration-300 ${
+            sidebarOpen ? 'opacity-50 min-[1200px]:opacity-100' : ''
+          }`}
+        >
+          {/* Hero Section */}
+          <div className="bg-[#121212] border-b border-[#161616] py-7.5">
+            <div className="px-4 max-w-6xl mx-auto">
+              <h1 className="text-[50px] min-[1200px]:text-[70px] leading-[1.5] font-[900] text-white">
+                HPP Ecosystem
+              </h1>
+              <p className="text-xl text-[#bfbfbf] font-semibold leading-[1.5] max-w-7xl">
                 The HPP Ecosystem is an AI-native infrastructure designed for the full data lifecycle, uniting
                 intelligent agents, verifiable off-chain computation, and decentralized applications.
               </p>
             </div>
+          </div>
 
+          <div className="px-4 max-w-6xl mx-auto">
             {/* Featured Partners */}
-            <div className="mb-16">
-              <h2 className="text-2xl font-medium text-gray-900 mb-8">Featured Partners</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center">
+            <div className="mt-25 mb-37.5">
+              <h2 className="text-3xl leading-[1.5] font-[900] text-white mb-8">Featured Partners</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 justify-items-center">
                 {ecosystemData.featuredPartners.map((partner, index) => (
                   <div
                     key={index}
-                    className="bg-white rounded-lg p-6 border border-gray-200 hover:shadow-md transition-shadow w-full lg:max-w-[320px]"
+                    className="rounded-lg px-5 py-7.5 bg-[#111111] hover:bg-[#171717] transition-colors w-full lg:max-w-[400px] border border-[#161616]"
                   >
-                    <div className="flex items-center space-x-3 mb-3">
-                      <div className="w-8 h-8 bg-gray-800 rounded flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                    <div className="flex items-center space-x-3 mb-2.5">
+                      <div className="w-8 h-8 bg-[#1f2937] rounded flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                         {partner.icon}
                       </div>
-                      <h3 className="text-lg font-normal text-gray-900">{partner.name}</h3>
+                      <h3 className="text-lg leading-[1.5] font-semibold text-white">{partner.name}</h3>
                     </div>
-                    <p className="text-gray-700 text-sm leading-relaxed">{partner.description}</p>
+                    <p className="text-gray-300 text-base leading-[1.5]">{partner.description}</p>
                   </div>
                 ))}
               </div>
             </div>
 
             {/* Build on HPP Section */}
-            <div className="mb-16 text-center">
-              <h2 className="text-3xl font-medium text-gray-900 mb-4">Build on HPP</h2>
-              <p className="text-lg text-gray-700">Join our growing ecosystem of partners</p>
+            <div className="mb-12.5 text-center">
+              <h2 className="text-[50px] leading-[1.5] font-[900] text-white">Build on HPP</h2>
+              <p className="text-xl text-[#bfbfbf] font-semibold">Join our growing ecosystem of partners.</p>
             </div>
 
             {/* Why Build on HPP & Get Started */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+            <div className="grid grid-cols-1 min-[810px]:grid-cols-2 gap-5">
               {/* Why Build on HPP */}
-              <div>
-                <h3 className="text-2xl font-medium text-gray-900 mb-6">Why Build on HPP?</h3>
-                <div className="space-y-4">
+              <div className="bg-[#121212] rounded-sm p-6">
+                <h3 className="text-2xl font-medium text-white mb-6 text-center">Why Build on HPP?</h3>
+                <div className="space-y-3 w-fit max-w-[720px] mx-auto text-left">
                   {ecosystemData.benefits.map((benefit, index) => (
-                    <div key={index} className="flex items-start space-x-1.5">
-                      <div className="w-5 h-5 flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-4 h-4 text-black">
+                    <div key={index} className="flex items-start space-x-2.5">
+                      <div className="w-5 h-5 flex items-center justify-center flex-shrink-0 rounded bg-white">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-3 h-3 text-black">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
                       </div>
-                      <p className="text-gray-700">{benefit}</p>
+                      <h5 className="mt-0.5 text-white text-base font-regular leading-[1]">{benefit}</h5>
                     </div>
                   ))}
                 </div>
               </div>
 
               {/* Get Started */}
-              <div className="bg-white rounded-sm p-6 border border-gray-200 lg:-mt-9">
-                <h3 className="text-2xl font-medium text-gray-900 mb-6">Get Started</h3>
-                <div className="space-y-4">
-                  <Button variant="primary" size="lg" className="w-full whitespace-nowrap">
+              <div className="bg-[#121212] rounded-sm p-6 text-center">
+                <h3 className="text-2xl font-medium text-white mb-5">Get Started</h3>
+                <div className="w-fit mx-auto flex flex-col space-y-2.5">
+                  <Button
+                    variant="primary"
+                    size="lg"
+                    className="whitespace-nowrap w-full"
+                    href="https://hppio.typeform.com/to/AYiyaI4s"
+                    external
+                  >
                     Apply for Partnership
                   </Button>
-                  <Button variant="outline" size="lg" className="w-full whitespace-nowrap">
+                  <Button
+                    variant="white"
+                    size="lg"
+                    className="whitespace-nowrap w-full"
+                    href="https://docs.hpp.io/"
+                    external
+                  >
                     View Documentation
                   </Button>
-                  <Button variant="outline" size="lg" className="w-full whitespace-nowrap">
+                  <Button
+                    variant="white"
+                    size="lg"
+                    className="whitespace-nowrap w-full"
+                    href="https://t.me/aergoofficial"
+                    external
+                  >
                     Join Telegram
                   </Button>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      </main>
+          <div className="mt-25">
+            <Footer />
+          </div>
+        </main>
+      </div>
     </div>
   );
 }
