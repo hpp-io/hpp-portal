@@ -1,12 +1,12 @@
 import React from 'react';
-import { BitGO, ARB, Eigen, Orbiter, Aergo, Aqt, Booost, W3DB, ArenAI, Noosphere } from '@/assets/icons';
+import { BitGO, ARB, Eigen, Orbiter, Aergo, Aqt, Booost, W3DB, ArenAI, Noosphere, Conduit } from '@/assets/icons';
 
 // Home Page Data
 export const homeData = {
   quickActions: [
     {
       title: 'Migration',
-      description: 'Swap your legacy AERGO tokens to HPP and join the new AI-native ecosystem',
+      description: 'Swap your legacy AERGO tokens to HPP and join the new AI-native ecosystem.',
       icon: (
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-6 h-6">
           <path
@@ -20,7 +20,7 @@ export const homeData = {
     },
     {
       title: 'Bridge',
-      description: 'Move assets seamlessly between Ethereum and HPP Mainnet',
+      description: 'Move assets seamlessly between Ethereum and HPP Mainnet.',
       icon: (
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-6 h-6">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
@@ -139,6 +139,12 @@ export const ecosystemData = {
       name: 'Orbiter Finance',
       description: 'Cross-chain bridge for HPP enabling low-fee, fast asset transfers to major blockchains.',
       icon: Orbiter,
+    },
+    {
+      name: 'Conduit',
+      description:
+        'Conduit is a Rollups-as-a-Service platform that lets teams launch and scale fully managed, high-performance custom chains with powerful infrastructure and enterprise-grade security.',
+      icon: Conduit,
     },
   ],
   benefits: [
