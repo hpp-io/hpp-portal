@@ -31,7 +31,15 @@ export default function Header({ onMenuClick, isSidebarOpen = false, onBackClick
           </div>
           <div></div>
           <div className="flex justify-end">
-            <HPPPortalIcon className="w-auto h-10" />
+            <a
+              href="https://www.hpp.io"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Open HPP official website"
+              className="cursor-pointer"
+            >
+              <HPPPortalIcon className="w-auto h-10" />
+            </a>
           </div>
         </div>
       </div>
@@ -39,7 +47,15 @@ export default function Header({ onMenuClick, isSidebarOpen = false, onBackClick
       {/* ≥1200px */}
       <div className="min-[1200px]:block hidden bg-black border-b border-[#161616] px-6 h-[85px]">
         <div className="flex items-center justify-between h-full">
-          <HPPPortalIcon className="w-auto h-10" />
+          <a
+            href="https://www.hpp.io"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Open HPP official website"
+            className="cursor-pointer"
+          >
+            <HPPPortalIcon className="w-auto h-10" />
+          </a>
           {/* <div className="flex items-center">
             <WalletButton />
           </div> */}
