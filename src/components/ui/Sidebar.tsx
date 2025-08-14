@@ -3,8 +3,9 @@
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { TwitterIcon, MediumIcon, TelegramIcon, FooterHPPLogo } from '@/assets/icons';
+import { FooterHPPLogo } from '@/assets/icons';
 import { usePathname } from 'next/navigation';
+import { socialLinks } from '@/static/uiData';
 
 interface NavItem {
   label: string;
@@ -18,6 +19,27 @@ interface SidebarProps {
   communityLinks: { label: string; href: string }[];
   isOpen: boolean;
   onClose: () => void;
+}
+
+const SOCIAL_LINKS = socialLinks;
+
+function SocialLinks({ spacingClass = 'space-x-4' }: { spacingClass?: string }) {
+  return (
+    <div className={`flex items-center ${spacingClass}`}>
+      {SOCIAL_LINKS.map(({ label, href, Icon }) => (
+        <a
+          key={label}
+          href={href}
+          aria-label={label}
+          className="cursor-pointer"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <Icon className="w-7.5 h-7.5" />
+        </a>
+      ))}
+    </div>
+  );
 }
 
 export default function Sidebar({ navItems, communityLinks, isOpen, onClose }: SidebarProps) {
@@ -107,17 +129,7 @@ export default function Sidebar({ navItems, communityLinks, isOpen, onClose }: S
           {/* Mobile social icons directly under menu when open */}
           {isOpen && (
             <div className="mt-8 flex justify-center min-[1200px]:hidden">
-              <div className="flex items-center space-x-4">
-                <a href="#" aria-label="Twitter" className="cursor-pointer">
-                  <TwitterIcon className="w-7.5 h-7.5" />
-                </a>
-                <a href="#" aria-label="Medium" className="cursor-pointer">
-                  <MediumIcon className="w-7.5 h-7.5" />
-                </a>
-                <a href="#" aria-label="Telegram" className="cursor-pointer">
-                  <TelegramIcon className="w-7.5 h-7.5" />
-                </a>
-              </div>
+              <SocialLinks spacingClass="space-x-4" />
             </div>
           )}
         </nav>
@@ -128,17 +140,7 @@ export default function Sidebar({ navItems, communityLinks, isOpen, onClose }: S
             <div>
               <Image src={FooterHPPLogo} alt="HPP" width={40} height={40} />
             </div>
-            <div className="flex items-center space-x-3">
-              <a href="#" aria-label="Twitter" className="cursor-pointer">
-                <TwitterIcon className="w-7.5 h-7.5" />
-              </a>
-              <a href="#" aria-label="Medium" className="cursor-pointer">
-                <MediumIcon className="w-7.5 h-7.5" />
-              </a>
-              <a href="#" aria-label="Telegram" className="cursor-pointer">
-                <TelegramIcon className="w-7.5 h-7.5" />
-              </a>
-            </div>
+            <SocialLinks spacingClass="space-x-3" />
           </div>
 
           <div className="space-y-2 mb-10.5">

@@ -1,5 +1,20 @@
 import React from 'react';
-import { BitGO, ARB, Eigen, Orbiter, Aergo, Aqt, Booost, W3DB, ArenAI, Noosphere, Conduit } from '@/assets/icons';
+import {
+  BitGO,
+  ARB,
+  Eigen,
+  Orbiter,
+  Aergo,
+  Aqt,
+  Booost,
+  W3DB,
+  ArenAI,
+  Noosphere,
+  Conduit,
+  TwitterIcon,
+  MediumIcon,
+  TelegramIcon,
+} from '@/assets/icons';
 
 // Home Page Data
 export const homeData = {
@@ -7,39 +22,14 @@ export const homeData = {
     {
       title: 'Migration',
       description: 'Swap your legacy AERGO tokens to HPP and join the new AI-native ecosystem.',
-      icon: (
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-6 h-6">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
-          />
-        </svg>
-      ),
     },
     {
       title: 'Bridge',
       description: 'Move assets seamlessly between Ethereum and HPP Mainnet.',
-      icon: (
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-6 h-6">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-        </svg>
-      ),
     },
     {
       title: 'Start Building',
       description: 'Access tools, docs, and SDKs to launch AI-integrated smart contracts and autonomous agents on HPP.',
-      icon: (
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-6 h-6">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"
-          />
-        </svg>
-      ),
     },
   ],
   ecosystemProjects: [
@@ -155,6 +145,47 @@ export const ecosystemData = {
   ],
 };
 
+// Bridge Page Data
+export const bridgeData = {
+  faq: [
+    {
+      id: 1,
+      question: 'What bridges does HPP support?',
+      answer: 'HPP provides access to the Arbitrum Official Bridge and Orbiter Bridge for seamless asset transfers',
+    },
+    {
+      id: 2,
+      question: 'What is the difference between these bridges?',
+      answer:
+        '1) Arbitrum Official Bridge – The canonical bridge for transferring assets between Ethereum and Arbitrum with full Ethereum-level security.\n2) Orbiter Bridge – A fast, low-cost cross-rollup bridge for moving assets.',
+    },
+    {
+      id: 3,
+      question: 'Are these bridges operated by HPP?',
+      answer:
+        'No. The Arbitrum Official Bridge and Orbiter Bridge are independent third-party services. HPP links to them for your convenience but does not operate, control, or guarantee their performance.',
+    },
+    {
+      id: 4,
+      question: 'Is HPP responsible if I lose funds using a third-party bridge?',
+      answer:
+        'No. HPP is not responsible for the operations, security, or any losses resulting from the use of third-party services. Always use caution and verify details before transferring assets.',
+    },
+    {
+      id: 5,
+      question: 'Are there fees for using these bridges?',
+      answer:
+        'Yes. Each bridge charges network gas fees and, in some cases, additional service fees. Fees vary depending on the network and bridge provider.',
+    },
+    {
+      id: 6,
+      question: 'How long do transfers take?',
+      answer:
+        '1) Arbitrum Official Bridge: Instant deposits, but withdrawals to Ethereum can take up to 7 days due to fraud-proof windows.',
+    },
+  ],
+};
+
 // Migration Page Data (if needed in the future)
 export const migrationData = {
   // Migration specific data can be added here
@@ -164,3 +195,22 @@ export const migrationData = {
 export const commonData = {
   // Shared data across pages can be added here
 };
+
+// Social Links (used in Sidebar and elsewhere)
+export const socialLinks = [
+  {
+    label: 'Twitter',
+    href: 'https://x.com/aergo_io',
+    Icon: TwitterIcon,
+  },
+  {
+    label: 'Medium',
+    href: 'https://medium.com/@aergoio',
+    Icon: MediumIcon,
+  },
+  {
+    label: 'Telegram',
+    href: 'https://t.me/aergoofficial',
+    Icon: TelegramIcon,
+  },
+];

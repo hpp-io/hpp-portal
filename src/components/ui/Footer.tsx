@@ -13,13 +13,31 @@ export default function Footer() {
           <div className="flex flex-col items-center gap-5">
             <Image src={FooterHPPLogo} alt="HPP" width={40} height={40} />
             <div className="flex items-center gap-3">
-              <a href="#" aria-label="Twitter" className="cursor-pointer">
+              <a
+                href="https://x.com/aergo_io"
+                aria-label="Twitter"
+                className="cursor-pointer"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
                 <TwitterIcon className="w-7.5 h-7.5" />
               </a>
-              <a href="#" aria-label="Medium" className="cursor-pointer">
+              <a
+                href="https://medium.com/@aergoio"
+                aria-label="Medium"
+                className="cursor-pointer"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
                 <MediumIcon className="w-7.5 h-7.5" />
               </a>
-              <a href="#" aria-label="Telegram" className="cursor-pointer">
+              <a
+                href="https://t.me/aergoofficial"
+                aria-label="Telegram"
+                className="cursor-pointer"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
                 <TelegramIcon className="w-7.5 h-7.5" />
               </a>
             </div>
