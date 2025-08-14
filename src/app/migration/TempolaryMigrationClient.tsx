@@ -2,22 +2,18 @@
 
 import React, { useState } from 'react';
 import Sidebar from '@/components/ui/Sidebar';
-import Header from '@/components/ui/Header';
-import Footer from '@/components/ui/Footer';
 import Button from '@/components/ui/Button';
 import { ClockIcon } from '@/assets/icons';
+import Header from '@/components/ui/Header';
+import Footer from '@/components/ui/Footer';
 import { navItems, communityLinks } from '@/config/navigation';
 
-export default function AirdropClient() {
+export default function TempolaryMigrationClient() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
     <div className="flex flex-col h-screen bg-black overflow-x-hidden">
-      <Header
-        onMenuClick={() => setSidebarOpen(true)}
-        isSidebarOpen={sidebarOpen}
-        onBackClick={() => setSidebarOpen(false)}
-      />
+      <Header onMenuClick={() => setSidebarOpen(true)} />
 
       <div className="flex flex-1 overflow-hidden">
         <Sidebar
@@ -34,14 +30,14 @@ export default function AirdropClient() {
         >
           <div className="flex items-center justify-center p-6 bg-black min-h-[calc(100vh-66px)] min-[1200px]:min-h-[calc(100vh-85px)]">
             <div className="text-center max-w-3xl mx-auto">
-              <h1 className="text-[50px] leading-[1.5em] font-extrabold text-white mb">
-                Airdrop <br className="hidden max-[810px]:inline" /> Coming Soon
+              <h1 className="text-[50px] leading-[1.5em] font-[900] text-white">
+                Migration <br className="hidden max-[810px]:inline" /> Coming Soon
               </h1>
               <p className="text-lg leading-[1.5em] font-semibold text-[#bfbfbf]">
-                Rewards for our community are on the horizon.
+                The next chapter for our ecosystem is almost here.
               </p>
-              <p className="text-lg leading-[1.5em] font-semibold mb-5 text-[#bfbfbf]">
-                Your contribution matters. Your rewards are coming.
+              <p className="text-lg leading-[1.5em] mb-5 font-semibold text-[#bfbfbf]">
+                Get ready to swap, connect, and explore a new era of AI-native, multi-chain possibilities.
               </p>
               <Button
                 variant="primary"
@@ -54,7 +50,6 @@ export default function AirdropClient() {
               </Button>
             </div>
           </div>
-
           <Footer />
         </main>
       </div>

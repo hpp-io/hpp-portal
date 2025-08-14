@@ -11,7 +11,7 @@ export default function NeedHelp() {
         </p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Button
-            variant="outline"
+            variant="white"
             size="md"
             href="https://docs.hpp.io"
             external={true}
@@ -27,7 +27,7 @@ export default function NeedHelp() {
             </svg>
             <span>FAQ</span>
           </Button>
-          <Button variant="outline" size="md" className="flex items-center space-x-2 whitespace-nowrap">
+          <Button variant="white" size="md" className="flex items-center space-x-2 whitespace-nowrap">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"

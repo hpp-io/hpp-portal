@@ -1,6 +1,7 @@
 import React from 'react';
 import type { Metadata } from 'next';
-import MigrationClient from './MigrationClient';
+// import MigrationClient from './MigrationClient';
+import TempolaryMigrationClient from './TempolaryMigrationClient';
 
 export const metadata: Metadata = {
   title: 'Migration | HPP Portal',
@@ -9,5 +10,6 @@ export const metadata: Metadata = {
 };
 
 export default function MigrationPage() {
-  return <MigrationClient />;
+  return <TempolaryMigrationClient />;
+  // return <MigrationClient />;
 }
