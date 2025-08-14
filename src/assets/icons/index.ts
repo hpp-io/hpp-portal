@@ -27,4 +27,5 @@ export { default as BitGO } from './BitGO.png';
 export { default as ARB } from './ARB.png';
 export { default as Eigen } from './Eigen.png';
 export { default as Orbiter } from './Orbiter.png';
+export { default as Conduit } from './Conduit.png';
 export { default as FooterHPPLogo } from './FooterHPPlogo.png';
