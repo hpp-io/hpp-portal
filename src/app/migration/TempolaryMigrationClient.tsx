@@ -30,7 +30,9 @@ export default function TempolaryMigrationClient() {
         >
           <div className="flex items-center justify-center p-6 bg-black min-h-[calc(100vh-66px)] min-[1200px]:min-h-[calc(100vh-85px)]">
             <div className="text-center max-w-3xl mx-auto">
-              <h1 className="text-[50px] leading-[1.5em] font-[900] text-white">Migration Coming Soon</h1>
+              <h1 className="text-[50px] leading-[1.5em] font-[900] text-white">
+                Migration <br className="hidden max-[810px]:inline" /> Coming Soon
+              </h1>
               <p className="text-lg leading-[1.5em] font-semibold text-[#bfbfbf]">
                 The next chapter for our ecosystem is almost here.
               </p>
@@ -42,6 +44,7 @@ export default function TempolaryMigrationClient() {
                 size="md"
                 className="rounded-full px-5 py-3"
                 icon={<ClockIcon className="w-5 h-5" />}
+                noPointer
               >
                 Launching Soon
               </Button>

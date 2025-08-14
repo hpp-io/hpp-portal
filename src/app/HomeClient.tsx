@@ -68,7 +68,7 @@ export default function HomeClient() {
           </div>
 
           {/* Quick Actions */}
-          <div className="px-4 max-w-6xl mx-auto mt-25">
+          <div className="px-4 max-w-6xl mx-auto mt-12.5 min-[1200px]:mt-25">
             <h2 className="text-3xl leading-[1.5] font-[900] text-white mb-5">Quick Actions</h2>
             <div className="grid grid-cols-1 min-[810px]:grid-cols-3 gap-5 justify-items-center">
               {homeData.quickActions.map((action, index) => {

@@ -49,7 +49,7 @@ export default function EcosystemClient() {
 
           <div className="px-4 max-w-6xl mx-auto">
             {/* Featured Partners */}
-            <div className="mt-25 mb-37.5">
+            <div className="mt-12.5 min-[1200px]:mt-25 mb-25 min-[1200px]:mb-37.5">
               <h2 className="text-3xl leading-[1.5] font-[900] text-white mb-8">Featured Partners</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 justify-items-center">
                 {ecosystemData.featuredPartners.map((partner, index) => (
@@ -99,10 +99,17 @@ export default function EcosystemClient() {
                     size="lg"
                     className="whitespace-nowrap w-full"
                     href="https://hppio.typeform.com/to/AYiyaI4s"
+                    external
                   >
                     Apply for Partnership
                   </Button>
-                  <Button variant="white" size="lg" className="whitespace-nowrap w-full" href="https://docs.hpp.io/">
+                  <Button
+                    variant="white"
+                    size="lg"
+                    className="whitespace-nowrap w-full"
+                    href="https://docs.hpp.io/"
+                    external
+                  >
                     View Documentation
                   </Button>
                   <Button
@@ -110,6 +117,7 @@ export default function EcosystemClient() {
                     size="lg"
                     className="whitespace-nowrap w-full"
                     href="https://t.me/aergoofficial"
+                    external
                   >
                     Join Telegram
                   </Button>
@@ -117,7 +125,7 @@ export default function EcosystemClient() {
               </div>
             </div>
           </div>
-          <div className="mt-25">
+          <div className="mt-25 min-[1200px]:mt-37.5">
             <Footer />
           </div>
         </main>
