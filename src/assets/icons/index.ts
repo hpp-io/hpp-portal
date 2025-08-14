@@ -15,6 +15,8 @@ export { default as EcosystemIcon } from './Ecosystem.svg';
 export { default as GovernanceIcon } from './Governance.svg';
 export { default as BuildIcon } from './Build.svg';
 export { default as BlockExplorerIcon } from './Block Explorer.svg';
+export { default as FaqCloseIcon } from './FaqClose.svg';
+export { default as FaqOpenIcon } from './FaqOpen.svg';
 
 // PNG
 export { default as Aergo } from './Aergo.png';
