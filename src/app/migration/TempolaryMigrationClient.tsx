@@ -24,7 +24,7 @@ export default function TempolaryMigrationClient() {
         />
 
         <main
-          className={`flex-1 overflow-y-auto transition-all duration-300 max-[1200px]:pb-20 ${
+          className={`flex-1 overflow-y-auto transition-all duration-300 ${
             sidebarOpen ? 'opacity-50 min-[1200px]:opacity-100' : ''
           }`}
         >
@@ -47,9 +47,9 @@ export default function TempolaryMigrationClient() {
               </Button>
             </div>
           </div>
+          <Footer />
         </main>
       </div>
-      <Footer />
     </div>
   );
 }
