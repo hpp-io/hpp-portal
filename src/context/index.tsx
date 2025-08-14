@@ -18,7 +18,7 @@ if (!projectId) {
 const metadata = {
   name: 'HPP Portal',
   description: 'HPP Portal - Web3 Migration Platform',
-  url: 'https://hpp-portal.com', // origin must match your domain & subdomain
+  url: 'https://portal-dev.hpp.io',
   icons: ['https://avatars.githubusercontent.com/u/179229932'],
 };
 
@@ -36,7 +36,7 @@ createAppKit({
   debug: process.env.NEXT_PUBLIC_ENV === 'production' ? false : true,
   enableWalletGuide: true,
   allWallets: 'HIDE',
-  enableWalletConnect: false,
+  enableWalletConnect: true,
   termsConditionsUrl: 'https://www.mytermsandconditions.com',
   privacyPolicyUrl: 'https://www.myprivacypolicy.com',
   features: {
