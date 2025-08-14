@@ -39,7 +39,7 @@ export const homeData = {
       icon: Aergo,
     },
     {
-      name: 'AQT (Alpha Quark)',
+      name: 'AQT(Alpha Quark)',
       description: 'RWA and NFT valuation layer enabling AI-driven asset discovery, pricing, and strategy execution.',
       icon: Aqt,
     },
@@ -62,7 +62,7 @@ export const homeData = {
       icon: ArenAI,
     },
     {
-      name: 'Noosphere',
+      name: 'Noösphere',
       description:
         'A verifiable intelligence layer that enables smart contracts to delegate AI tasks — from inference to simulation — with secure off-chain computation and result verification.',
       icon: Noosphere,
@@ -79,7 +79,7 @@ export const ecosystemData = {
       icon: Aergo,
     },
     {
-      name: 'AQT (Alpha Quark)',
+      name: 'AQT(Alpha Quark)',
       description: 'RWA and NFT valuation layer enabling AI-driven asset discovery, pricing, and strategy execution.',
       icon: Aqt,
     },
@@ -102,7 +102,7 @@ export const ecosystemData = {
       icon: ArenAI,
     },
     {
-      name: 'Noosphere',
+      name: 'Noösphere',
       description:
         'A verifiable intelligence layer that enables smart contracts to delegate AI tasks — from inference to simulation — with secure off-chain computation and result verification.',
       icon: Noosphere,
