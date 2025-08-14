@@ -39,7 +39,7 @@ export const homeData = {
       icon: Aergo,
     },
     {
-      name: 'AQT (Alpha Quark)',
+      name: 'AQT(Alpha Quark)',
       description: 'RWA and NFT valuation layer enabling AI-driven asset discovery, pricing, and strategy execution.',
       icon: Aqt,
     },
@@ -79,7 +79,7 @@ export const ecosystemData = {
       icon: Aergo,
     },
     {
-      name: 'AQT (Alpha Quark)',
+      name: 'AQT(Alpha Quark)',
       description: 'RWA and NFT valuation layer enabling AI-driven asset discovery, pricing, and strategy execution.',
       icon: Aqt,
     },
