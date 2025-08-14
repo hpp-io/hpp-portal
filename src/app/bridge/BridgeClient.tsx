@@ -1,47 +1,26 @@
 'use client';
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import Sidebar from '@/components/ui/Sidebar';
 import Button from '@/components/ui/Button';
 import Header from '@/components/ui/Header';
 import Footer from '@/components/ui/Footer';
 import { navItems, communityLinks } from '@/config/navigation';
+import { ARB, Orbiter, FaqCloseIcon, FaqOpenIcon } from '@/assets/icons';
+import { bridgeData } from '@/static/uiData';
 
 export default function BridgeClient() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
-
-  const faqData = [
-    {
-      id: 1,
-      question: 'What is a bridge?',
-      answer:
-        'A bridge allows you to transfer tokens between different blockchain networks, enabling interoperability across ecosystems.',
-    },
-    {
-      id: 2,
-      question: 'Which bridge should I use?',
-      answer: 'For fast transfers, use Orbiter. For maximum security and lower fees, use the official Arbitrum bridge.',
-    },
-    {
-      id: 3,
-      question: 'Are there any risks?',
-      answer:
-        'Third-party bridges carry smart contract risks. Official bridges are generally safer but may take longer.',
-    },
-    {
-      id: 4,
-      question: 'What tokens are supported?',
-      answer: 'Both bridges support ETH and major ERC-20 tokens. Check each bridge for specific token availability.',
-    },
-  ];
+  const faqData = bridgeData.faq;
 
   const toggleFaq = (id: number) => {
     setExpandedFaq(expandedFaq === id ? null : id);
   };
 
   return (
-    <div className="flex flex-col h-screen bg-white overflow-x-hidden">
+    <div className="flex flex-col h-screen bg-black text-white overflow-x-hidden">
       <Header
         onMenuClick={() => setSidebarOpen(true)}
         isSidebarOpen={sidebarOpen}
@@ -61,103 +40,93 @@ export default function BridgeClient() {
             sidebarOpen ? 'opacity-50 min-[1200px]:opacity-100' : ''
           }`}
         >
-          <div className="p-4 lg:p-8 max-w-6xl mx-auto">
-            <div className="lg:max-w-full 2xl:max-w-[80%] mx-auto">
-              {/* Header Section */}
-              <div className="mb-8">
-                <h1 className="text-3xl font-medium text-gray-900 mb-3">Bridge</h1>
-                <p className="text-gray-700 text-lg">Transfer tokens across different networks</p>
-              </div>
+          {/* Hero Section */}
+          <div className="bg-[#121212] border-b border-[#161616] py-7.5">
+            <div className="px-4 max-w-6xl mx-auto">
+              <h1 className="text-[50px] min-[1200px]:text-[70px] leading-[1.5] font-[900] text-white">Bridge</h1>
+              <p className="text-xl text-[#bfbfbf] font-semibold leading-[1.5] max-w-5xl">
+                HPP Bridge enables seamless and secure token transfers across multiple networks, ensuring
+                interoperability within the HPP ecosystem.
+              </p>
+            </div>
+          </div>
 
-              {/* Bridge Options Section */}
-              <div className="space-y-4 mb-8">
-                {/* Arbitrum Bridge Card */}
-                <div className="bg-white border border-gray-200 rounded-lg p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-12 h-12 bg-gray-800 rounded-lg flex items-center justify-center">
-                        <span className="text-white text-xl font-bold">A</span>
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-medium text-gray-900">Arbitrum</h3>
-                        <p className="text-gray-600">Official secure bridge</p>
-                      </div>
-                    </div>
-                    <Button
-                      variant="primary"
-                      size="md"
-                      href="https://bridge.arbitrum.io/?sourceChain=ethereum&destinationChain=hpp-mainnet&tab=bridge"
-                      external={true}
-                      className="cursor-pointer"
-                    >
-                      Go to Bridge
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Orbiter Bridge Card */}
-                <div className="bg-white border border-gray-200 rounded-lg p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-12 h-12 bg-gray-800 rounded-lg flex items-center justify-center">
-                        <span className="text-white text-xl font-bold">O</span>
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-medium text-gray-900">Orbiter</h3>
-                        <p className="text-gray-600">Fast cross-chain transfers</p>
-                      </div>
-                    </div>
-                    <Button
-                      variant="primary"
-                      size="md"
-                      href="https://orbiter.finance/"
-                      external={true}
-                      className="cursor-pointer"
-                    >
-                      Go to Bridge
-                    </Button>
-                  </div>
+          {/* Content */}
+          <div className="px-4 max-w-6xl mx-auto mt-12.5 min-[1200px]:mt-25">
+            {/* Bridge Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {/* Arbitrum Official Bridge */}
+              <div className="rounded-[5px] p-6 bg-primary hover:brightness-110 transition-colors">
+                <div className="flex flex-col items-start gap-2.5">
+                  <Image src={ARB} alt="Arbitrum" width={30} height={30} />
+                  <h3 className="text-white text-xl font-semibold leading-[1.5]">Arbitrum Official Bridge</h3>
+                  <p className="text-white/90 text-base text-normal leading-[1.5] max-w-md">
+                    The most secure way to transfer assets between Ethereum and Arbitrum, ideal for high-value or
+                    long-term holdings.
+                  </p>
+                  <Button
+                    variant="white"
+                    size="lg"
+                    href="https://bridge.arbitrum.io/?sourceChain=ethereum&destinationChain=hpp-mainnet&tab=bridge"
+                    external
+                    className="cursor-pointer"
+                  >
+                    Explore Portal
+                  </Button>
                 </div>
               </div>
 
-              {/* Disclaimer */}
-              <div className="bg-gray-50 rounded-lg p-4 mb-8">
-                <p className="text-gray-700 text-sm">
-                  These are independent third-party service providers that HPP Portal links to for your convenience. HPP
-                  Portal is not responsible for their operation.
-                </p>
+              {/* Orbiter Bridge */}
+              <div className="rounded-[5px] p-6 bg-primary hover:brightness-110 transition-colors">
+                <div className="flex flex-col items-start gap-2.5">
+                  <Image src={Orbiter} alt="Orbiter" width={30} height={30} />
+                  <h3 className="text-white text-xl font-semibold leading-[1.5]">Orbiter Bridge</h3>
+                  <p className="text-white/90 text-base text-normal leading-[1.5] max-w-md">
+                    A fast, low-cost solution for moving assets, ideal for quick transfers and multi-chain activity.
+                  </p>
+                  <Button
+                    variant="white"
+                    size="lg"
+                    href="https://www.orbiter.finance/bridge"
+                    external
+                    className="cursor-pointer"
+                  >
+                    Explore Portal
+                  </Button>
+                </div>
               </div>
+            </div>
 
-              {/* FAQ Section */}
-              <div className="mb-8">
-                <h2 className="text-2xl font-medium text-gray-900 mb-6">Frequently Asked Questions</h2>
-                <div className="space-y-4">
-                  {faqData.map((faq) => (
-                    <div key={faq.id} className="bg-white border border-gray-200 rounded-lg">
-                      <button
-                        className="w-full p-4 text-left flex items-center justify-between hover:bg-gray-50 transition-colors cursor-pointer"
-                        onClick={() => toggleFaq(faq.id)}
-                      >
-                        <span className="text-gray-900 font-medium">{faq.question}</span>
-                        <svg
-                          className={`w-5 h-5 text-gray-500 transition-transform ${
-                            expandedFaq === faq.id ? 'rotate-180' : ''
-                          }`}
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </button>
-                      {expandedFaq === faq.id && (
-                        <div className="px-4 pb-4">
-                          <p className="text-gray-700">{faq.answer}</p>
-                        </div>
+            {/* Disclaimer */}
+            <p className="text-[#bfbfbf] text-base leading-[1.5] tracking-[0.8px] mt-10 min-[1200px]:mt-5 mb-25 min-[1200px]:mb-50">
+              These are independent third-party services that HPP links to for your convenience. HPP is not responsible
+              for their operations, security, or any potential loss incurred when using them.
+            </p>
+
+            {/* FAQ */}
+            <div className="mb-20">
+              <h2 className="text-3xl leading-[1.5] font-[900] text-white mb-5">Frequently Asked Questions</h2>
+              <div>
+                {faqData.map((faq) => (
+                  <div key={faq.id} className="bg-[#111111]">
+                    <button
+                      className="w-full px-5 py-7.5 text-left flex items-center justify-between hover:bg-[#171717] transition-colors cursor-pointer"
+                      onClick={() => toggleFaq(faq.id)}
+                    >
+                      <span className="text-white text-lg font-semibold leading-[1.2]">{faq.question}</span>
+                      {expandedFaq === faq.id ? (
+                        <FaqCloseIcon className="w-4 h-4" />
+                      ) : (
+                        <FaqOpenIcon className="w-4 h-4" />
                       )}
-                    </div>
-                  ))}
-                </div>
+                    </button>
+                    {expandedFaq === faq.id && (
+                      <div className="px-5 pb-5 text-base leading-[1.5] tracking-[0.8px] text-[#bfbfbf] whitespace-pre-line">
+                        {faq.answer}
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
           </div>
