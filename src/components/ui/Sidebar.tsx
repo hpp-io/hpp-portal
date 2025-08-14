@@ -52,7 +52,7 @@ export default function Sidebar({ navItems, communityLinks, isOpen, onClose }: S
       <div
         className={[
           // Position right for mobile/tablet so it slides from right to left
-          'fixed right-0 left-auto min-[1200px]:static min-[1200px]:left-0 z-50 w-screen min-[1200px]:w-64 flex flex-col border-l min-[1200px]:border-r border-[#161616] bg-black',
+          'fixed right-0 left-auto min-[1200px]:static min-[1200px]:left-0 z-50 w-screen min-[1200px]:w-71 flex flex-col min-[1200px]:border-r border-[#161616] bg-black',
           'transform transition-transform ease-in-out',
           'min-[1200px]:transform-none min-[1200px]:transition-none',
           'top-[66px] h-[calc(100vh-66px)] min-[1200px]:top-[85px] min-[1200px]:h-[calc(100vh-85px)]',
@@ -62,35 +62,26 @@ export default function Sidebar({ navItems, communityLinks, isOpen, onClose }: S
         ].join(' ')}
       >
         {/* Navigation */}
-        <nav className="flex-1 p-2">
-          <ul className={`space-y-4 ${isOpen ? 'max-[1199px]:pt-4' : ''}`}>
+        <nav className="flex-1 py-2 px-0">
+          <ul className={`space-y-0 ${isOpen ? 'max-[1199px]:pt-4' : ''}`}>
             {navItems.map((item, index) => {
               const { href, external } = getHrefAndExternal(item);
               const isActive = !external && (pathname === href || (href !== '/' && pathname.startsWith(href + '/')));
               const rowClass = [
-                'flex items-center space-x-3 px-2.5 py-2.5 rounded-lg transition-colors w-full text-left cursor-pointer',
+                'group flex items-center space-x-3 px-3 py-2.5 rounded-[5px] transition-colors w-full text-left cursor-pointer',
                 isActive ? 'text-white bg-primary' : 'text-gray-200 active:text-white active:bg-primary',
               ].join(' ');
 
-              const RightIcon = external ? (
-                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                  />
-                </svg>
-              ) : (
+              const RightIcon = (
                 <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M9 5l7 7-7 7" />
                 </svg>
               );
 
               const Content = (
                 <>
                   <span className="w-5 h-5">{item.icon}</span>
-                  <span className="flex-1 text-base font-semibold leading-[1] text-[#FFFFFF] hover:text-[#EDEDED]">
+                  <span className="flex-1 text-base font-semibold leading-[1] text-[#FFFFFF] group-hover:text-[#EDEDED]">
                     {item.label}
                   </span>
                   {RightIcon}
@@ -98,7 +89,7 @@ export default function Sidebar({ navItems, communityLinks, isOpen, onClose }: S
               );
 
               return (
-                <li key={index}>
+                <li key={index} className={`border-b border-[#161616] py-2.5 px-2.5`}>
                   {external ? (
                     <a href={href} target="_blank" rel="noopener noreferrer" className={rowClass} onClick={onClose}>
                       {Content}
