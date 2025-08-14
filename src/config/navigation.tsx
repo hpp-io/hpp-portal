@@ -51,6 +51,6 @@ export const navItems = [
 ];
 
 export const communityLinks = [
-  { label: 'Terms of Service', href: '#' },
+  { label: 'Terms & Conditions', href: '#' },
   { label: 'Privacy Policy', href: '#' },
 ];
