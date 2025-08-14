@@ -84,7 +84,7 @@ export default function EcosystemClient() {
                   {ecosystemData.benefits.map((benefit, index) => (
                     <div key={index} className="flex items-start space-x-2.5">
                       <CheckIcon className="w-4.5 h-4.5" />
-                      <h5 className="mt-0.5 text-white text-base font-regular leading-[1]">{benefit}</h5>
+                      <h5 className="mt-0.5 text-white text-base font-normal leading-[1]">{benefit}</h5>
                     </div>
                   ))}
                 </div>
@@ -99,17 +99,10 @@ export default function EcosystemClient() {
                     size="lg"
                     className="whitespace-nowrap w-full"
                     href="https://hppio.typeform.com/to/AYiyaI4s"
-                    external
                   >
                     Apply for Partnership
                   </Button>
-                  <Button
-                    variant="white"
-                    size="lg"
-                    className="whitespace-nowrap w-full"
-                    href="https://docs.hpp.io/"
-                    external
-                  >
+                  <Button variant="white" size="lg" className="whitespace-nowrap w-full" href="https://docs.hpp.io/">
                     View Documentation
                   </Button>
                   <Button
@@ -117,7 +110,6 @@ export default function EcosystemClient() {
                     size="lg"
                     className="whitespace-nowrap w-full"
                     href="https://t.me/aergoofficial"
-                    external
                   >
                     Join Telegram
                   </Button>
