@@ -1314,7 +1314,7 @@ export default function MigrationClient() {
                         <Button
                           variant="primary"
                           size="lg"
-                          href="https://bridge.arbitrum.io/?sourceChain=ethereum&destinationChain=hpp-mainnet&tab=bridge"
+                          href="https://bridge.arbitrum.io/?destinationChain=190415&sourceChain=ethereum&token=0xe33fbe7584eb79e2673abe576b7ac8c0de62565c"
                           external={true}
                           className="flex items-center justify-center space-x-2 mx-auto"
                         >
