@@ -11,6 +11,7 @@ interface ButtonProps {
   disabled?: boolean;
   fullWidth?: boolean;
   icon?: React.ReactNode;
+  noPointer?: boolean;
 }
 
 export default function Button({
@@ -24,9 +25,10 @@ export default function Button({
   disabled = false,
   fullWidth = false,
   icon,
+  noPointer = false,
 }: ButtonProps) {
   const baseClasses =
-    'inline-flex items-center justify-center font-medium rounded-3xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-0 cursor-pointer gap-1 whitespace-nowrap';
+    'inline-flex items-center justify-center font-medium rounded-3xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-0 gap-1 whitespace-nowrap';
 
   const variantClasses = {
     primary: 'bg-primary text-white hover:brightness-110 focus:ring-transparent',
@@ -36,13 +38,14 @@ export default function Button({
 
   const sizeClasses = {
     sm: 'px-3 py-1.5 text-sm',
-    md: 'px-5 py-3 text-sm',
+    md: 'px-5 py-3 text-sm text-semibold',
     lg: 'px-5 py-4 text-semibold leading-[1]',
   };
 
+  const cursorClasses = disabled ? 'opacity-50 cursor-not-allowed' : noPointer ? 'cursor-default' : 'cursor-pointer';
   const classes = `${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${
     fullWidth ? 'w-full' : ''
-  } ${className} ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`;
+  } ${cursorClasses} ${className}`;
 
   if (href) {
     return (
@@ -54,16 +57,6 @@ export default function Button({
       >
         {icon}
         {children}
-        {external && (
-          <svg className="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-            />
-          </svg>
-        )}
       </a>
     );
   }
