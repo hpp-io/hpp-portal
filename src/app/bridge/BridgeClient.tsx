@@ -12,11 +12,15 @@ import { bridgeData } from '@/static/uiData';
 
 export default function BridgeClient() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
+  const [openFaqs, setOpenFaqs] = useState<number[]>([]);
   const faqData = bridgeData.faq;
 
-  const toggleFaq = (id: number) => {
-    setExpandedFaq(expandedFaq === id ? null : id);
+  const openFaq = (id: number) => {
+    setOpenFaqs((prev) => (prev.includes(id) ? prev : [...prev, id]));
+  };
+
+  const closeFaq = (id: number) => {
+    setOpenFaqs((prev) => prev.filter((fid) => fid !== id));
   };
 
   return (
@@ -107,26 +111,45 @@ export default function BridgeClient() {
             <div className="mb-20">
               <h2 className="text-3xl leading-[1.5] font-[900] text-white mb-5">Frequently Asked Questions</h2>
               <div>
-                {faqData.map((faq) => (
-                  <div key={faq.id} className="bg-[#111111]">
-                    <button
-                      className="w-full px-5 py-7.5 text-left flex items-center justify-between hover:bg-[#171717] transition-colors cursor-pointer"
-                      onClick={() => toggleFaq(faq.id)}
-                    >
-                      <span className="text-white text-lg font-semibold leading-[1.2]">{faq.question}</span>
-                      {expandedFaq === faq.id ? (
-                        <FaqCloseIcon className="w-4 h-4" />
-                      ) : (
-                        <FaqOpenIcon className="w-4 h-4" />
+                {faqData.map((faq) => {
+                  const isOpen = openFaqs.includes(faq.id);
+                  return (
+                    <div key={faq.id} className="bg-[#111111]">
+                      <button
+                        className="w-full px-5 py-7.5 text-left flex items-center justify-between hover:bg-[#171717] transition-colors cursor-pointer"
+                        onClick={() => openFaq(faq.id)}
+                        aria-expanded={isOpen}
+                        aria-controls={`faq-panel-${faq.id}`}
+                      >
+                        <span className="text-white text-lg font-semibold leading-[1.2]">{faq.question}</span>
+                        {isOpen ? (
+                          <span>
+                            <button
+                              aria-label="Close FAQ"
+                              className="cursor-pointer"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                closeFaq(faq.id);
+                              }}
+                            >
+                              <FaqCloseIcon className="w-4 h-4" />
+                            </button>
+                          </span>
+                        ) : (
+                          <FaqOpenIcon className="w-4 h-4" />
+                        )}
+                      </button>
+                      {isOpen && (
+                        <div
+                          id={`faq-panel-${faq.id}`}
+                          className="px-5 pb-5 text-base leading-[1.5] tracking-[0.8px] text-[#bfbfbf] whitespace-pre-line"
+                        >
+                          {faq.answer}
+                        </div>
                       )}
-                    </button>
-                    {expandedFaq === faq.id && (
-                      <div className="px-5 pb-5 text-base leading-[1.5] tracking-[0.8px] text-[#bfbfbf] whitespace-pre-line">
-                        {faq.answer}
-                      </div>
-                    )}
-                  </div>
-                ))}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
