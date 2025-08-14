@@ -10,6 +10,7 @@ import Footer from '@/components/ui/Footer';
 import { navItems, communityLinks } from '@/config/navigation';
 import { homeData } from '@/static/uiData';
 import Image from 'next/image';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 
 export default function HomeClient() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -67,19 +68,44 @@ export default function HomeClient() {
           </div>
 
           {/* Quick Actions */}
-          <div className="px-4 max-w-6xl mx-auto mt-24">
+          <div className="px-4 max-w-6xl mx-auto mt-25">
             <h2 className="text-3xl leading-[1.5] font-[900] text-white mb-5">Quick Actions</h2>
             <div className="grid grid-cols-1 min-[810px]:grid-cols-3 gap-5 justify-items-center">
               {homeData.quickActions.map((action, index) => {
                 const link = getQuickActionLink(action.title);
+                const lottieSrc =
+                  action.title === 'Migration'
+                    ? '/lotties/Migration.lottie'
+                    : action.title === 'Bridge'
+                    ? '/lotties/Bridge.lottie'
+                    : '/lotties/StartBuilding.lottie';
+
                 const CardContent = (
                   <>
-                    <div className="text-white mb-4">{action.icon}</div>
+                    <div className="mb-3 flex justify-center">
+                      <DotLottieReact
+                        src={lottieSrc}
+                        autoplay
+                        loop
+                        className="w-[120px] h-[120px]"
+                        renderConfig={{
+                          autoResize: true,
+                          devicePixelRatio: typeof window !== 'undefined' ? window.devicePixelRatio : 2,
+                          freezeOnOffscreen: true,
+                        }}
+                        layout={{ fit: 'contain', align: [0.5, 0.5] }}
+                      />
+                    </div>
                     <h5 className="text-lg font-semibold leading-[1.5] text-white mb-2.5">{action.title}</h5>
-                    <p className="text-white leading-[1.5] font-regular tracking-[0.8px]">{action.description}</p>
-                    <div className="absolute bottom-4 right-4">
-                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    <p className="text-white leading-[1.5] font-normal tracking-[0.6px]">{action.description}</p>
+                    <div className="absolute bottom-5 right-5">
+                      <svg
+                        className="w-[22px] h-[22px] text-white"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5-5 5M6 12h12" />
                       </svg>
                     </div>
                   </>
@@ -91,7 +117,7 @@ export default function HomeClient() {
                     href={link.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="relative rounded-lg p-6 border border-transparent bg-primary hover:brightness-110 transition-colors w-full lg:max-w-[400px]"
+                    className="relative rounded-[5px] p-6 border border-transparent bg-primary hover:brightness-110 transition-colors w-full lg:max-w-[400px]"
                   >
                     {CardContent}
                   </a>
@@ -99,7 +125,7 @@ export default function HomeClient() {
                   <Link
                     key={index}
                     href={link.href}
-                    className="relative rounded-lg p-6 border border-transparent bg-primary hover:brightness-110 transition-colors w-full lg:max-w-[400px]"
+                    className="relative rounded-[5px] p-6 border border-transparent bg-primary hover:brightness-110 transition-colors w-full lg:max-w-[400px]"
                   >
                     {CardContent}
                   </Link>
@@ -109,7 +135,7 @@ export default function HomeClient() {
           </div>
 
           {/* Ecosystem Highlights */}
-          <div className="px-4 max-w-6xl mx-auto mt-24">
+          <div className="px-4 max-w-6xl mx-auto mt-25">
             <h2 className="text-3xl leading-[1.5] font-[900] text-white">Ecosystem Highlights</h2>
             <p className="text-xl leading-[1.5] font-semibold text-[#bfbfbf] max-w-4xl">
               Explore leading dApps, AI agents, and on-chain services driving innovation on the HPP Mainnet.
