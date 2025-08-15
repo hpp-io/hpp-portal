@@ -5,8 +5,8 @@ import TempolaryMigrationClient from './TempolaryMigrationClient';
 
 export const metadata: Metadata = {
   title: 'Migration | HPP Portal',
-  description:
-    'Migrate your AERGO tokens to HPP tokens on the HPP Mainnet. Fast, secure, and cost-effective token migration.',
+  description: 'Stay tuned for updates on the upcoming migration!',
+  // description: 'Swap your legacy AERGO tokens to HPP and join the new AI-native ecosystem — fast, low-cost, and secure.',
 };
 
 export default function MigrationPage() {
