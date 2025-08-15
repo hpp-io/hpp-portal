@@ -72,13 +72,6 @@ Open `https://localhost:3000`.
 2. **AERGO (ETH) → HPP (ETH)**: Use the in‑app migration page (`/migration`)
 3. **HPP (ETH) → HPP Mainnet**: Use the Arbitrum Canonical Bridge
 
-Helpful links:
-
-- Arbitrum Official Bridge: `https://bridge.arbitrum.io/?destinationChain=190415&sourceChain=ethereum&token=0xe33fbe7584eb79e2673abe576b7ac8c0de62565c`
-- Orbiter Bridge: `https://www.orbiter.finance/bridge`
-
-> Note: These are third‑party services. HPP is not responsible for their operations or risks.
-
 ## Scripts
 
 - `npm run dev` — start dev server with HTTPS
