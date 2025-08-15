@@ -120,7 +120,7 @@ export default function BridgeClient() {
                   return (
                     <div key={faq.id} className="bg-[#111111]">
                       <button
-                        className="group w-full px-5 py-7.5 text-left flex items-center justify-between hover:bg-[#171717] transition-colors cursor-pointer"
+                        className="w-full px-5 py-7.5 text-left flex items-center justify-between transition-colors cursor-pointer"
                         onClick={() => (isOpen ? closeFaq(faq.id) : openFaq(faq.id))}
                         aria-expanded={isOpen}
                         aria-controls={`faq-panel-${faq.id}`}
@@ -128,9 +128,9 @@ export default function BridgeClient() {
                         <span className="text-white text-lg font-semibold leading-[1.2]">{faq.question}</span>
                         <span className="pointer-events-none">
                           {isOpen ? (
-                            <FaqCloseIcon className="w-4 h-4 opacity-80 transition-opacity group-hover:opacity-100" />
+                            <FaqCloseIcon className="w-4 h-4 opacity-80 transition-opacity" />
                           ) : (
-                            <FaqOpenIcon className="w-4 h-4 opacity-80 transition-opacity group-hover:opacity-100" />
+                            <FaqOpenIcon className="w-4 h-4 opacity-80 transition-opacity" />
                           )}
                         </span>
                       </button>
