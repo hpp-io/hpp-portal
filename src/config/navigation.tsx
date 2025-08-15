@@ -19,12 +19,12 @@ export const navItems = [
     icon: <MigrationIcon />,
   },
   {
-    label: 'Airdrop',
-    icon: <AirdropIcon />,
-  },
-  {
     label: 'Bridge',
     icon: <BridgeIcon />,
+  },
+  {
+    label: 'Airdrop',
+    icon: <AirdropIcon />,
   },
   {
     label: 'Ecosystem',
