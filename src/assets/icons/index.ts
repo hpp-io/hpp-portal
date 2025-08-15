@@ -1,6 +1,9 @@
 // SVG
 export { default as BackIcon } from './Back.svg';
 export { default as MobileMenuIcon } from './MobileMenu.svg';
+export { default as MobileTwitterIcon } from './MobileTwitter.svg';
+export { default as MobileMediumIcon } from './MobileMedium.svg';
+export { default as MobileTelegramIcon } from './MobileTelegram.svg';
 export { default as HPPPortalIcon } from './HPPPortal.svg';
 export { default as ClockIcon } from './Clock.svg';
 export { default as TwitterIcon } from './Twitter.svg';

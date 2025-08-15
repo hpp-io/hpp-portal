@@ -14,6 +14,9 @@ import {
   TwitterIcon,
   MediumIcon,
   TelegramIcon,
+  MobileTwitterIcon,
+  MobileMediumIcon,
+  MobileTelegramIcon,
 } from '@/assets/icons';
 
 // Home Page Data
@@ -202,15 +205,18 @@ export const socialLinks = [
     label: 'Twitter',
     href: 'https://x.com/aergo_io',
     Icon: TwitterIcon,
+    MobileIcon: MobileTwitterIcon,
   },
   {
     label: 'Medium',
     href: 'https://medium.com/@aergoio',
     Icon: MediumIcon,
+    MobileIcon: MobileMediumIcon,
   },
   {
     label: 'Telegram',
     href: 'https://t.me/aergoofficial',
     Icon: TelegramIcon,
+    MobileIcon: MobileTelegramIcon,
   },
 ];
