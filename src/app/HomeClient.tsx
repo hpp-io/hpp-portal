@@ -117,7 +117,7 @@ export default function HomeClient() {
                     href={link.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="relative rounded-[5px] p-6 border border-transparent bg-primary hover:brightness-105 transition-colors w-full lg:max-w-[400px]"
+                    className="relative rounded-[5px] p-6 border border-transparent bg-primary w-full lg:max-w-[400px]"
                   >
                     {CardContent}
                   </a>
@@ -125,7 +125,7 @@ export default function HomeClient() {
                   <Link
                     key={index}
                     href={link.href}
-                    className="relative rounded-[5px] p-6 border border-transparent bg-primary hover:brightness-110 transition-colors w-full lg:max-w-[400px]"
+                    className="relative rounded-[5px] p-6 border border-transparent bg-primary w-full lg:max-w-[400px]"
                   >
                     {CardContent}
                   </Link>
