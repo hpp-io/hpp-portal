@@ -60,14 +60,16 @@ export default function BridgeClient() {
             {/* Bridge Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {/* Arbitrum Official Bridge */}
-              <div className="rounded-[5px] p-6 bg-primary hover:brightness-110 transition-colors">
-                <div className="flex flex-col items-start gap-2.5">
+              <div className="rounded-[5px] p-6 bg-primary flex flex-col">
+                <div className="flex flex-col items-start gap-2.5 flex-1">
                   <Image src={ARB} alt="Arbitrum" width={30} height={30} />
                   <h3 className="text-white text-xl font-semibold leading-[1.5]">Arbitrum Official Bridge</h3>
                   <p className="text-white/90 text-base text-normal leading-[1.5] max-w-md">
                     The most secure way to transfer assets between Ethereum and Arbitrum, ideal for high-value or
                     long-term holdings.
                   </p>
+                </div>
+                <div className="pt-6">
                   <Button
                     variant="white"
                     size="lg"
@@ -81,13 +83,15 @@ export default function BridgeClient() {
               </div>
 
               {/* Orbiter Bridge */}
-              <div className="rounded-[5px] p-6 bg-primary hover:brightness-110 transition-colors">
-                <div className="flex flex-col items-start gap-2.5">
+              <div className="rounded-[5px] p-6 bg-primary flex flex-col">
+                <div className="flex flex-col items-start gap-2.5 flex-1">
                   <Image src={Orbiter} alt="Orbiter" width={30} height={30} />
                   <h3 className="text-white text-xl font-semibold leading-[1.5]">Orbiter Bridge</h3>
                   <p className="text-white/90 text-base text-normal leading-[1.5] max-w-md">
                     A fast, low-cost solution for moving assets, ideal for quick transfers and multi-chain activity.
                   </p>
+                </div>
+                <div className="pt-6">
                   <Button
                     variant="white"
                     size="lg"
@@ -116,37 +120,34 @@ export default function BridgeClient() {
                   return (
                     <div key={faq.id} className="bg-[#111111]">
                       <button
-                        className="w-full px-5 py-7.5 text-left flex items-center justify-between hover:bg-[#171717] transition-colors cursor-pointer"
-                        onClick={() => openFaq(faq.id)}
+                        className="group w-full px-5 py-7.5 text-left flex items-center justify-between hover:bg-[#171717] transition-colors cursor-pointer"
+                        onClick={() => (isOpen ? closeFaq(faq.id) : openFaq(faq.id))}
                         aria-expanded={isOpen}
                         aria-controls={`faq-panel-${faq.id}`}
                       >
                         <span className="text-white text-lg font-semibold leading-[1.2]">{faq.question}</span>
-                        {isOpen ? (
-                          <span>
-                            <button
-                              aria-label="Close FAQ"
-                              className="cursor-pointer"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                closeFaq(faq.id);
-                              }}
-                            >
-                              <FaqCloseIcon className="w-4 h-4" />
-                            </button>
-                          </span>
-                        ) : (
-                          <FaqOpenIcon className="w-4 h-4" />
-                        )}
+                        <span className="pointer-events-none">
+                          {isOpen ? (
+                            <FaqCloseIcon className="w-4 h-4 opacity-80 transition-opacity group-hover:opacity-100" />
+                          ) : (
+                            <FaqOpenIcon className="w-4 h-4 opacity-80 transition-opacity group-hover:opacity-100" />
+                          )}
+                        </span>
                       </button>
-                      {isOpen && (
-                        <div
-                          id={`faq-panel-${faq.id}`}
-                          className="px-5 pb-5 text-base leading-[1.5] tracking-[0.8px] text-[#bfbfbf] whitespace-pre-line"
-                        >
+                      <div
+                        id={`faq-panel-${faq.id}`}
+                        className="grid overflow-hidden"
+                        style={{
+                          gridTemplateRows: isOpen ? '1fr' : '0fr',
+                          transition: 'grid-template-rows 300ms ease, opacity 300ms ease',
+                          opacity: isOpen ? 1 : 0,
+                        }}
+                        aria-hidden={!isOpen}
+                      >
+                        <div className="px-5 pb-5 text-base leading-[1.5] tracking-[0.8px] text-[#bfbfbf] whitespace-pre-line overflow-hidden">
                           {faq.answer}
                         </div>
-                      )}
+                      </div>
                     </div>
                   );
                 })}
