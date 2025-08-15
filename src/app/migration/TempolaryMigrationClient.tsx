@@ -13,7 +13,11 @@ export default function TempolaryMigrationClient() {
 
   return (
     <div className="flex flex-col h-screen bg-black overflow-x-hidden">
-      <Header onMenuClick={() => setSidebarOpen(true)} />
+      <Header
+        onMenuClick={() => setSidebarOpen(true)}
+        isSidebarOpen={sidebarOpen}
+        onBackClick={() => setSidebarOpen(false)}
+      />
 
       <div className="flex flex-1 overflow-hidden">
         <Sidebar
