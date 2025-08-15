@@ -7,8 +7,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const routes = ['', '/bridge', '/migration', '/ecosystem', '/airdrop'] as const;
   const now = new Date();
 
+  const withTrailingSlash = (path: string) => {
+    if (path === '') return '/';
+    return path.endsWith('/') ? path : `${path}/`;
+  };
+
   return routes.map((path) => ({
-    url: `${siteUrl}${path}`,
+    url: `${siteUrl}${withTrailingSlash(path)}`,
     lastModified: now,
     changeFrequency: 'daily',
     priority: path === '' ? 1 : 0.7,
