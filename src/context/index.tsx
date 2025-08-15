@@ -37,8 +37,8 @@ createAppKit({
   enableWalletGuide: true,
   allWallets: 'HIDE',
   enableWalletConnect: true,
-  termsConditionsUrl: 'https://www.mytermsandconditions.com',
-  privacyPolicyUrl: 'https://www.myprivacypolicy.com',
+  termsConditionsUrl: 'https://paper.hpp.io/HPP_TermsConditions_v1.4.pdf',
+  privacyPolicyUrl: 'https://paper.hpp.io/HPP_PrivacyPolicy_v1.6.pdf',
   features: {
     legalCheckbox: true,
     analytics: true, // Optional - defaults to your Cloud configuration

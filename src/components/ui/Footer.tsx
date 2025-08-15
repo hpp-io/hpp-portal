@@ -50,6 +50,8 @@ export default function Footer() {
               key={index}
               href={link.href}
               className="block text-base leading-[1] text-[#FCFCFC] hover:text-[#EDEDED] transition-colors"
+              target="_blank"
+              rel="noopener noreferrer"
             >
               {link.label}
             </a>
