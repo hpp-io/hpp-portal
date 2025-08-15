@@ -12,9 +12,18 @@ const pretendard = localFont({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://localhost:3000'),
   title: 'HPP Portal',
   description:
-    'Interact with the HPP Mainnet network — from bridging assets to participating in governance. Experience fast, secure, and cost-effective transactions.',
+    'Welcome to the HPP Portal, where you can migrate your assets, bridge across networks, and start building on AI-native Layer 2 infrastructure.',
+  openGraph: {
+    images: ['/ogImage.png'],
+    siteName: 'HPP Portal',
+  },
+  twitter: {
+    images: ['/ogImage.png'],
+    card: 'summary_large_image',
+  },
 };
 
 export default function RootLayout({
