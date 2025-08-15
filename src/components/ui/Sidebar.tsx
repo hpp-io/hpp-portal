@@ -23,21 +23,25 @@ interface SidebarProps {
 
 const SOCIAL_LINKS = socialLinks;
 
-function SocialLinks({ spacingClass = 'space-x-4' }: { spacingClass?: string }) {
+function SocialLinks({ spacingClass = 'space-x-4', isMobile = false }: { spacingClass?: string; isMobile?: boolean }) {
   return (
     <div className={`flex items-center ${spacingClass}`}>
-      {SOCIAL_LINKS.map(({ label, href, Icon }) => (
-        <a
-          key={label}
-          href={href}
-          aria-label={label}
-          className="cursor-pointer"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Icon className="w-7.5 h-7.5" />
-        </a>
-      ))}
+      {SOCIAL_LINKS.map(({ label, href, Icon, MobileIcon }) => {
+        const IconComp = isMobile && MobileIcon ? MobileIcon : Icon;
+        const sizeClass = isMobile ? 'w-10 h-10' : 'w-7.5 h-7.5';
+        return (
+          <a
+            key={label}
+            href={href}
+            aria-label={label}
+            className="cursor-pointer"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <IconComp className={sizeClass} />
+          </a>
+        );
+      })}
     </div>
   );
 }
@@ -134,7 +138,7 @@ export default function Sidebar({ navItems, communityLinks, isOpen, onClose }: S
           {/* Mobile social icons directly under menu when open */}
           {isOpen && (
             <div className="mt-8 flex justify-center min-[1200px]:hidden">
-              <SocialLinks spacingClass="space-x-4" />
+              <SocialLinks spacingClass="space-x-5" isMobile />
             </div>
           )}
         </nav>
