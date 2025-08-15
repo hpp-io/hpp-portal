@@ -38,7 +38,7 @@ export default function EcosystemClient() {
           <div className="bg-[#121212] border-b border-[#161616] py-7.5">
             <div className="px-4 max-w-6xl mx-auto">
               <h1 className="text-[50px] min-[1200px]:text-[70px] leading-[1.5] font-[900] text-white">
-                HPP Ecosystem
+                HPP <br className="hidden max-[810px]:inline" /> Ecosystem
               </h1>
               <p className="text-xl text-[#bfbfbf] font-semibold leading-[1.5] max-w-7xl">
                 The HPP Ecosystem is an AI-native infrastructure designed for the full data lifecycle, uniting
@@ -55,7 +55,7 @@ export default function EcosystemClient() {
                 {ecosystemData.featuredPartners.map((partner, index) => (
                   <div
                     key={index}
-                    className="rounded-lg px-5 py-7.5 bg-[#111111] hover:bg-[#171717] transition-colors w-full lg:max-w-[400px] border border-[#161616]"
+                    className="rounded-[5px] px-5 py-7.5 bg-[#111111] w-full lg:max-w-[400px] border border-[#161616]"
                   >
                     <div className="flex items-center space-x-2.5 mb-2.5">
                       <div className="w-8 h-8 bg-[#1f2937] rounded flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
