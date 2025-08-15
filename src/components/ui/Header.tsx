@@ -19,7 +19,7 @@ export default function Header({ onMenuClick, isSidebarOpen = false, onBackClick
           <div className="flex">
             <button
               onClick={isSidebarOpen ? onBackClick : onMenuClick}
-              className="p-2 rounded-lg cursor-pointer"
+              className="cursor-pointer"
               aria-label={isSidebarOpen ? 'Close menu' : 'Open menu'}
             >
               {isSidebarOpen ? (

@@ -95,7 +95,12 @@ export default function Sidebar({ navItems, communityLinks, isOpen, onClose }: S
               ].join(' ');
 
               const RightIcon = (
-                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg
+                  className="w-4 h-4 text-[#FFFFFF] transition-colors group-hover:text-[#EDEDED]"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M9 5l7 7-7 7" />
                 </svg>
               );

@@ -31,9 +31,10 @@ export default function Button({
     'inline-flex items-center justify-center font-medium rounded-3xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-0 gap-1 whitespace-nowrap';
 
   const variantClasses = {
-    primary: 'bg-primary text-white hover:brightness-110 focus:ring-transparent',
+    primary: 'bg-primary text-white hover:brightness-105 focus:ring-transparent',
     secondary: 'bg-gray-100 text-gray-900 hover:bg-gray-200 focus:ring-transparent',
-    white: 'bg-white text-black hover:bg-gray-100 focus:ring-transparent',
+    white:
+      'bg-white text-black border border-gray-200 hover:bg-gray-100 hover:border-gray-300 hover:shadow-md focus:ring-transparent',
   } as const;
 
   const sizeClasses = {
