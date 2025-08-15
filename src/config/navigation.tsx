@@ -51,6 +51,6 @@ export const navItems = [
 ];
 
 export const communityLinks = [
-  { label: 'Terms & Conditions', href: '#' },
-  { label: 'Privacy Policy', href: '#' },
+  { label: 'Terms & Conditions', href: 'https://paper.hpp.io/HPP_TermsConditions_v1.4.pdf' },
+  { label: 'Privacy Policy', href: 'https://paper.hpp.io/HPP_PrivacyPolicy_v1.6.pdf' },
 ];
