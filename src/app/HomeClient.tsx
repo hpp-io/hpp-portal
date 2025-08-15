@@ -117,7 +117,7 @@ export default function HomeClient() {
                     href={link.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="relative rounded-[5px] p-6 border border-transparent bg-primary hover:brightness-110 transition-colors w-full lg:max-w-[400px]"
+                    className="relative rounded-[5px] p-6 border border-transparent bg-primary hover:brightness-105 transition-colors w-full lg:max-w-[400px]"
                   >
                     {CardContent}
                   </a>
@@ -145,7 +145,7 @@ export default function HomeClient() {
                 variant="primary"
                 size="lg"
                 onClick={() => router.push('/ecosystem')}
-                className="cursor-pointer whitespace-nowrap bg-[#5651d8] hover:bg-[#5e59e0] border-0"
+                className="cursor-pointer whitespace-nowrap bg-[#5651d8] border-0"
               >
                 Explore More
               </Button>
@@ -153,10 +153,7 @@ export default function HomeClient() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-8 justify-items-center">
               {homeData.ecosystemProjects.map((project, index) => (
-                <div
-                  key={index}
-                  className="rounded-lg px-5 py-7.5 bg-[#111111] hover:bg-[#171717] transition-colors w-full lg:max-w-[400px]"
-                >
+                <div key={index} className="rounded-[5px] px-5 py-7.5 bg-[#111111] w-full lg:max-w-[400px]">
                   <div className="flex items-center space-x-2.5 mb-2.5">
                     <div className="w-8 h-8 bg-[#1f2937] rounded flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                       <Image src={project.icon} alt={project.name} width={22} height={22} />
