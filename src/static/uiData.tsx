@@ -209,7 +209,7 @@ export const socialLinks = [
   },
   {
     label: 'Medium',
-    href: 'https://medium.com/@aergoio',
+    href: 'https://medium.com/aergo',
     Icon: MediumIcon,
     MobileIcon: MobileMediumIcon,
   },

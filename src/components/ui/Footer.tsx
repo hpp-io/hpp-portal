@@ -23,7 +23,7 @@ export default function Footer() {
                 <TwitterIcon className="w-7.5 h-7.5" />
               </a>
               <a
-                href="https://medium.com/@aergoio"
+                href="https://medium.com/aergo"
                 aria-label="Medium"
                 className="cursor-pointer"
                 target="_blank"
