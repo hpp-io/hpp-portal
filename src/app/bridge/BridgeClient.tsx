@@ -77,7 +77,7 @@ export default function BridgeClient() {
                     external
                     className="cursor-pointer"
                   >
-                    Explore Portal
+                    Go to Bridge
                   </Button>
                 </div>
               </div>
@@ -99,7 +99,7 @@ export default function BridgeClient() {
                     external
                     className="cursor-pointer"
                   >
-                    Explore Portal
+                    Go to Bridge
                   </Button>
                 </div>
               </div>
