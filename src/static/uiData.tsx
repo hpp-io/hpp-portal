@@ -93,7 +93,7 @@ export const ecosystemData = {
       icon: Booost,
     },
     {
-      name: 'W3DB',
+      name: 'W3DB(VaaSBlock)',
       description:
         'Model and data verification layer with staking-based validation for AI training, inference, and trust.',
       icon: W3DB,
