@@ -53,7 +53,7 @@ export const homeData = {
       icon: Booost,
     },
     {
-      name: 'W3DB',
+      name: 'W3DB(VaaSBlock)',
       description:
         'Model and data verification layer with staking-based validation for AI training, inference, and trust.',
       icon: W3DB,
@@ -184,7 +184,7 @@ export const bridgeData = {
       id: 6,
       question: 'How long do transfers take?',
       answer:
-        '1) Arbitrum Official Bridge: Instant deposits, but withdrawals to Ethereum can take up to 7 days due to fraud-proof windows.',
+        '1) Arbitrum Official Bridge: Instant deposits, but withdrawals to Ethereum can take up to 7 days due to fraud-proof windows.\n2) Orbiter Bridge: Typically completes in few minutes, depending on network conditions.',
     },
   ],
 };
