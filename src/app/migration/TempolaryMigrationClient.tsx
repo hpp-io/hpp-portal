@@ -48,7 +48,8 @@ export default function TempolaryMigrationClient() {
                 size="md"
                 className="rounded-full px-5 py-3"
                 icon={<ClockIcon className="w-5 h-5" />}
-                noPointer
+                // noPointer
+                href="/migration/test"
               >
                 Launching Soon
               </Button>

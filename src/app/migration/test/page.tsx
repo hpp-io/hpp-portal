@@ -1,13 +1,13 @@
 import React from 'react';
 import type { Metadata } from 'next';
-import MigrationClient from '../MigrationClient';
+import SelectionClient from './SelectionClient';
 
 export const metadata: Metadata = {
   title: 'Migration (Test) | HPP Portal',
-  description: 'Temporary test route for MigrationClient. Accessible only by direct URL.',
+  description: 'Choose a token to migrate.',
   robots: { index: false, follow: false },
 };
 
 export default function MigrationTestPage() {
-  return <MigrationClient />;
+  return <SelectionClient />;
 }
