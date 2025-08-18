@@ -9,8 +9,9 @@ if (!projectId) {
   throw new Error('Project ID is not defined');
 }
 
-// Select network from NODE_ENV
-const selectedChain = (process.env.NODE_ENV === 'production' ? 'mainnet' : 'sepolia').toLowerCase();
+// Select network from NEXT_PUBLIC_ENV
+const selectedEnv = (process.env.NEXT_PUBLIC_ENV || 'development').toLowerCase();
+const selectedChain = selectedEnv === 'production' ? 'mainnet' : 'sepolia';
 export const networks = selectedChain === 'mainnet' ? [mainnet] : [sepolia];
 
 //Set up the Wagmi Adapter (Config)
