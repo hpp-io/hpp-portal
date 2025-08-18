@@ -1,0 +1,3 @@
+[submodule "src/app/portal/migration"]
+	path = src/app/portal/migration
+	url = https://github.com/hpp-io/hpp-migration.git
