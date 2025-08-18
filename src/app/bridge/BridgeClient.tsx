@@ -95,7 +95,7 @@ export default function BridgeClient() {
                   <Button
                     variant="white"
                     size="lg"
-                    href="https://www.orbiter.finance/bridge"
+                    href="https://www.orbiter.finance/bridge/Ethereum/HPP?token=ETH"
                     external
                     className="cursor-pointer"
                   >
