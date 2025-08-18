@@ -828,7 +828,7 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                               </svg>
                               <div className="w-20 sm:w-32 md:w-40 h-0.5 bg-gray-300"></div>
                             </div>
-                            <span className="text-sm text-gray-700 text-center whitespace-nowrap">Aergo Bridge</span>
+                            <span className="text-sm text-[#bfbfbf] text-center whitespace-nowrap">Aergo Bridge</span>
                           </div>
 
                           {/* HPP (ETH) */}
@@ -916,7 +916,7 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                             </svg>
                             <div className="w-20 sm:w-32 md:w-40 h-0.5 bg-gray-300"></div>
                           </div>
-                          <span className="text-sm text-gray-700 text-center whitespace-nowrap">HPP Bridge</span>
+                          <span className="text-sm text-[#bfbfbf] text-center whitespace-nowrap">HPP Bridge</span>
                         </div>
 
                         {/* HPP (ETH) */}
@@ -924,7 +924,7 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                           <div className="w-24 h-16 bg-black rounded-lg flex items-center justify-center mb-3">
                             <span className="text-white text-base font-medium">HPP</span>
                           </div>
-                          <span className="text-sm text-gray-700 text-center whitespace-nowrap">HPP (ETH)</span>
+                          <span className="text-sm text-[#bfbfbf] text-center whitespace-nowrap">HPP (ETH)</span>
                         </div>
                       </div>
                     </div>
