@@ -3,10 +3,10 @@ import Button from './Button';
 
 export default function NeedHelp() {
   return (
-    <div className="mt-12 bg-white rounded-lg p-6">
+    <div className="mt-12 bg-[#111111] border border-[#161616] rounded-[5px] p-6">
       <div className="text-center">
-        <h3 className="text-lg font-medium text-gray-900 mb-3">Need Help?</h3>
-        <p className="text-gray-700 mb-6 max-w-2xl mx-auto">
+        <h3 className="text-lg font-medium text-white mb-3">Need Help?</h3>
+        <p className="text-[#bfbfbf] mb-6 max-w-2xl mx-auto">
           If you're unsure about which migration path to use or need assistance, our support team is here to help.
         </p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
