@@ -8,10 +8,21 @@ import WalletButton from '@/components/ui/WalletButton';
 import Header from '@/components/ui/Header';
 import Footer from '@/components/ui/Footer';
 import { useToast } from '@/hooks/useToast';
-import { useAccount, useChainId, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useAppKit } from '@reown/appkit/react';
+import {
+  useAccount,
+  useDisconnect,
+  useChainId,
+  useReadContract,
+  useWriteContract,
+  useWaitForTransactionReceipt,
+} from 'wagmi';
 import { navItems, communityLinks } from '@/config/navigation';
 import { parseUnits, formatUnits, erc20Abi } from 'viem';
 import Big from 'big.js';
+import Image from 'next/image';
+import { AergoMainnet, HPPEth, HPPMainnet, AergoEth, AqtEth } from '@/assets/icons';
+import { useRouter } from 'next/navigation';
 
 // Constants
 const AERGO_DECIMAL = 18;
@@ -63,8 +74,11 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
   const migrationInFlightRef = useRef<boolean>(false);
 
   const { showToast } = useToast();
+  const { open } = useAppKit();
   const { isConnected, address } = useAccount();
+  const { disconnect } = useDisconnect();
   const chainId = useChainId();
+  const router = useRouter();
 
   // Decide whether to swap to server list or keep current (to preserve local Pending until resolved)
   const updateHistoryWithServer = (incoming: Transaction[]) => {
@@ -767,140 +781,76 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
             sidebarOpen ? 'opacity-50 min-[1200px]:opacity-100' : ''
           }`}
         >
-          <div className="p-4 lg:p-8 max-w-6xl mx-auto">
-            <div className="lg:max-w-full 2xl:max-w-[80%] mx-auto">
-              {/* Header Section */}
-              <div className="text-center mb-8">
-                <h1 className="text-3xl font-medium text-white mb-3">{token} → HPP Migration</h1>
-                <p className="text-[#bfbfbf] text-lg">
-                  Move your {token} tokens to the HPP Layer2 network using the <br />
-                  appropriate migration path based on your source chain.
-                </p>
-                <p className="text-[#FF6B6B] text-lg">Migration Page will be activated soon.</p>
+          {/* Go Back Button */}
+          <div className="ml-4 max-w-6xl mx-auto mb-4 mt-3">
+            <Button
+              size="sm"
+              onClick={() => router.back()}
+              className="flex items-center space-x-1 cursor-pointer !bg-[#121212] text-white rounded-[5px]"
+            >
+              <svg className="w-4 h-4 text-[#FFFFFF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M15 19l-7-7 7-7" />
+              </svg>
+              <span>Go Back</span>
+            </Button>
+          </div>
+
+          <div className="bg-[#121212] border-b border-[#161616] py-7.5">
+            <div className="px-4 max-w-6xl mx-auto">
+              <h1 className="text-[50px] min-[1200px]:text-[70px] leading-[1.5] font-[900] text-white">
+                Migrate to HPP
+              </h1>
+              <p className="text-xl text-[#bfbfbf] font-semibold leading-[1.5] max-w-5xl">
+                Move your {token} tokens to the HPP Mainnet using the official migration paths.
+                <br />
+                Follow the steps carefully to ensure a secure and complete migration.
+              </p>
+              <div className="mt-5">
+                <Button variant="white" size="lg" className="cursor-pointer">
+                  View Step-by-Step Guide
+                </Button>
               </div>
+            </div>
+          </div>
 
-              {/* Migration Cards */}
-              <div className="space-y-8">
-                {/* Step 1 Card (AERGO only) */}
-                {token === 'AERGO' && (
-                  <div className="bg-[#111111] border border-[#161616] rounded-[5px]">
-                    <div className="p-6">
-                      <div className="flex items-start mb-6">
-                        <div className="w-8 h-8 bg-gray-800 rounded flex items-center justify-center mr-4 flex-shrink-0">
-                          <span className="text-white font-semibold text-sm">1</span>
-                        </div>
-                        <div className="flex-1">
-                          <h2 className="text-xl font-medium text-white mb-3">AERGO (Mainnet) → HPP (ETH)</h2>
-                          <p className="text-[#bfbfbf]">
-                            If you hold AERGO on the <strong>AERGO mainnet</strong>, use the official Aergo Bridge to
-                            migrate to HPP via Ethereum.
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Flow Diagram */}
-                      <div className="flex items-center justify-center mb-6">
-                        <div className="flex items-center space-x-8">
-                          {/* AERGO Mainnet */}
-                          <div className="flex flex-col items-center">
-                            <div className="w-24 h-16 bg-[#1f2937] rounded-lg flex items-center justify-center mb-3">
-                              <span className="text-white text-base font-medium">AERGO</span>
-                            </div>
-                            <span className="text-sm text-[#bfbfbf] text-center whitespace-nowrap">AERGO Mainnet</span>
-                          </div>
-
-                          {/* Aergo Bridge */}
-                          <div className="flex flex-col items-center">
-                            <div className="flex items-center mb-3">
-                              <div className="w-20 sm:w-32 md:w-40 h-0.5 bg-gray-300"></div>
-                              <svg
-                                className="w-4 sm:w-5 md:w-6 h-3 sm:h-4 text-gray-400 mx-0.5 sm:mx-1"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={3}
-                                  d="M2 12h16M12 6l6 6-6 6"
-                                />
-                              </svg>
-                              <div className="w-20 sm:w-32 md:w-40 h-0.5 bg-gray-300"></div>
-                            </div>
-                            <span className="text-sm text-[#bfbfbf] text-center whitespace-nowrap">Aergo Bridge</span>
-                          </div>
-
-                          {/* HPP (ETH) */}
-                          <div className="flex flex-col items-center">
-                            <div className="w-24 h-16 bg-black rounded-lg flex items-center justify-center mb-3">
-                              <span className="text-white text-base font-medium">HPP</span>
-                            </div>
-                            <span className="text-sm text-[#bfbfbf] text-center whitespace-nowrap">HPP (ETH)</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Action Buttons */}
-                      <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
-                        <Button
-                          variant="primary"
-                          size="md"
-                          href="https://bridge.aergo.io/"
-                          external={true}
-                          className="flex items-center justify-center space-x-2 whitespace-nowrap"
-                        >
-                          Go to Aergo Bridge
-                        </Button>
-
-                        <Button
-                          variant="white"
-                          size="md"
-                          className="flex items-center justify-center space-x-2 whitespace-nowrap"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
-                            />
-                          </svg>
-                          <span>View Step-by-Step Guide</span>
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Main Swap Card */}
-                <div className="bg-[#111111] border border-[#161616] rounded-[5px]">
+          <div className="p-4 lg:p-8 max-w-6xl mx-auto">
+            <h2 className="text-[30px] font-black text-white leading-[1.5em] mb-8 mt-12.5 min-[1400px]:mt-25">
+              Step 1: Convert to HPP(ETH)
+            </h2>
+            {/* Migration Cards */}
+            <div className="space-y-8">
+              {/* Step 1 Card (AERGO only) */}
+              {token === 'AERGO' && (
+                <div className="bg-primary border border-[#161616] rounded-[5px]">
                   <div className="p-6">
-                    <div className="flex items-start mb-6">
-                      <div className="w-8 h-8 bg-gray-800 rounded flex items-center justify-center mr-4 flex-shrink-0">
-                        <span className="text-white font-semibold text-sm">{token === 'AERGO' ? '2' : '1'}</span>
-                      </div>
+                    <div className="flex items-start mb-5">
                       <div className="flex-1">
-                        <h2 className="text-xl font-medium text-white mb-3">{token} (ETH) → HPP (ETH)</h2>
-                        <p className="text-[#bfbfbf]">Migrate your {token} tokens on Ethereum directly to HPP.</p>
+                        <h2 className="text-xl font-semibold text-white mb-3 tracking-[0em] leading-[1]">
+                          AERGO(Mainnet) → HPP(ETH)
+                        </h2>
+                        <p className="text-base font-normal text-white tracking-[0.8px] text-left leading-[1.5]">
+                          If you hold AERGO on the AERGO mainnet, use the official Aergo Bridge to migrate to HPP via
+                          Ethereum.
+                        </p>
                       </div>
                     </div>
 
                     {/* Flow Diagram */}
-                    <div className="flex items-center justify-center mb-6">
-                      <div className="flex items-center space-x-8">
-                        {/* From token (ETH) */}
+                    <div className="w-full h-min flex flex-row justify-center items-center p-5 bg-[rgba(18,18,18,0.1)] overflow-hidden rounded-[5px]">
+                      <div className="flex items-center">
+                        {/* AERGO Mainnet */}
                         <div className="flex flex-col items-center">
-                          <div className="w-24 h-16 bg-[#1f2937] rounded-lg flex items-center justify-center mb-3">
-                            <span className="text-white text-base font-medium">{token}</span>
+                          <div className="w-20 h-20 min-[810px]:w-25 min-[810px]:h-25 min-[1440px]:w-27.5 min-[1440px]:h-27.5 rounded-lg flex items-center justify-center mb-2.5">
+                            <Image src={AergoMainnet} alt="AERGO Mainnet" />
                           </div>
-                          <span className="text-sm text-[#bfbfbf] text-center whitespace-nowrap">{token} (ETH)</span>
+                          <span className="text-base leading-[1.2em] tracking-[0.8px] font-normal text-white text-center whitespace-nowrap">
+                            AERGO(Mainnet)
+                          </span>
                         </div>
 
-                        {/* HPP Bridge */}
+                        {/* Aergo Bridge */}
                         <div className="flex flex-col items-center">
                           <div className="flex items-center mb-3">
-                            <div className="w-20 sm:w-32 md:w-40 h-0.5 bg-gray-300"></div>
                             <svg
                               className="w-4 sm:w-5 md:w-6 h-3 sm:h-4 text-gray-400 mx-0.5 sm:mx-1"
                               fill="none"
@@ -914,444 +864,495 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                                 d="M2 12h16M12 6l6 6-6 6"
                               />
                             </svg>
-                            <div className="w-20 sm:w-32 md:w-40 h-0.5 bg-gray-300"></div>
                           </div>
-                          <span className="text-sm text-[#bfbfbf] text-center whitespace-nowrap">HPP Bridge</span>
                         </div>
 
                         {/* HPP (ETH) */}
                         <div className="flex flex-col items-center">
-                          <div className="w-24 h-16 bg-black rounded-lg flex items-center justify-center mb-3">
-                            <span className="text-white text-base font-medium">HPP</span>
+                          <div className="w-20 h-20 min-[810px]:w-25 min-[810px]:h-25 min-[1440px]:w-27.5 min-[1440px]:h-27.5 rounded-lg flex items-center justify-center mb-2.5">
+                            <Image src={HPPEth} alt="HPP (ETH)" />
                           </div>
-                          <span className="text-sm text-[#bfbfbf] text-center whitespace-nowrap">HPP (ETH)</span>
+                          <span className="text-base leading-[1.2em] tracking-[0.8px] font-normal text-white text-center whitespace-nowrap">
+                            HPP(ETH)
+                          </span>
                         </div>
                       </div>
                     </div>
 
                     {/* Action Buttons */}
-                    <div className="space-y-3">
+                    <div className="flex justify-center mt-5">
                       <Button
-                        variant="white"
-                        size="sm"
+                        variant="black"
+                        size="md"
+                        href="https://bridge.aergo.io/"
+                        external={true}
                         className="flex items-center justify-center space-x-2 whitespace-nowrap"
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                          />
-                        </svg>
-                        <span>View Step-by-Step Guide</span>
+                        Go to Aergo Bridge
                       </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
-                      {isConnected ? (
-                        <div className="bg-[#0f0f0f] rounded-lg p-4 border border-[#161616]">
-                          <div className="flex items-center justify-between">
-                            <div className="flex flex-col">
-                              <div className="flex items-center space-x-3">
-                                <svg
-                                  className="w-5 h-5 text-white"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                                  />
-                                </svg>
-                                <span className="text-white">Wallet Connected</span>
-                              </div>
-                              <div className="mt-2 text-xs text-[#bfbfbf] font-mono">{address}</div>
-                            </div>
-                            <WalletButton />
-                          </div>
+              {/* Main Swap Card */}
+              <div className="bg-primary border border-[#161616] rounded-[5px]">
+                <div className="p-6">
+                  <div className="flex items-start mb-5">
+                    <div className="flex-1">
+                      <h2 className="text-xl font-semibold text-white mb-3 tracking-[0em] leading-[1] whitespace-pre-wrap break-words">
+                        {token}(ETH) → HPP(ETH)
+                      </h2>
+                      <p className="text-base font-normal text-white tracking-[0.8px] text-left leading-[1.5] whitespace-pre-wrap break-words">
+                        Migrate your {token} tokens on Ethereum directly to HPP.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Flow Diagram */}
+                  <div className="w-full h-min flex flex-row justify-center items-center p-5 bg-[rgba(18,18,18,0.1)] overflow-hidden rounded-[5px]">
+                    {/* <div className="w-full h-min flex flex-row justify-center items-center p-[30px] bg-[rgba(255,255,255,0.05)] overflow-hidden rounded-[5px] mb-6"> */}
+                    <div className="flex items-center">
+                      {/* From token (ETH) */}
+                      <div className="flex flex-col items-center">
+                        <div className="w-20 h-20 min-[810px]:w-25 min-[810px]:h-25 min-[1440px]:w-27.5 min-[1440px]:h-27.5 rounded-lg flex items-center justify-center mb-2.5">
+                          <Image src={token === 'AERGO' ? AergoEth : AqtEth} alt={`${token}(ETH)`} />
                         </div>
-                      ) : (
-                        <div className="bg-[#0f0f0f] rounded-lg p-4">
-                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
+                        <span className="text-base leading-[1.2em] tracking-[0.8px] font-normal text-white text-center whitespace-nowrap">
+                          {token}(ETH)
+                        </span>
+                      </div>
+
+                      {/* HPP Bridge */}
+                      <div className="flex flex-col items-center">
+                        <div className="flex items-center mb-3">
+                          <svg
+                            className="w-4 sm:w-5 md:w-6 h-3 sm:h-4 text-gray-400 mx-0.5 sm:mx-1"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={3}
+                              d="M2 12h16M12 6l6 6-6 6"
+                            />
+                          </svg>
+                        </div>
+                      </div>
+
+                      {/* HPP (ETH) */}
+                      <div className="flex flex-col items-center">
+                        <div className="w-20 h-20 min-[810px]:w-25 min-[810px]:h-25 min-[1440px]:w-27.5 min-[1440px]:h-27.5 rounded-lg flex items-center justify-center mb-2.5">
+                          <Image src={HPPEth} alt="HPP (ETH)" />
+                        </div>
+                        <span className="text-base leading-[1.2em] tracking-[0.8px] font-normal text-white text-center whitespace-nowrap">
+                          HPP(ETH)
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="space-y-3">
+                    {isConnected ? (
+                      <div className="bg-[#0f0f0f] rounded-lg p-4 border border-[#161616]">
+                        <div className="flex items-center justify-between">
+                          <div className="flex flex-col">
                             <div className="flex items-center space-x-3">
                               <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path
                                   strokeLinecap="round"
                                   strokeLinejoin="round"
                                   strokeWidth={2}
-                                  d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9v-9m0-9v9"
+                                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
                                 />
                               </svg>
-                              <span className="text-white">Connect your wallet to start migration</span>
+                              <span className="text-white">Wallet Connected</span>
                             </div>
-                            <WalletButton />
+                            <div className="mt-2 text-xs text-[#bfbfbf] font-mono">{address}</div>
                           </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Token Migration Form */}
-                    {isConnected && (
-                      <div className="mt-8">
-                        <div className="bg-[#111111] border border-[#161616] rounded-[5px] p-6">
-                          {/* From Section */}
-                          <div className="bg-[#0f0f0f] rounded-lg p-4 mb-4 border border-[#161616]">
-                            <div className="flex items-center justify-between mb-2">
-                              <label className="text-sm font-medium text-[#bfbfbf]">From</label>
-                              <div className="flex items-center space-x-2">
-                                <span className="text-sm text-[#bfbfbf]">
-                                  Balance: {isBalanceLoading ? 'Loading...' : `${balance || '0'} ${token}`}
-                                </span>
-                                {/* Approval Status Check */}
-                                {isConnected && (
-                                  <div className="relative group">
-                                    {isAllowanceLoading ? (
-                                      <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin"></div>
-                                    ) : allowanceData &&
-                                      fromAmount &&
-                                      parseFloat(fromAmount) > 0 &&
-                                      parseUnits(fromAmount, 18) <= allowanceData ? (
-                                      <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
-                                        <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                          <path
-                                            fillRule="evenodd"
-                                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                            clipRule="evenodd"
-                                          />
-                                        </svg>
-                                      </div>
-                                    ) : allowanceData && fromAmount && parseFloat(fromAmount) > 0 ? (
-                                      <div className="w-4 h-4 bg-orange-500 rounded-full flex items-center justify-center">
-                                        <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                          <path
-                                            fillRule="evenodd"
-                                            d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                                            clipRule="evenodd"
-                                          />
-                                        </svg>
-                                      </div>
-                                    ) : null}
-
-                                    {/* Popover */}
-                                    <div className="absolute bottom-full right-0 mb-2 px-3 py-2 bg-black text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                                      <div className="text-center">
-                                        <div className="font-medium mb-1">Approval Status</div>
-                                        {isAllowanceLoading ? (
-                                          <div>Checking allowance...</div>
-                                        ) : allowanceData &&
-                                          fromAmount &&
-                                          parseFloat(fromAmount) > 0 &&
-                                          parseUnits(fromAmount, 18) <= allowanceData ? (
-                                          <div className="text-green-400">✓ Approved for this amount</div>
-                                        ) : allowanceData && fromAmount && parseFloat(fromAmount) > 0 ? (
-                                          <div className="text-orange-400">⚠ Needs approval</div>
-                                        ) : null}
-                                        {allowanceData && (
-                                          <div className="text-[#bfbfbf] mt-1">
-                                            Current allowance: {formatUnits(allowanceData, 18)} {token}
-                                          </div>
-                                        )}
-                                      </div>
-                                      {/* Arrow */}
-                                      <div className="absolute top-full right-2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-black"></div>
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex items-center space-x-3">
-                              <div className="flex-1">
-                                <input
-                                  type="text"
-                                  inputMode="decimal"
-                                  value={fromAmount === '' ? '' : fromAmount}
-                                  onChange={(e) => {
-                                    const value = e.target.value;
-                                    if (token === 'AQT') {
-                                      // AQT: integers only (no decimals)
-                                      if (/^\d*$/.test(value) || value === '') {
-                                        handleFromAmountChange(value);
-                                      }
-                                    } else {
-                                      // AERGO: allow digits with optional single decimal point
-                                      if (/^\d*(\.)?\d*$/.test(value) || value === '') {
-                                        handleFromAmountChange(value);
-                                      }
-                                    }
-                                  }}
-                                  onWheel={(e) => {
-                                    // prevent accidental value changes by scroll
-                                    (e.target as HTMLInputElement).blur();
-                                  }}
-                                  className={`w-full py-3 border-0 rounded-lg focus:outline-none focus:ring-0 text-lg bg-transparent pl-0 text-white placeholder:text-[#8a8a8a] ${
-                                    inputError ? 'border-red-500' : ''
-                                  }`}
-                                  placeholder="0.0"
-                                  autoComplete="off"
-                                  spellCheck={false}
-                                />
-                                {inputError && <div className="mt-1 text-sm text-red-600">{inputError}</div>}
-                              </div>
-                              <button className="flex items-center space-x-2 px-3 py-2 bg-[#0f0f0f] border border-[#161616] rounded-lg hover:bg-[#141414] transition-colors">
-                                <div className="w-5 h-5 bg-gray-700 rounded-full flex items-center justify-center">
-                                  <span className="text-white text-xs font-medium">{token[0]}</span>
-                                </div>
-                                <span className="text-sm font-medium text-white">{token}</span>
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* Direction Indicator */}
-                          <div className="flex justify-center mb-4">
-                            <div className="w-8 h-8 bg-[#0f0f0f] rounded-lg flex items-center justify-center border border-[#161616]">
-                              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M19 14l-7 7m0 0l-7-7m7 7V3"
-                                />
-                              </svg>
-                            </div>
-                          </div>
-
-                          {/* To Section */}
-                          <div className="bg-[#0f0f0f] rounded-lg p-4 mb-4 border border-[#161616]">
-                            <div className="flex items-center justify-between mb-2">
-                              <label className="text-sm font-medium text-[#bfbfbf]">To</label>
-                              <span className="text-sm text-[#bfbfbf]">
-                                Balance: {isHppBalanceLoading ? 'Loading...' : `${hppBalance || '0'} HPP`}
-                              </span>
-                            </div>
-                            <div className="flex items-center space-x-3">
-                              <input
-                                type="text"
-                                value={toAmount === '' ? '' : toAmount}
-                                readOnly
-                                className="flex-1 py-3 border-0 rounded-lg bg-transparent text-lg pl-0 cursor-default pointer-events-none text-white"
-                                placeholder="0.0"
-                                style={{ cursor: 'default' }}
-                              />
-                              <div className="flex flex-col space-y-1">
-                                <button className="flex items-center space-x-2 px-3 py-2 bg-[#0f0f0f] border border-[#161616] rounded-lg hover:bg-[#141414] transition-colors">
-                                  <div className="w-5 h-5 bg-gray-700 rounded-full flex items-center justify-center">
-                                    <span className="text-white text-xs font-medium">H</span>
-                                  </div>
-                                  <span className="text-sm font-medium text-white">HPP</span>
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Migrate Button */}
-                          <Button
-                            variant="primary"
-                            size="lg"
-                            className="w-full font-medium py-3 px-6 rounded-lg hover:brightness-105 transition"
-                            onClick={handleMigrationClick}
-                            disabled={isApproving || isSwapping}
-                          >
-                            {isApproving ? 'Approving...' : isSwapping ? 'Migrating...' : 'Migrate Tokens'}
+                          <Button variant="black" size="md" onClick={() => disconnect()} className="cursor-pointer">
+                            Disconnect
                           </Button>
                         </div>
                       </div>
+                    ) : (
+                      <div className="text-center mt-5">
+                        <Button variant="black" size="md" onClick={open} className="cursor-pointer">
+                          Connect Wallet
+                        </Button>
+                      </div>
                     )}
+                  </div>
 
-                    {/* Transaction History */}
-                    {isConnected && (
-                      <div className="mt-8">
-                        <div className="bg-[#111111] border border-[#161616] rounded-[5px] p-6">
-                          <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-lg font-medium text-white">Transaction History</h3>
-                            <button
-                              onClick={() => address && fetchTransactionHistory(address)}
-                              disabled={isLoadingHistory}
-                              aria-label="Refresh"
-                              className="flex items-center px-3 py-2 text-sm text-[#bfbfbf] hover:text-white hover:bg-[#141414] rounded-lg transition-colors cursor-pointer"
-                              style={{ cursor: 'pointer' }}
-                            >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                                />
-                              </svg>
-                            </button>
-                          </div>
+                  {/* Token Migration Form */}
+                  {isConnected && (
+                    <div className="mt-8">
+                      <div className="bg-primary border border-[#161616] rounded-[5px] p-6">
+                        {/* From Section */}
+                        <div className="bg-[#0f0f0f] rounded-lg p-4 mb-4 border border-[#161616]">
+                          <div className="flex items-center justify-between mb-2">
+                            <label className="text-sm font-medium text-[#bfbfbf]">From</label>
+                            <div className="flex items-center space-x-2">
+                              <span className="text-sm text-[#bfbfbf]">
+                                Balance: {isBalanceLoading ? 'Loading...' : `${balance || '0'} ${token}`}
+                              </span>
+                              {/* Approval Status Check */}
+                              {isConnected && (
+                                <div className="relative group">
+                                  {isAllowanceLoading ? (
+                                    <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin"></div>
+                                  ) : allowanceData &&
+                                    fromAmount &&
+                                    parseFloat(fromAmount) > 0 &&
+                                    parseUnits(fromAmount, 18) <= allowanceData ? (
+                                    <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                                      <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                        <path
+                                          fillRule="evenodd"
+                                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                          clipRule="evenodd"
+                                        />
+                                      </svg>
+                                    </div>
+                                  ) : allowanceData && fromAmount && parseFloat(fromAmount) > 0 ? (
+                                    <div className="w-4 h-4 bg-orange-500 rounded-full flex items-center justify-center">
+                                      <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                        <path
+                                          fillRule="evenodd"
+                                          d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                                          clipRule="evenodd"
+                                        />
+                                      </svg>
+                                    </div>
+                                  ) : null}
 
-                          {isLoadingHistory ? (
-                            <div className="flex items-center justify-center py-8">
-                              <div
-                                aria-label="Loading"
-                                className="w-6 h-6 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin"
-                              ></div>
-                            </div>
-                          ) : transactionHistory.length > 0 ? (
-                            <div className="space-y-2">
-                              {(showAllHistory ? transactionHistory : transactionHistory.slice(0, 2)).map((tx) => (
-                                <div
-                                  key={tx.id}
-                                  className="flex items-center justify-between py-3 border-b border-[#161616] last:border-b-0 hover:bg-[#0f0f0f] transition-colors cursor-pointer"
-                                  style={{ cursor: 'pointer' }}
-                                  onClick={() => {
-                                    const etherscanUrl = createEtherscanLink(tx.hash, tx.network);
-                                    window.open(etherscanUrl, '_blank');
-                                  }}
-                                >
-                                  <div className="flex items-center space-x-3">
-                                    <div className="w-8 h-8 bg-[#1f2937] rounded-full flex items-center justify-center">
-                                      {tx.icon}
+                                  {/* Popover */}
+                                  <div className="absolute bottom-full right-0 mb-2 px-3 py-2 bg-black text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                                    <div className="text-center">
+                                      <div className="font-medium mb-1">Approval Status</div>
+                                      {isAllowanceLoading ? (
+                                        <div>Checking allowance...</div>
+                                      ) : allowanceData &&
+                                        fromAmount &&
+                                        parseFloat(fromAmount) > 0 &&
+                                        parseUnits(fromAmount, 18) <= allowanceData ? (
+                                        <div className="text-green-400">✓ Approved for this amount</div>
+                                      ) : allowanceData && fromAmount && parseFloat(fromAmount) > 0 ? (
+                                        <div className="text-orange-400">⚠ Needs approval</div>
+                                      ) : null}
+                                      {allowanceData && (
+                                        <div className="text-[#bfbfbf] mt-1">
+                                          Current allowance: {formatUnits(allowanceData, 18)} {token}
+                                        </div>
+                                      )}
                                     </div>
-                                    <div>
-                                      <div className="text-sm font-normal text-white">{tx.type}</div>
-                                      <div className="text-xs text-[#bfbfbf]">{tx.date}</div>
-                                    </div>
-                                  </div>
-                                  <div className="text-right">
-                                    <div className="text-sm font-normal text-white">{tx.amount}</div>
-                                    <div
-                                      className={`text-xs font-medium ${
-                                        tx.status === 'Completed'
-                                          ? 'text-green-400'
-                                          : tx.status === 'Pending'
-                                          ? 'text-yellow-400'
-                                          : 'text-red-400'
-                                      }`}
-                                    >
-                                      {tx.status}
-                                    </div>
+                                    {/* Arrow */}
+                                    <div className="absolute top-full right-2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-black"></div>
                                   </div>
                                 </div>
-                              ))}
+                              )}
                             </div>
-                          ) : (
-                            <div className="text-center py-8 text-[#bfbfbf]">
-                              <svg
-                                className="w-12 h-12 mx-auto mb-3 text-[#2b2b2b]"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                                />
-                              </svg>
-                              <p className="text-sm text-[#8a8a8a] mt-1">No transactions yet</p>
-                            </div>
-                          )}
-
-                          {transactionHistory.length > 2 && !showAllHistory && (
-                            <div className="mt-4 text-center space-y-3">
-                              <button
-                                onClick={() => {
-                                  setShowAllHistory(true);
-                                  if (address) {
-                                    fetchAllMigrationHistory(address);
+                          </div>
+                          <div className="flex items-center space-x-3">
+                            <div className="flex-1">
+                              <input
+                                type="text"
+                                inputMode="decimal"
+                                value={fromAmount === '' ? '' : fromAmount}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  if (token === 'AQT') {
+                                    // AQT: integers only (no decimals)
+                                    if (/^\d*$/.test(value) || value === '') {
+                                      handleFromAmountChange(value);
+                                    }
+                                  } else {
+                                    // AERGO: allow digits with optional single decimal point
+                                    if (/^\d*(\.)?\d*$/.test(value) || value === '') {
+                                      handleFromAmountChange(value);
+                                    }
                                   }
                                 }}
-                                className="text-sm text-[#bfbfbf] hover:text-white bg-transparent cursor-pointer px-2 py-1 focus:outline-none"
-                                style={{ cursor: 'pointer' }}
-                              >
-                                View All Transactions
+                                onWheel={(e) => {
+                                  // prevent accidental value changes by scroll
+                                  (e.target as HTMLInputElement).blur();
+                                }}
+                                className={`w-full py-3 border-0 rounded-lg focus:outline-none focus:ring-0 text-lg bg-transparent pl-0 text-white placeholder:text-[#8a8a8a] ${
+                                  inputError ? 'border-red-500' : ''
+                                }`}
+                                placeholder="0.0"
+                                autoComplete="off"
+                                spellCheck={false}
+                              />
+                              {inputError && <div className="mt-1 text-sm text-red-600">{inputError}</div>}
+                            </div>
+                            <button className="flex items-center space-x-2 px-3 py-2 bg-[#0f0f0f] border border-[#161616] rounded-lg hover:bg-[#141414] transition-colors">
+                              <div className="w-5 h-5 bg-gray-700 rounded-full flex items-center justify-center">
+                                <span className="text-white text-xs font-medium">{token[0]}</span>
+                              </div>
+                              <span className="text-sm font-medium text-white">{token}</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Direction Indicator */}
+                        <div className="flex justify-center mb-4">
+                          <div className="w-8 h-8 bg-[#0f0f0f] rounded-lg flex items-center justify-center border border-[#161616]">
+                            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 14l-7 7m0 0l-7-7m7 7V3"
+                              />
+                            </svg>
+                          </div>
+                        </div>
+
+                        {/* To Section */}
+                        <div className="bg-[#0f0f0f] rounded-lg p-4 mb-4 border border-[#161616]">
+                          <div className="flex items-center justify-between mb-2">
+                            <label className="text-sm font-medium text-[#bfbfbf]">To</label>
+                            <span className="text-sm text-[#bfbfbf]">
+                              Balance: {isHppBalanceLoading ? 'Loading...' : `${hppBalance || '0'} HPP`}
+                            </span>
+                          </div>
+                          <div className="flex items-center space-x-3">
+                            <input
+                              type="text"
+                              value={toAmount === '' ? '' : toAmount}
+                              readOnly
+                              className="flex-1 py-3 border-0 rounded-lg bg-transparent text-lg pl-0 cursor-default pointer-events-none text-white"
+                              placeholder="0.0"
+                              style={{ cursor: 'default' }}
+                            />
+                            <div className="flex flex-col space-y-1">
+                              <button className="flex items-center space-x-2 px-3 py-2 bg-[#0f0f0f] border border-[#161616] rounded-lg hover:bg-[#141414] transition-colors">
+                                <div className="w-5 h-5 bg-gray-700 rounded-full flex items-center justify-center">
+                                  <span className="text-white text-xs font-medium">H</span>
+                                </div>
+                                <span className="text-sm font-medium text-white">HPP</span>
                               </button>
                             </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Complete Your Migration Section */}
-                <div className="bg-[#121212] -mx-4 lg:-mx-8 xl:-mx-32 2xl:-mx-64 px-4 lg:px-8 py-8 mt-12 border-t border-[#161616]">
-                  <div className="text-center mb-8">
-                    <h2 className="text-2xl font-medium text-white mb-3">Complete Your Migration</h2>
-                    <p className="text-[#bfbfbf]">
-                      Once you have HPP tokens on Ethereum, bridge them to the native HPP <br />
-                      network for full ecosystem access and benefits.
-                    </p>
-                  </div>
-
-                  <div className="max-w-4xl mx-auto">
-                    <div className="bg-[#111111] border border-[#161616] rounded-[5px] p-6">
-                      <div className="text-center">
-                        <h3 className="text-xl font-normal text-white mb-4">HPP (ETH) → HPP Native</h3>
-                        <p className="text-[#bfbfbf] mb-6">
-                          Use the Arbitrum Canonical Bridge to move your tokens to the native HPP network.
-                        </p>
-                      </div>
-
-                      {/* Flow Diagram */}
-                      <div className="flex items-center justify-center mb-6">
-                        <div className="flex items-center space-x-8">
-                          {/* HPP (ETH) */}
-                          <div className="flex flex-col items-center">
-                            <div className="w-24 h-16 bg-[#1f2937] rounded-lg flex items-center justify-center mb-3">
-                              <span className="text-white text-base font-medium">HPP</span>
-                            </div>
-                            <span className="text-sm text-[#bfbfbf] text-center whitespace-nowrap">Ethereum</span>
-                          </div>
-
-                          {/* Arbitrum Bridge */}
-                          <div className="flex flex-col items-center">
-                            <div className="flex items-center mb-3">
-                              <div className="w-20 sm:w-32 md:w-40 h-0.5 bg-gray-300"></div>
-                              <svg
-                                className="w-4 sm:w-5 md:w-6 h-3 sm:h-4 text-gray-400 mx-0.5 sm:mx-1"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={3}
-                                  d="M2 12h16M12 6l6 6-6 6"
-                                />
-                              </svg>
-                              <div className="w-20 sm:w-32 md:w-40 h-0.5 bg-gray-300"></div>
-                            </div>
-                          </div>
-
-                          {/* HPP Native */}
-                          <div className="flex flex-col items-center">
-                            <div className="w-24 h-16 bg-black rounded-lg flex items-center justify-center mb-3">
-                              <span className="text-white text-base font-medium">HPP</span>
-                            </div>
-                            <span className="text-sm text-[#bfbfbf] text-center whitespace-nowrap">Native</span>
                           </div>
                         </div>
-                      </div>
 
-                      {/* Action Button */}
-                      <div className="text-center">
+                        {/* Migrate Button */}
                         <Button
                           variant="primary"
                           size="lg"
-                          href="https://bridge.arbitrum.io/?destinationChain=190415&sourceChain=ethereum&token=0xe33fbe7584eb79e2673abe576b7ac8c0de62565c"
-                          external={true}
-                          className="flex items-center justify-center space-x-2 mx-auto"
+                          className="w-full font-medium py-3 px-6 rounded-lg hover:brightness-105 transition"
+                          onClick={handleMigrationClick}
+                          disabled={isApproving || isSwapping}
                         >
-                          Go to Bridge
+                          {isApproving ? 'Approving...' : isSwapping ? 'Migrating...' : 'Migrate Tokens'}
                         </Button>
                       </div>
                     </div>
-                  </div>
-                </div>
+                  )}
 
-                {/* Need Help Section */}
-                <NeedHelp />
+                  {/* Transaction History */}
+                  {isConnected && (
+                    <div className="mt-8">
+                      <div className="bg-primary border border-[#161616] rounded-[5px] p-6">
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="text-lg font-medium text-white">Transaction History</h3>
+                          <button
+                            onClick={() => address && fetchTransactionHistory(address)}
+                            disabled={isLoadingHistory}
+                            aria-label="Refresh"
+                            className="flex items-center px-3 py-2 text-sm text-[#bfbfbf] hover:text-white hover:bg-[#141414] rounded-lg transition-colors cursor-pointer"
+                            style={{ cursor: 'pointer' }}
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                              />
+                            </svg>
+                          </button>
+                        </div>
+
+                        {isLoadingHistory ? (
+                          <div className="flex items-center justify-center py-8">
+                            <div
+                              aria-label="Loading"
+                              className="w-6 h-6 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin"
+                            ></div>
+                          </div>
+                        ) : transactionHistory.length > 0 ? (
+                          <div className="space-y-2">
+                            {(showAllHistory ? transactionHistory : transactionHistory.slice(0, 2)).map((tx) => (
+                              <div
+                                key={tx.id}
+                                className="flex items-center justify-between py-3 border-b border-[#161616] last:border-b-0 hover:bg-[#0f0f0f] transition-colors cursor-pointer"
+                                style={{ cursor: 'pointer' }}
+                                onClick={() => {
+                                  const etherscanUrl = createEtherscanLink(tx.hash, tx.network);
+                                  window.open(etherscanUrl, '_blank');
+                                }}
+                              >
+                                <div className="flex items-center space-x-3">
+                                  <div className="w-8 h-8 bg-[#1f2937] rounded-full flex items-center justify-center">
+                                    {tx.icon}
+                                  </div>
+                                  <div>
+                                    <div className="text-sm font-normal text-white">{tx.type}</div>
+                                    <div className="text-xs text-[#bfbfbf]">{tx.date}</div>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <div className="text-sm font-normal text-white">{tx.amount}</div>
+                                  <div
+                                    className={`text-xs font-medium ${
+                                      tx.status === 'Completed'
+                                        ? 'text-green-400'
+                                        : tx.status === 'Pending'
+                                        ? 'text-yellow-400'
+                                        : 'text-red-400'
+                                    }`}
+                                  >
+                                    {tx.status}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center py-8 text-[#bfbfbf]">
+                            <svg
+                              className="w-12 h-12 mx-auto mb-3 text-[#2b2b2b]"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                              />
+                            </svg>
+                            <p className="text-sm text-[#8a8a8a] mt-1">No transactions yet</p>
+                          </div>
+                        )}
+
+                        {transactionHistory.length > 2 && !showAllHistory && (
+                          <div className="mt-4 text-center space-y-3">
+                            <button
+                              onClick={() => {
+                                setShowAllHistory(true);
+                                if (address) {
+                                  fetchAllMigrationHistory(address);
+                                }
+                              }}
+                              className="text-sm text-[#bfbfbf] hover:text-white bg-transparent cursor-pointer px-2 py-1 focus:outline-none"
+                              style={{ cursor: 'pointer' }}
+                            >
+                              View All Transactions
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
 
+          {/* Step 2 Section */}
+          <div className="p-4 lg:p-8 max-w-6xl mx-auto">
+            <h2 className="text-[30px] font-black text-white leading-[1.5em] mb-8 mt-12.5 min-[1400px]:mt-25">
+              Step 2: Finalize Migration to HPP(Mainnet)
+            </h2>
+            {/* Migration Cards */}
+            <div className="space-y-8">
+              {/* Step 2 Card */}
+              <div className="bg-[#121212] border border-[#161616] rounded-[5px]">
+                <div className="p-6">
+                  <div className="flex items-start mb-5">
+                    <div className="flex-1">
+                      <h2 className="text-xl font-semibold text-white mb-3 tracking-[0em] leading-[1]">
+                        HPP(ETH) → HPP(Mainnet)
+                      </h2>
+                      <p className="text-base font-normal text-white tracking-[0.8px] text-left leading-[1.5]">
+                        Once you have HPP tokens on Ethereum, bridge them to the HPP Mainnet for full ecosystem access
+                        (listings, governance, utilities, and more).
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Flow Diagram */}
+                  <div className="w-full h-min flex flex-row justify-center items-center p-5 bg-[rgba(255,255,255,0.05)] overflow-hidden rounded-[5px]">
+                    <div className="flex items-center">
+                      {/* HPP (ETH) */}
+                      <div className="flex flex-col items-center">
+                        <div className="w-20 h-20 min-[810px]:w-25 min-[810px]:h-25 min-[1440px]:w-27.5 min-[1440px]:h-27.5 rounded-lg flex items-center justify-center mb-2.5">
+                          <Image src={HPPEth} alt="HPP (ETH)" />
+                        </div>
+                        <span className="text-base leading-[1.2em] tracking-[0.8px] font-normal text-white text-center whitespace-nowrap">
+                          HPP(ETH)
+                        </span>
+                      </div>
+
+                      {/* HPP Bridge */}
+                      <div className="flex flex-col items-center">
+                        <div className="flex items-center mb-3">
+                          <svg
+                            className="w-4 sm:w-5 md:w-6 h-3 sm:h-4 text-gray-400 mx-0.5 sm:mx-1"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={3}
+                              d="M2 12h16M12 6l6 6-6 6"
+                            />
+                          </svg>
+                        </div>
+                      </div>
+
+                      {/* HPP Mainnet */}
+                      <div className="flex flex-col items-center">
+                        <div className="w-20 h-20 min-[810px]:w-25 min-[810px]:h-25 min-[1440px]:w-27.5 min-[1440px]:h-27.5 rounded-lg flex items-center justify-center mb-2.5">
+                          <Image src={HPPMainnet} alt="HPP Mainnet" />
+                        </div>
+                        <span className="text-base leading-[1.2em] tracking-[0.8px] font-normal text-white text-center whitespace-nowrap">
+                          HPP(Mainnet)
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex justify-center mt-5">
+                    <Button
+                      variant="primary"
+                      size="md"
+                      href="https://bridge.arbitrum.io/?destinationChain=190415&sourceChain=ethereum&token=0xe33fbe7584eb79e2673abe576b7ac8c0de62565c"
+                      external={true}
+                      className="flex items-center justify-center space-x-2 whitespace-nowrap"
+                    >
+                      Go to HPP Bridge
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Need Help Section */}
+          <NeedHelp />
+
+          {/* Footer */}
           <Footer />
         </main>
       </div>
