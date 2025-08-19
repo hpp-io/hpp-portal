@@ -2,7 +2,7 @@ import React from 'react';
 
 interface ButtonProps {
   children: React.ReactNode;
-  variant?: 'primary' | 'secondary' | 'white';
+  variant?: 'primary' | 'secondary' | 'white' | 'black';
   size?: 'sm' | 'md' | 'lg';
   className?: string;
   onClick?: () => void;
@@ -34,6 +34,7 @@ export default function Button({
     primary: 'bg-primary text-white focus:ring-transparent',
     secondary: 'bg-gray-100 text-gray-900 focus:ring-transparent',
     white: 'bg-white text-black border border-gray-200 focus:ring-transparent',
+    black: 'bg-black text-white focus:ring-transparent',
   } as const;
 
   const sizeClasses = {
