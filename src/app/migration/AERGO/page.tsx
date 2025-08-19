@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Metadata } from 'next';
-import MigrationClient from '../../MigrationClient';
+import MigrationClient from '../MigrationClient';
 
 export const metadata: Metadata = {
   title: 'Migration (AERGO) | HPP Portal',
