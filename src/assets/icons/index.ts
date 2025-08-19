@@ -34,3 +34,8 @@ export { default as Eigen } from './Eigen.png';
 export { default as Orbiter } from './Orbiter.png';
 export { default as Conduit } from './Conduit.png';
 export { default as FooterHPPLogo } from './FooterHPPlogo.png';
+export { default as AergoMainnet } from './Aergo(Mainnet).png';
+export { default as HPPEth } from './HPP(ETH).png';
+export { default as HPPMainnet } from './HPP(Mainnet).png';
+export { default as AergoEth } from './Aergo(ETH).png';
+export { default as AqtEth } from './Aqt(ETH).png';
