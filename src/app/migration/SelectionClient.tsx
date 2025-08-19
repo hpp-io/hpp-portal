@@ -68,16 +68,12 @@ export default function SelectionClient() {
                     I hold AERGO tokens on AERGO Mainnet or Ethereum.
                   </p>
                   <div className="space-y-2">
-                    <div className="flex items-center">
-                      <div className="w-4 h-4 bg-white rounded-sm flex items-center justify-center mr-3">
-                        <CheckIcon className="w-2.5 h-2.5 text-black" />
-                      </div>
+                    <div className="flex items-center space-x-3">
+                      <CheckIcon className="w-4.5 h-4.5" />
                       <span className="text-white text-sm">AERGO on AERGO Mainnet</span>
                     </div>
-                    <div className="flex items-center">
-                      <div className="w-4 h-4 bg-white rounded-sm flex items-center justify-center mr-3">
-                        <CheckIcon className="w-2.5 h-2.5 text-black" />
-                      </div>
+                    <div className="flex items-center space-x-3">
+                      <CheckIcon className="w-4.5 h-4.5" />
                       <span className="text-white text-sm">AERGO on Ethereum</span>
                     </div>
                   </div>
@@ -105,10 +101,8 @@ export default function SelectionClient() {
                     I hold AQT tokens on Ethereum.
                   </p>
                   <div className="space-y-2">
-                    <div className="flex items-center">
-                      <div className="w-4 h-4 bg-white rounded-sm flex items-center justify-center mr-3">
-                        <CheckIcon className="w-2.5 h-2.5 text-black" />
-                      </div>
+                    <div className="flex items-center space-x-3">
+                      <CheckIcon className="w-4.5 h-4.5" />
                       <span className="text-white text-sm">AQT on Ethereum</span>
                     </div>
                   </div>
