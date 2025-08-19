@@ -191,7 +191,49 @@ export const bridgeData = {
 
 // Migration Page Data (if needed in the future)
 export const migrationData = {
-  // Migration specific data can be added here
+  faq: [
+    {
+      id: 1,
+      question: 'Why do I need to migrate my tokens?',
+      answer:
+        'With the launch of the HPP Public Mainnet, AERGO and AQT tokens are being unified into the new HPP token economy. Migration ensures your tokens are fully functional across governance, listings, and the broader ecosystem.',
+    },
+    {
+      id: 2,
+      question: 'Which tokens can be migrated?',
+      answer: '• AERGO Native\n• AERGO ERC-20\n• AQT ERC-20\n\nAll of these will be migrated into the HPP tokens.',
+    },
+    {
+      id: 3,
+      question: 'What are the steps of migration?',
+      answer:
+        'Step 1: Initiate Swap\n• Convert your AERGO(Native/ERC-20) and AQT(ERC-20 only) into HPP(Ethereum).\n• This step consolidates all legacy assets under a single format for security and consistency.\n\nStep 2: Complete Swap\n• Convert your HPP(Ethereum) tokens into HPP(Mainnet).\n• The HPP(Mainnet) token is the primary currency for exchange listings, DAO governance, and ecosystem participation.\n\nOnly after this step are your tokens fully usable within the HPP Public Mainnet.',
+    },
+    {
+      id: 4,
+      question: 'Why is a two-step process required?',
+      answer:
+        'The two-step structure ensures maximum security and integrity of the migration. By unifying all legacy tokens into HPP(Ethereum) first, the process prevents fragmentation and enables a controlled, transparent final migration into the HPP Public Mainnet.',
+    },
+    {
+      id: 5,
+      question: 'What happens if I only complete Step 1?',
+      answer:
+        'If you stop at Step 1, you will hold HPP(Ethereum), which is valid but not the primary utility token. To participate in governance, exchange listings, or ecosystem dApps, you must complete Step 2 to obtain HPP(Mainnet).',
+    },
+    {
+      id: 6,
+      question: 'Will there be a deadline for migration?',
+      answer:
+        'Migration will remain open for a sufficient period to ensure all users can complete it safely. Deadlines, if any, will be announced well in advance through official channels.',
+    },
+    {
+      id: 7,
+      question: 'Where can I find the migration portal?',
+      answer:
+        'The official migration portal link will be published on the official HPP website and social channels. Always ensure to use the official link to avoid phishing risks.',
+    },
+  ],
 };
 
 // Common UI Data
