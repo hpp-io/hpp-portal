@@ -88,7 +88,7 @@ export default function Sidebar({ navItems, communityLinks, isOpen, onClose }: S
         ].join(' ')}
       >
         {/* Navigation */}
-        <nav className="flex-1 py-2 px-0">
+        <nav className="flex-1 px-0">
           <ul className={`space-y-0 ${isOpen ? 'max-[1199px]:pt-4' : ''}`}>
             {navItems.map((item, index) => {
               const { href, external } = getHrefAndExternal(item);
