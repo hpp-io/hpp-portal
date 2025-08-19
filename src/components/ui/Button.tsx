@@ -55,16 +55,16 @@ export default function Button({
         rel={external ? 'noopener noreferrer' : undefined}
         className={classes}
       >
-        {icon}
         {children}
+        {icon}
       </a>
     );
   }
 
   return (
     <button className={classes} onClick={onClick} disabled={disabled}>
-      {icon}
       {children}
+      {icon}
     </button>
   );
 }
