@@ -23,6 +23,7 @@ import Big from 'big.js';
 import Image from 'next/image';
 import { AergoMainnet, HPPEth, HPPMainnet, AergoEth, AqtEth } from '@/assets/icons';
 import { useRouter } from 'next/navigation';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 
 // Constants
 const AERGO_DECIMAL = 18;
@@ -837,7 +838,7 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
 
                     {/* Flow Diagram */}
                     <div className="w-full h-min flex flex-row justify-center items-center p-5 bg-[rgba(18,18,18,0.1)] overflow-hidden rounded-[5px]">
-                      <div className="flex items-center">
+                      <div className="flex items-center gap-15">
                         {/* AERGO Mainnet */}
                         <div className="flex flex-col items-center">
                           <div className="w-20 h-20 min-[810px]:w-25 min-[810px]:h-25 min-[1440px]:w-27.5 min-[1440px]:h-27.5 rounded-lg flex items-center justify-center mb-2.5">
@@ -851,19 +852,12 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                         {/* Aergo Bridge */}
                         <div className="flex flex-col items-center">
                           <div className="flex items-center mb-3">
-                            <svg
-                              className="w-4 sm:w-5 md:w-6 h-3 sm:h-4 text-gray-400 mx-0.5 sm:mx-1"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={3}
-                                d="M2 12h16M12 6l6 6-6 6"
-                              />
-                            </svg>
+                            <DotLottieReact
+                              src="/lotties/RightArrow.lottie"
+                              autoplay
+                              loop
+                              className="w-25 h-25 min-[810px]:w-[150px] min-[810px]:h-[150px]"
+                            />
                           </div>
                         </div>
 
@@ -883,7 +877,7 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                     <div className="flex justify-center mt-5">
                       <Button
                         variant="black"
-                        size="md"
+                        size="lg"
                         href="https://bridge.aergo.io/"
                         external={true}
                         className="flex items-center justify-center space-x-2 whitespace-nowrap"
@@ -912,7 +906,7 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                   {/* Flow Diagram */}
                   <div className="w-full h-min flex flex-row justify-center items-center p-5 bg-[rgba(18,18,18,0.1)] overflow-hidden rounded-[5px]">
                     {/* <div className="w-full h-min flex flex-row justify-center items-center p-[30px] bg-[rgba(255,255,255,0.05)] overflow-hidden rounded-[5px] mb-6"> */}
-                    <div className="flex items-center">
+                    <div className="flex items-center gap-15">
                       {/* From token (ETH) */}
                       <div className="flex flex-col items-center">
                         <div className="w-20 h-20 min-[810px]:w-25 min-[810px]:h-25 min-[1440px]:w-27.5 min-[1440px]:h-27.5 rounded-lg flex items-center justify-center mb-2.5">
@@ -926,19 +920,12 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                       {/* HPP Bridge */}
                       <div className="flex flex-col items-center">
                         <div className="flex items-center mb-3">
-                          <svg
-                            className="w-4 sm:w-5 md:w-6 h-3 sm:h-4 text-gray-400 mx-0.5 sm:mx-1"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={3}
-                              d="M2 12h16M12 6l6 6-6 6"
-                            />
-                          </svg>
+                          <DotLottieReact
+                            src="/lotties/RightArrow.lottie"
+                            autoplay
+                            loop
+                            className="w-25 h-25 min-[810px]:w-[150px] min-[810px]:h-[150px]"
+                          />
                         </div>
                       </div>
 
@@ -980,7 +967,7 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                       </div>
                     ) : (
                       <div className="text-center mt-5">
-                        <Button variant="black" size="md" onClick={open} className="cursor-pointer">
+                        <Button variant="black" size="lg" onClick={open} className="cursor-pointer">
                           Connect Wallet
                         </Button>
                       </div>
@@ -1290,7 +1277,7 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
 
                   {/* Flow Diagram */}
                   <div className="w-full h-min flex flex-row justify-center items-center p-5 bg-[rgba(255,255,255,0.05)] overflow-hidden rounded-[5px]">
-                    <div className="flex items-center">
+                    <div className="flex items-center gap-15">
                       {/* HPP (ETH) */}
                       <div className="flex flex-col items-center">
                         <div className="w-20 h-20 min-[810px]:w-25 min-[810px]:h-25 min-[1440px]:w-27.5 min-[1440px]:h-27.5 rounded-lg flex items-center justify-center mb-2.5">
@@ -1304,19 +1291,12 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                       {/* HPP Bridge */}
                       <div className="flex flex-col items-center">
                         <div className="flex items-center mb-3">
-                          <svg
-                            className="w-4 sm:w-5 md:w-6 h-3 sm:h-4 text-gray-400 mx-0.5 sm:mx-1"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={3}
-                              d="M2 12h16M12 6l6 6-6 6"
-                            />
-                          </svg>
+                          <DotLottieReact
+                            src="/lotties/RightArrow.lottie"
+                            autoplay
+                            loop
+                            className="w-25 h-25 min-[810px]:w-[150px] min-[810px]:h-[150px]"
+                          />
                         </div>
                       </div>
 
@@ -1336,7 +1316,7 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                   <div className="flex justify-center mt-5">
                     <Button
                       variant="primary"
-                      size="md"
+                      size="lg"
                       href="https://bridge.arbitrum.io/?destinationChain=190415&sourceChain=ethereum&token=0xe33fbe7584eb79e2673abe576b7ac8c0de62565c"
                       external={true}
                       className="flex items-center justify-center space-x-2 whitespace-nowrap"
