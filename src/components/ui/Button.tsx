@@ -33,13 +33,13 @@ export default function Button({
   const variantClasses = {
     primary: 'bg-primary text-white focus:ring-transparent',
     secondary: 'bg-gray-100 text-gray-900 focus:ring-transparent',
-    white: 'bg-white text-black border border-gray-200 focus:ring-transparent',
+    white: '!bg-white !text-black border border-gray-200 focus:ring-transparent',
     black: 'bg-black text-white focus:ring-transparent',
   } as const;
 
   const sizeClasses = {
     sm: 'px-3 py-1.5 text-sm',
-    md: 'px-5 py-3 text-sm text-semibold',
+    md: 'px-5 py-3 text-base text-semibold',
     lg: 'px-5 py-4 text-semibold leading-[1]',
   };
 
