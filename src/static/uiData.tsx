@@ -135,8 +135,7 @@ export const ecosystemData = {
     },
     {
       name: 'Conduit',
-      description:
-        'Conduit is a Rollups-as-a-Service platform that lets teams launch and scale fully managed, high-performance custom chains with powerful infrastructure and enterprise-grade security.',
+      description: 'Conduit is a Rollups-as-a-Service platform for scalable, secure custom chains.',
       icon: Conduit,
     },
   ],
