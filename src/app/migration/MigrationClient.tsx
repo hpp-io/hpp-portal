@@ -888,34 +888,34 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                       <div className="flex items-center gap-6 min-[480px]:gap-8 min-[640px]:gap-12 min-[810px]:gap-15">
                         {/* AERGO Mainnet */}
                         <div className="flex flex-col items-center">
-                          <div className="w-20 h-20 min-[810px]:w-25 min-[810px]:h-25 min-[1440px]:w-27.5 min-[1440px]:h-27.5 rounded-lg flex items-center justify-center mb-2.5">
+                          <div className="w-10 h-10 min-[400px]:w-20 min-[400px]:h-20 min-[810px]:w-25 min-[810px]:h-25 min-[1440px]:w-27.5 min-[1440px]:h-27.5 rounded-lg flex items-center justify-center mb-2.5">
                             <Image src={AergoMainnet} alt="AERGO Mainnet" />
                           </div>
-                          <span className="text-base leading-[1.2em] tracking-[0.8px] font-normal text-white text-center -ml-2.5">
+                          <span className="text-sm min-[400px]:text-base leading-[1.2em] tracking-[0.8px] font-normal text-white text-center -ml-1 min-[400px]:-ml-2.5">
                             AERGO
                             <br className="block min-[810px]:hidden" />
                             (Mainnet)
                           </span>
                         </div>
 
-                        {/* Aergo Bridge */}
+                        {/* Migration Arrow */}
                         <div className="flex flex-col items-center">
                           <div className="flex items-center mb-3">
                             <DotLottieReact
                               src="/lotties/RightArrow.lottie"
                               autoplay
                               loop
-                              className="w-25 h-25 min-[810px]:w-[150px] min-[810px]:h-[150px]"
+                              className="w-15 h-15 min-[400px]:w-25 min-[400px]:h-25 min-[810px]:w-[150px] min-[810px]:h-[150px]"
                             />
                           </div>
                         </div>
 
                         {/* HPP (ETH) */}
                         <div className="flex flex-col items-center">
-                          <div className="w-20 h-20 min-[810px]:w-25 min-[810px]:h-25 min-[1440px]:w-27.5 min-[1440px]:h-27.5 rounded-lg flex items-center justify-center mb-2.5">
+                          <div className="w-10 h-10 min-[400px]:w-20 min-[400px]:h-20 min-[810px]:w-25 min-[810px]:h-25 min-[1440px]:w-27.5 min-[1440px]:h-27.5 rounded-lg flex items-center justify-center mb-2.5">
                             <Image src={HPPEth} alt="HPP (ETH)" />
                           </div>
-                          <span className="text-base leading-[1.2em] tracking-[0.8px] font-normal text-white text-center -ml-2.5">
+                          <span className="text-sm min-[400px]:text-base leading-[1.2em] tracking-[0.8px] font-normal text-white text-center -ml-1 min-[400px]:-ml-2.5">
                             HPP
                             <br className="block min-[810px]:hidden" />
                             (ETH)
@@ -959,34 +959,34 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                     <div className="flex items-center gap-6 min-[480px]:gap-8 min-[640px]:gap-12 min-[810px]:gap-15">
                       {/* From token (ETH) */}
                       <div className="flex flex-col items-center">
-                        <div className="w-20 h-20 min-[810px]:w-25 min-[810px]:h-25 min-[1440px]:w-27.5 min-[1440px]:h-27.5 rounded-lg flex items-center justify-center mb-2.5">
+                        <div className="w-10 h-10 min-[400px]:w-20 min-[400px]:h-20 min-[810px]:w-25 min-[810px]:h-25 min-[1440px]:w-27.5 min-[1440px]:h-27.5 rounded-lg flex items-center justify-center mb-2.5">
                           <Image src={token === 'AERGO' ? AergoEth : AqtEth} alt={`${token}(ETH)`} />
                         </div>
-                        <span className="text-base leading-[1.2em] tracking-[0.8px] font-normal text-white text-center">
+                        <span className="text-sm min-[400px]:text-base leading-[1.2em] tracking-[0.8px] font-normal text-white text-center -ml-1 min-[400px]:-ml-2.5">
                           {token}
                           <br className="block min-[810px]:hidden" />
                           (ETH)
                         </span>
                       </div>
 
-                      {/* HPP Bridge */}
+                      {/* Migration Arrow */}
                       <div className="flex flex-col items-center">
                         <div className="flex items-center mb-3">
                           <DotLottieReact
                             src="/lotties/RightArrow.lottie"
                             autoplay
                             loop
-                            className="w-25 h-25 min-[810px]:w-[150px] min-[810px]:h-[150px]"
+                            className="w-15 h-15 min-[400px]:w-25 min-[400px]:h-25 min-[810px]:w-[150px] min-[810px]:h-[150px]"
                           />
                         </div>
                       </div>
 
                       {/* HPP (ETH) */}
                       <div className="flex flex-col items-center">
-                        <div className="w-20 h-20 min-[810px]:w-25 min-[810px]:h-25 min-[1440px]:w-27.5 min-[1440px]:h-27.5 rounded-lg flex items-center justify-center mb-2.5">
+                        <div className="w-10 h-10 min-[400px]:w-20 min-[400px]:h-20 min-[810px]:w-25 min-[810px]:h-25 min-[1440px]:w-27.5 min-[1440px]:h-27.5 rounded-lg flex items-center justify-center mb-2.5">
                           <Image src={HPPEth} alt="HPP (ETH)" />
                         </div>
-                        <span className="text-base leading-[1.2em] tracking-[0.8px] font-normal text-white text-center ml-[-10px]">
+                        <span className="text-sm min-[400px]:text-base leading-[1.2em] tracking-[0.8px] font-normal text-white text-center -ml-1 min-[400px]:-ml-2.5">
                           HPP
                           <br className="block min-[810px]:hidden" />
                           (ETH)
@@ -1360,34 +1360,34 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                     <div className="flex items-center gap-6 min-[480px]:gap-8 min-[640px]:gap-12 min-[810px]:gap-15">
                       {/* HPP (ETH) */}
                       <div className="flex flex-col items-center">
-                        <div className="w-20 h-20 min-[810px]:w-25 min-[810px]:h-25 min-[1440px]:w-27.5 min-[1440px]:h-27.5 rounded-lg flex items-center justify-center mb-2.5">
+                        <div className="w-10 h-10 min-[400px]:w-20 min-[400px]:h-20 min-[810px]:w-25 min-[810px]:h-25 min-[1440px]:w-27.5 min-[1440px]:h-27.5 rounded-lg flex items-center justify-center mb-2.5">
                           <Image src={HPPEth} alt="HPP (ETH)" />
                         </div>
-                        <span className="text-base leading-[1.2em] tracking-[0.8px] font-normal text-white text-center ml-[-10px]">
+                        <span className="text-sm min-[400px]:text-base leading-[1.2em] tracking-[0.8px] font-normal text-white text-center -ml-1 min-[400px]:-ml-2.5">
                           HPP
                           <br className="block min-[810px]:hidden" />
                           (ETH)
                         </span>
                       </div>
 
-                      {/* HPP Bridge */}
+                      {/* Migration Arrow */}
                       <div className="flex flex-col items-center">
                         <div className="flex items-center mb-3">
                           <DotLottieReact
                             src="/lotties/RightArrow.lottie"
                             autoplay
                             loop
-                            className="w-25 h-25 min-[810px]:w-[150px] min-[810px]:h-[150px]"
+                            className="w-15 h-15 min-[400px]:w-25 min-[400px]:h-25 min-[810px]:w-[150px] min-[810px]:h-[150px]"
                           />
                         </div>
                       </div>
 
                       {/* HPP Mainnet */}
                       <div className="flex flex-col items-center">
-                        <div className="w-20 h-20 min-[810px]:w-25 min-[810px]:h-25 min-[1440px]:w-27.5 min-[1440px]:h-27.5 rounded-lg flex items-center justify-center mb-2.5">
+                        <div className="w-10 h-10 min-[400px]:w-20 min-[400px]:h-20 min-[810px]:w-25 min-[810px]:h-25 min-[1440px]:w-27.5 min-[1440px]:h-27.5 rounded-lg flex items-center justify-center mb-2.5">
                           <Image src={HPPMainnet} alt="HPP Mainnet" />
                         </div>
-                        <span className="text-base leading-[1.2em] tracking-[0.8px] font-normal text-white text-center -ml-2.5">
+                        <span className="text-sm min-[400px]:text-base leading-[1.2em] tracking-[0.8px] font-normal text-white text-center -ml-1 min-[400px]:-ml-2.5">
                           HPP
                           <br className="block min-[810px]:hidden" />
                           (Mainnet)
