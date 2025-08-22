@@ -19,6 +19,7 @@ import {
 import { navItems, communityLinks } from '@/config/navigation';
 import { parseUnits, formatUnits, erc20Abi } from 'viem';
 import Big from 'big.js';
+import dayjs from 'dayjs';
 import Image from 'next/image';
 import {
   AergoMainnet,
@@ -32,6 +33,8 @@ import {
   HPPToken,
   CompleteIcon,
   PendingIcon,
+  FailedIcon,
+  TransactionsIcon,
 } from '@/assets/icons';
 import { useRouter } from 'next/navigation';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
@@ -39,14 +42,22 @@ import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 // Constants
 const AERGO_DECIMAL = 18;
 const HISTORY_PAGE_SIZE = 20;
-const USE_CONTRACT_CENTRIC_HISTORY = true;
 
 // AQT fixed rate: 1 AQT = 7.43026 HPP (no decimals allowed for AQT input)
 const AQT_TO_HPP_RATE = new Big('7.43026');
+const AERGO_TO_HPP_RATE = new Big('1');
 
-function computeHppFromAqt(amount: string): string {
+function computeHppFromToken(amount: string, token: MigrationToken): string {
   try {
-    const hpp = new Big(amount || '0').times(AQT_TO_HPP_RATE);
+    let rate: Big;
+    if (token === 'AQT') {
+      rate = AQT_TO_HPP_RATE;
+    } else {
+      // AERGO
+      rate = AERGO_TO_HPP_RATE;
+    }
+
+    const hpp = new Big(amount || '0').times(rate);
     // Keep up to 5 decimals as the rate has 5 dp
     return hpp.toFixed(5);
   } catch {
@@ -57,7 +68,7 @@ function computeHppFromAqt(amount: string): string {
 // Transaction interface
 interface Transaction {
   id: string;
-  type: 'Migration' | 'Approval' | 'Other';
+  type: string;
   date: string;
   amount: string;
   status: 'Pending' | 'Completed' | 'Failed';
@@ -82,7 +93,6 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
   const [transactionHistory, setTransactionHistory] = useState<Transaction[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [showAllHistory, setShowAllHistory] = useState(false);
-
   const approvalInFlightRef = useRef<boolean>(false);
   const migrationInFlightRef = useRef<boolean>(false);
 
@@ -261,20 +271,66 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
 
   // No background polling: status changes only on explicit refresh/View All
 
-  // Decode first uint256 argument (amount) from contract call input
-  const decodeAmountFromInput = (input?: string): string | null => {
-    try {
-      if (!input || input.length < 10 + 64) return null;
-      const amountHex = input.slice(10, 10 + 64);
-      const amountBigInt = BigInt(`0x${amountHex}`);
-      const raw = formatUnits(amountBigInt, 18);
-      const num = parseFloat(raw);
-      if (isNaN(num)) return null;
-      return num.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-    } catch {
-      return null;
+  // Polling state management
+  const pollingRefs = useRef<Map<string, NodeJS.Timeout>>(new Map());
+
+  // Start polling for a specific transaction
+  const startTransactionPolling = (txHash: string, walletAddress: string) => {
+    // Clear any existing polling for this transaction
+    if (pollingRefs.current.has(txHash)) {
+      clearTimeout(pollingRefs.current.get(txHash)!);
     }
+
+    const pollTransaction = async () => {
+      try {
+        // Check if transaction is still pending in our local state
+        const currentHistory = transactionHistory.find((tx) => tx.id === txHash);
+
+        if (!currentHistory || currentHistory.status !== 'Pending') {
+          // Transaction is no longer pending, stop polling
+          pollingRefs.current.delete(txHash);
+          return;
+        }
+
+        // Fetch latest history to check for status updates
+        const fetchedTransactions = await fetchTransactionHistory(walletAddress, { page: 1, append: false });
+
+        // Check if the specific transaction is now completed in the fetched data
+        if (fetchedTransactions && fetchedTransactions.length > 0) {
+          const completedTx = fetchedTransactions.find((tx: Transaction) => tx.id === txHash);
+
+          if (completedTx) {
+            // Transaction found in server data, it's completed
+            pollingRefs.current.delete(txHash);
+            return;
+          }
+        }
+
+        // Transaction still not found in server data, continue polling
+        const timeoutId = setTimeout(pollTransaction, 10000); // Poll every 10 seconds
+        pollingRefs.current.set(txHash, timeoutId);
+      } catch (error) {
+        console.error('Error during transaction polling:', error);
+        // Continue polling even if there's an error
+        const timeoutId = setTimeout(pollTransaction, 15000); // Retry after 15 seconds on error
+        pollingRefs.current.set(txHash, timeoutId);
+      }
+    };
+
+    // Start first poll after 5 seconds
+    const initialTimeoutId = setTimeout(pollTransaction, 5000);
+    pollingRefs.current.set(txHash, initialTimeoutId);
   };
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      pollingRefs.current.forEach((timeoutId) => {
+        clearTimeout(timeoutId);
+      });
+      pollingRefs.current.clear();
+    };
+  }, []);
 
   // Fetch ALL migration history (no pagination in UI)
   const fetchAllMigrationHistory = async (walletAddress: string) => {
@@ -288,81 +344,44 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
       const aggregated: Transaction[] = [];
       const seen = new Set<string>();
 
-      if (USE_CONTRACT_CENTRIC_HISTORY) {
-        let page = 1;
-        while (true) {
-          const res = await fetch(
-            `${baseUrl}?module=account&action=txlist&address=${MIGRATION_CONTRACT_ADDRESS}&startblock=0&endblock=99999999&page=${page}&offset=${HISTORY_PAGE_SIZE}&sort=desc&apikey=${apiKey}`
-          );
-          const data = await res.json();
-          if (data.status !== '1') break;
+      let page = 1;
+      while (true) {
+        const res = await fetch(
+          `${baseUrl}?module=account&action=tokentx&address=${walletAddress}&startblock=0&endblock=99999999&page=${page}&offset=${HISTORY_PAGE_SIZE}&sort=desc&apikey=${apiKey}`
+        );
+        const data = await res.json();
+        if (data.status !== '1') break;
 
-          const walletLc = walletAddress.toLowerCase();
-          const mapped: Transaction[] = (data.result || [])
-            .filter((tx: any) => tx.from?.toLowerCase() === walletLc)
-            .map((tx: any) => {
-              const type: Transaction['type'] = 'Migration';
-              let status: Transaction['status'] = 'Completed';
-              if (tx.confirmations === '0') status = 'Pending';
-              else if (tx.isError === '1') status = 'Failed';
-              const amt = decodeAmountFromInput(tx.input);
-              return {
-                id: tx.hash,
-                type,
-                date: new Date(parseInt(tx.timeStamp) * 1000).toLocaleString('ko-KR'),
-                amount: amt ? `${amt} ${token} → ${amt} HPP` : `${token} → HPP`,
-                status,
-                hash: tx.hash,
-                network,
-                icon: getTransactionIcon(type, status),
-              } as Transaction;
-            });
+        const walletLc = walletAddress.toLowerCase();
+        const contractLc = MIGRATION_CONTRACT_ADDRESS.toLowerCase();
 
-          for (const t of mapped) {
-            if (!seen.has(t.id)) {
-              seen.add(t.id);
-              aggregated.push(t);
-            }
-          }
-
-          const pageHasMore = Array.isArray(data.result) ? data.result.length === HISTORY_PAGE_SIZE : false;
-          if (!pageHasMore) break;
-          page += 1;
-          if (page > 100) break; // hard cap safety
-        }
-      } else {
-        let page = 1;
-        while (true) {
-          const normalTxResponse = await fetch(
-            `${baseUrl}?module=account&action=txlist&address=${walletAddress}&startblock=0&endblock=99999999&page=${page}&offset=${HISTORY_PAGE_SIZE}&sort=desc&apikey=${apiKey}`
-          );
-          const internalTxResponse = await fetch(
-            `${baseUrl}?module=account&action=txlistinternal&address=${walletAddress}&startblock=0&endblock=99999999&page=${page}&offset=${HISTORY_PAGE_SIZE}&sort=desc&apikey=${apiKey}`
-          );
-          const normalTxData = await normalTxResponse.json();
-          const internalTxData = await internalTxResponse.json();
-          if (normalTxData.status !== '1' && internalTxData.status !== '1') break;
-
-          const allTransactions = [...(normalTxData.result || []), ...(internalTxData.result || [])];
-          const filtered = allTransactions.filter(
-            (tx: any) => tx.to?.toLowerCase() === MIGRATION_CONTRACT_ADDRESS.toLowerCase()
-          );
-
-          const mapped: Transaction[] = filtered.map((tx: any) => {
-            const type: Transaction['type'] = 'Migration';
+        const mapped: Transaction[] = (data.result || [])
+          .filter((tx: any) => {
+            // Find transfers where user sends tokens TO the migration contract
+            return tx.from?.toLowerCase() === walletLc && tx.to?.toLowerCase() === contractLc;
+          })
+          .map((tx: any) => {
+            const type = `Migration: ${token} → HPP`;
             let status: Transaction['status'] = 'Completed';
-            if (tx.confirmations === '0') status = 'Pending';
-            else if (tx.isError === '1') status = 'Failed';
-            const amt = decodeAmountFromInput(tx.input);
-            let hppAmount = amt;
-            if (token === 'AQT' && amt) {
-              hppAmount = computeHppFromAqt(amt);
-            }
+
+            // Get actual token amount from the transfer
+            const fromAmount = formatUnits(BigInt(tx.value), parseInt(tx.tokenDecimal));
+            let toAmount = fromAmount;
+
+            // Calculate HPP amount using the conversion rate
+            toAmount = computeHppFromToken(fromAmount, token);
+
             return {
               id: tx.hash,
               type,
-              date: new Date(parseInt(tx.timeStamp) * 1000).toLocaleString('ko-KR'),
-              amount: amt ? `${amt} ${token} → ${hppAmount} HPP` : `${token} → HPP`,
+              date: dayjs(parseInt(tx.timeStamp) * 1000).format('YYYY-MM-DD HH:mm:ss'),
+              amount: `${parseFloat(fromAmount).toLocaleString('en-US', {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 6,
+              })} ${token} → ${parseFloat(toAmount).toLocaleString('en-US', {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 6,
+              })} HPP`,
               status,
               hash: tx.hash,
               network,
@@ -370,24 +389,17 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
             } as Transaction;
           });
 
-          for (const t of mapped) {
-            if (!seen.has(t.id)) {
-              seen.add(t.id);
-              aggregated.push(t);
-            }
+        for (const t of mapped) {
+          if (!seen.has(t.id)) {
+            seen.add(t.id);
+            aggregated.push(t);
           }
-
-          const normalHasMore = Array.isArray(normalTxData.result)
-            ? normalTxData.result.length === HISTORY_PAGE_SIZE
-            : false;
-          const internalHasMore = Array.isArray(internalTxData.result)
-            ? internalTxData.result.length === HISTORY_PAGE_SIZE
-            : false;
-          const mayHaveMore = normalHasMore || internalHasMore;
-          if (!mayHaveMore) break;
-          page += 1;
-          if (page > 100) break; // hard cap safety
         }
+
+        const pageHasMore = Array.isArray(data.result) ? data.result.length === HISTORY_PAGE_SIZE : false;
+        if (!pageHasMore) break;
+        page += 1;
+        if (page > 100) break; // hard cap safety
       }
 
       // newest first
@@ -412,6 +424,11 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
 
     // Refetch balance after successful migration
     refetchHppBalance();
+
+    // Start polling for transaction status updates
+    if (address && migrationHash) {
+      startTransactionPolling(migrationHash, address);
+    }
   };
 
   // Fetch transaction history from Etherscan (supports pagination)
@@ -425,89 +442,65 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
       const apiKey = process.env.NEXT_PUBLIC_ETHERSCAN_API_KEY;
       const baseUrl = network === 'mainnet' ? 'https://api.etherscan.io/api' : 'https://api-sepolia.etherscan.io/api';
 
-      if (USE_CONTRACT_CENTRIC_HISTORY) {
-        // Query only the migration contract txs, then filter by user address as the sender
-        const contractTxResponse = await fetch(
-          `${baseUrl}?module=account&action=txlist&address=${MIGRATION_CONTRACT_ADDRESS}&startblock=0&endblock=99999999&page=${page}&offset=${HISTORY_PAGE_SIZE}&sort=desc&apikey=${apiKey}`
-        );
-        const contractTxData = await contractTxResponse.json();
+      // Query only token transfer events for the user's wallet
+      const tokenTxResponse = await fetch(
+        `${baseUrl}?module=account&action=tokentx&address=${walletAddress}&startblock=0&endblock=99999999&page=${page}&offset=${HISTORY_PAGE_SIZE}&sort=desc&apikey=${apiKey}`
+      );
+      const tokenTxData = await tokenTxResponse.json();
 
-        if (contractTxData.status === '1') {
-          const walletLc = walletAddress.toLowerCase();
-          const relevantTransactions = (contractTxData.result || [])
-            .filter((tx: any) => tx.from?.toLowerCase() === walletLc)
-            .map((tx: any) => {
-              const type: Transaction['type'] = 'Migration';
-              let status: Transaction['status'] = 'Completed';
-              if (tx.confirmations === '0') status = 'Pending';
-              else if (tx.isError === '1') status = 'Failed';
-              const amt = decodeAmountFromInput(tx.input);
-              return {
-                id: tx.hash,
-                type,
-                date: new Date(parseInt(tx.timeStamp) * 1000).toLocaleString('ko-KR'),
-                amount: amt ? `${amt} ${token} → ${amt} HPP` : `${token} → HPP`,
-                status,
-                hash: tx.hash,
-                network,
-                icon: getTransactionIcon(type, status),
-              } as Transaction;
-            });
+      if (tokenTxData.status === '1') {
+        const walletLc = walletAddress.toLowerCase();
+        const contractLc = MIGRATION_CONTRACT_ADDRESS.toLowerCase();
 
-          updateHistoryWithServer(relevantTransactions);
-        } else {
-          // No data; keep existing (e.g., preserve local pending)
-        }
-      } else {
-        // Legacy wallet-centric mode (fallback)
-        // Fetch normal transactions
-        const normalTxResponse = await fetch(
-          `${baseUrl}?module=account&action=txlist&address=${walletAddress}&startblock=0&endblock=99999999&page=${page}&offset=${HISTORY_PAGE_SIZE}&sort=desc&apikey=${apiKey}`
-        );
-        // Fetch internal transactions (for contract interactions)
-        const internalTxResponse = await fetch(
-          `${baseUrl}?module=account&action=txlistinternal&address=${walletAddress}&startblock=0&endblock=99999999&page=${page}&offset=${HISTORY_PAGE_SIZE}&sort=desc&apikey=${apiKey}`
-        );
+        // Filter for migration-related token transfers
+        const relevantTransactions = (tokenTxData.result || [])
+          .filter((tx: any) => {
+            // Find transfers where user sends tokens TO the migration contract
+            return tx.from?.toLowerCase() === walletLc && tx.to?.toLowerCase() === contractLc;
+          })
+          .map((tx: any) => {
+            const type = `Migration: ${token} → HPP`;
+            let status: Transaction['status'] = 'Completed';
 
-        const normalTxData = await normalTxResponse.json();
-        const internalTxData = await internalTxResponse.json();
+            // Note: tokenTx doesn't have confirmations field, so we'll assume completed
+            // If you need pending status, you might need to check recent block numbers
 
-        if (normalTxData.status === '1' || internalTxData.status === '1') {
-          const allTransactions = [...(normalTxData.result || []), ...(internalTxData.result || [])];
-          const relevantTransactions = allTransactions
-            .filter((tx: any) => {
-              const toAddress = tx.to?.toLowerCase();
-              const isApproval = tx.input?.includes('0x095ea7b3'); // approve
-              if (isApproval) return false;
-              return toAddress === MIGRATION_CONTRACT_ADDRESS.toLowerCase();
-            })
-            .sort((a: any, b: any) => Number(b.timeStamp) - Number(a.timeStamp))
-            .map((tx: any) => {
-              const type: Transaction['type'] = 'Migration';
-              let status: Transaction['status'] = 'Completed';
-              if (tx.confirmations === '0') status = 'Pending';
-              else if (tx.isError === '1') status = 'Failed';
-              const amt = decodeAmountFromInput(tx.input);
-              return {
-                id: tx.hash,
-                type,
-                date: new Date(parseInt(tx.timeStamp) * 1000).toLocaleString('ko-KR'),
-                amount: amt ? `${amt} AERGO → ${amt} HPP` : 'AERGO → HPP',
-                status,
-                hash: tx.hash,
-                network,
-                icon: getTransactionIcon(type, status),
-              } as Transaction;
-            });
+            // Get actual token amount from the transfer
+            const fromAmount = formatUnits(BigInt(tx.value), parseInt(tx.tokenDecimal));
+            let toAmount = fromAmount;
 
-          updateHistoryWithServer(relevantTransactions);
-        } else {
-          // No data; keep existing
-        }
+            // Calculate HPP amount using the conversion rate
+            toAmount = computeHppFromToken(fromAmount, token);
+
+            return {
+              id: tx.hash,
+              type,
+              date: dayjs(parseInt(tx.timeStamp) * 1000).format('YYYY-MM-DD HH:mm:ss'),
+              amount: `${parseFloat(fromAmount).toLocaleString('en-US', {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 6,
+              })} ${token} → ${parseFloat(toAmount).toLocaleString('en-US', {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 6,
+              })} HPP`,
+              status,
+              hash: tx.hash,
+              network,
+              icon: getTransactionIcon(type, status),
+            } as Transaction;
+          });
+
+        updateHistoryWithServer(relevantTransactions);
+
+        // Return the fetched transactions for polling purposes
+        return relevantTransactions;
       }
+
+      return [];
     } catch (error) {
       console.error('Failed to fetch transaction history:', error);
       showToast('Error', 'Failed to fetch transaction history.', 'error');
+      return [];
     } finally {
       setIsLoadingHistory(false);
     }
@@ -516,15 +509,11 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
   // Get appropriate icon for transaction type and status
   const getTransactionIcon = (type: Transaction['type'], status: Transaction['status']) => {
     if (status === 'Pending') {
-      return <PendingIcon className="w-4 h-4 text-gray-500" />;
+      return <PendingIcon className="w-8.5 h-8.5 text-white" />;
     } else if (status === 'Completed') {
-      return <CompleteIcon className="w-4 h-4 text-black" />;
+      return <CompleteIcon className="w-8.5 h-8.5 text-black" />;
     } else {
-      return (
-        <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-        </svg>
-      );
+      return <FailedIcon className="w-8.5 h-8.5 text-white" />;
     }
   };
 
@@ -552,6 +541,33 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
       return;
     }
 
+    // Check if amount exceeds balance (using Big.js for precision)
+    if (balance) {
+      try {
+        const balanceBig = new Big(balance.replace(/,/g, ''));
+        const amountBig = new Big(value);
+        if (amountBig.gt(balanceBig)) {
+          setInputError(`Insufficient balance. You have ${balanceBig.toFixed()} ${token}`);
+          setToAmount('');
+          return;
+        }
+      } catch (error) {
+        // If Big.js fails, fallback to regular comparison
+        if (numericValue > parseFloat(balance.replace(/,/g, ''))) {
+          setInputError(`Insufficient balance. You have ${parseFloat(balance.replace(/,/g, '')).toFixed(4)} ${token}`);
+          setToAmount('');
+          return;
+        }
+      }
+    }
+
+    // Check if amount is too small (minimum 0.0001)
+    if (numericValue < 0.0001) {
+      setInputError('Amount must be at least 0.0001');
+      setToAmount('');
+      return;
+    }
+
     // Conversion: AERGO 1:1, AQT 1:7.43026 (integer math via big.js)
     if (token === 'AERGO') {
       setToAmount(value);
@@ -562,7 +578,7 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
         setToAmount('');
         return;
       }
-      const quoted = computeHppFromAqt(value || '0');
+      const quoted = computeHppFromToken(value || '0', token);
       setToAmount(quoted);
     }
   };
@@ -577,6 +593,32 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
       fetchTransactionHistory(address, { page: 1, append: false });
     }
   }, [isConnected, address, chainId]);
+
+  // Validation function to check if migration button should be disabled
+  const isMigrationDisabled = () => {
+    if (!isConnected || !address) return true;
+    if (!fromAmount || parseFloat(fromAmount) <= 0) return true;
+    if (inputError) return true;
+    if (isApproving || isSwapping) return true;
+    if (isBalanceLoading) return true; // Disable while balance is loading
+
+    // Check if amount exceeds balance (using Big.js for precision)
+    if (balance && fromAmount) {
+      try {
+        const balanceBig = new Big(balance.replace(/,/g, ''));
+        const amountBig = new Big(fromAmount);
+        if (amountBig.gt(balanceBig)) return true;
+      } catch (error) {
+        // If Big.js fails, fallback to regular comparison
+        if (parseFloat(fromAmount) > parseFloat(balance.replace(/,/g, ''))) return true;
+      }
+    }
+
+    // Check if amount is too small
+    if (parseFloat(fromAmount) < 0.0001) return true;
+
+    return false;
+  };
 
   const handleMigrationClick = async () => {
     if (!isConnected || !address) {
@@ -691,11 +733,17 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
           ? lastSubmittedAmountRef.current
           : numeric.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
         const network: 'mainnet' | 'sepolia' = chainId === 11155111 ? 'sepolia' : 'mainnet';
+        // Calculate HPP amount for migrations
+        let hppAmount = formatted;
+        if (token === 'AQT') {
+          hppAmount = computeHppFromToken(lastSubmittedAmountRef.current, token);
+        }
+
         const pendingTx: Transaction = {
           id: migrationHash,
-          type: 'Migration',
-          date: new Date().toLocaleString('ko-KR'),
-          amount: `${formatted} ${token} → ${formatted} HPP`,
+          type: `Migration: ${token} → HPP`,
+          date: dayjs().format('YYYY-MM-DD HH:mm:ss'),
+          amount: `${formatted} ${token} → ${hppAmount} HPP`,
           status: 'Pending',
           hash: migrationHash,
           network,
@@ -703,7 +751,6 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
         } as Transaction;
         setTransactionHistory((prev) => [pendingTx, ...prev.filter((t) => t.id !== migrationHash)]);
       } catch {}
-      // Keep Pending until user refreshes history; no background polling
 
       setTimeout(() => {
         if (migrationInFlightRef.current) {
@@ -796,7 +843,18 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                 Follow the steps carefully to ensure a secure and complete migration.
               </p>
               <div className="mt-5">
-                <Button variant="white" size="lg" className="cursor-pointer">
+                <Button
+                  variant="white"
+                  size="lg"
+                  className="cursor-pointer"
+                  onClick={() => {
+                    const guideUrl =
+                      token === 'AERGO'
+                        ? 'https://paper.hpp.io/guide/AERGO_Migration_Guide_ENG_vF.pdf'
+                        : 'https://paper.hpp.io/guide/AQT_Migration_Guide_ENG_vF.pdf';
+                    window.open(guideUrl, '_blank', 'noopener,noreferrer');
+                  }}
+                >
                   View Step-by-Step Guide
                 </Button>
               </div>
@@ -833,7 +891,7 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                           <div className="w-20 h-20 min-[810px]:w-25 min-[810px]:h-25 min-[1440px]:w-27.5 min-[1440px]:h-27.5 rounded-lg flex items-center justify-center mb-2.5">
                             <Image src={AergoMainnet} alt="AERGO Mainnet" />
                           </div>
-                          <span className="text-base leading-[1.2em] tracking-[0.8px] font-normal text-white text-center">
+                          <span className="text-base leading-[1.2em] tracking-[0.8px] font-normal text-white text-center -ml-2.5">
                             AERGO
                             <br className="block min-[810px]:hidden" />
                             (Mainnet)
@@ -857,7 +915,7 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                           <div className="w-20 h-20 min-[810px]:w-25 min-[810px]:h-25 min-[1440px]:w-27.5 min-[1440px]:h-27.5 rounded-lg flex items-center justify-center mb-2.5">
                             <Image src={HPPEth} alt="HPP (ETH)" />
                           </div>
-                          <span className="text-base leading-[1.2em] tracking-[0.8px] font-normal text-white text-center">
+                          <span className="text-base leading-[1.2em] tracking-[0.8px] font-normal text-white text-center -ml-2.5">
                             HPP
                             <br className="block min-[810px]:hidden" />
                             (ETH)
@@ -928,7 +986,7 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                         <div className="w-20 h-20 min-[810px]:w-25 min-[810px]:h-25 min-[1440px]:w-27.5 min-[1440px]:h-27.5 rounded-lg flex items-center justify-center mb-2.5">
                           <Image src={HPPEth} alt="HPP (ETH)" />
                         </div>
-                        <span className="text-base leading-[1.2em] tracking-[0.8px] font-normal text-white text-center">
+                        <span className="text-base leading-[1.2em] tracking-[0.8px] font-normal text-white text-center ml-[-10px]">
                           HPP
                           <br className="block min-[810px]:hidden" />
                           (ETH)
@@ -980,7 +1038,7 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                         <div className="bg-white rounded-lg p-5 mb-4">
                           <div className="flex justify-end mb-2">
                             <button
-                              className="px-[15px] py-[5px] text-xs bg-[#d9d9d9] text-black rounded-[5px] cursor-pointer hover:bg-[#d0d0d0] transition-colors"
+                              className="px-[10px] py-[3px] min-[810px]:px-[15px] min-[810px]:py-[5px] text-[10px] min-[810px]:text-xs bg-[#d9d9d9] text-black rounded-[5px] cursor-pointer hover:bg-[#d0d0d0] transition-colors"
                               onClick={() => {
                                 const cleanBalance = (balance || '0').replace(/,/g, '');
                                 handleFromAmountChange(cleanBalance);
@@ -990,12 +1048,14 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                             </button>
                           </div>
                           <div className="flex items-center justify-between mb-2">
-                            <label className="text-lg font-semibold text-black tracking-[0.8px] leading-[1.2] text-left">
+                            <label className="text-sm min-[810px]:text-xl font-semibold text-black tracking-[0.8px] leading-[1.2] text-left">
                               From
                             </label>
                             <div className="flex flex-col items-end space-y-1">
-                              <span className="text-xl font-semibold text-black tracking-[0.8px] leading-[1.2] text-left">
-                                Balance: {isBalanceLoading ? 'Loading...' : `${balance || '0'}`}
+                              <span className="text-sm min-[810px]:text-xl font-semibold text-black tracking-[0.8px] leading-[1.2] text-right min-[810px]:text-left">
+                                Balance:
+                                <br className="block min-[810px]:hidden" />{' '}
+                                {isBalanceLoading ? 'Loading...' : `${balance || '0'}`}
                               </span>
                             </div>
                           </div>
@@ -1046,19 +1106,18 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                                   // prevent accidental value changes by scroll
                                   (e.target as HTMLInputElement).blur();
                                 }}
-                                className={`w-full border-0 rounded-lg focus:outline-none focus:ring-0 text-[40px] bg-transparent pl-0 text-gray-400 placeholder:text-[#bfbfbf] font-semibold tracking-[0.8px] leading-[1.2] text-left ${
+                                className={`w-full border-0 rounded-lg focus:outline-none focus:ring-0 text-[25px] min-[810px]:text-[40px] bg-transparent pl-0 text-black placeholder:text-[#bfbfbf] font-semibold tracking-[0.8px] leading-[1.2] text-left ${
                                   inputError ? 'border-red-500' : ''
                                 }`}
                                 placeholder={token === 'AQT' ? '0' : '0.0'}
                                 autoComplete="off"
                                 spellCheck={false}
                               />
-                              {inputError && <div className="mt-1 text-sm text-red-500">{inputError}</div>}
                             </div>
                             <Image
                               src={token === 'AERGO' ? AergoToken : token === 'AQT' ? AQTToken : HPPToken}
                               alt={`${token} token`}
-                              className="w-30 h-12"
+                              className="w-15 h-7.5 min-[810px]:w-30 min-[810px]:h-12"
                             />
                           </div>
                         </div>
@@ -1071,11 +1130,13 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                         {/* To Section */}
                         <div className="bg-white rounded-lg px-5 pt-5 pb-2.5">
                           <div className="flex items-center justify-between">
-                            <label className="text-[20px] font-semibold text-black tracking-[0.8px] leading-[1.2] text-left">
+                            <label className="text-sm min-[810px]:text-xl font-semibold text-black tracking-[0.8px] leading-[1.2] text-left">
                               To
                             </label>
-                            <span className="text-xl font-semibold text-black tracking-[0.8px] leading-[1.2] text-left">
-                              Balance: {isHppBalanceLoading ? 'Loading...' : `${hppBalance || '0'}`}
+                            <span className="text-sm min-[810px]:text-xl font-semibold text-black tracking-[0.8px] leading-[1.2] text-right min-[810px]:text-left">
+                              Balance:
+                              <br className="block min-[810px]:hidden" />{' '}
+                              {isHppBalanceLoading ? 'Loading...' : `${hppBalance || '0'}`}
                             </span>
                           </div>
                           <div className="flex items-center space-x-3">
@@ -1105,11 +1166,15 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                                     })()
                               }
                               readOnly
-                              className="w-full py-3 border-0 rounded-lg focus:outline-none focus:ring-0 text-[40px] bg-transparent pl-0 text-gray-400 placeholder:text-[#bfbfbf] font-semibold tracking-[0.8px] leading-[1.2] text-left cursor-default pointer-events-none"
+                              className="w-full py-3 border-0 rounded-lg focus:outline-none focus:ring-0 text-[25px] min-[810px]:text-[40px] bg-transparent pl-0 text-black placeholder:text-[#bfbfbf] font-semibold tracking-[0.8px] leading-[1.2] text-left cursor-default pointer-events-none"
                               placeholder="0.0"
                               style={{ cursor: 'default' }}
                             />
-                            <Image src={HPPToken} alt="HPP token" className="w-30 h-12" />
+                            <Image
+                              src={HPPToken}
+                              alt="HPP token"
+                              className="w-15 h-7.5 min-[810px]:w-30 min-[810px]:h-12"
+                            />
                           </div>
                         </div>
                       </div>
@@ -1118,9 +1183,9 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                         <Button
                           variant="black"
                           size="lg"
-                          className="mt-5 w-full font-medium py-3 px-6 rounded-[5px] hover:brightness-105 transition"
+                          className="mt-5 w-full font-medium py-3 px-6 rounded-[5px] hover:brightness-105 transition disabled:opacity-50 disabled:cursor-not-allowed"
                           onClick={handleMigrationClick}
-                          disabled={isApproving || isSwapping}
+                          disabled={isMigrationDisabled()}
                         >
                           {isApproving ? 'Approving...' : isSwapping ? 'Migrating...' : 'Migrate Tokens'}
                         </Button>
@@ -1140,10 +1205,17 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                         onClick={() => address && fetchTransactionHistory(address)}
                         disabled={isLoadingHistory}
                         aria-label="Refresh"
-                        className="flex items-center px-3 py-2 text-sm text-white rounded-lg cursor-pointer"
+                        className="flex items-center px-3 py-2 text-sm text-white rounded-lg cursor-pointer transition-all duration-200"
                         style={{ cursor: 'pointer' }}
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg
+                          className={`w-4 h-4 transition-transform duration-500 ${
+                            isLoadingHistory ? 'animate-spin-reverse' : ''
+                          }`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
                           <path
                             strokeLinecap="round"
                             strokeLinejoin="round"
@@ -1154,75 +1226,92 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                       </button>
                     </div>
 
-                    {isLoadingHistory ? (
-                      <div className="flex items-center justify-center py-8">
-                        <div
-                          aria-label="Loading"
-                          className="w-6 h-6 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin"
-                        ></div>
-                      </div>
-                    ) : transactionHistory.length > 0 ? (
+                    {transactionHistory.length > 0 ? (
                       <div className="space-y-2">
                         {(showAllHistory ? transactionHistory : transactionHistory.slice(0, 5)).map((tx) => (
                           <div
                             key={tx.id}
-                            className="flex items-center justify-between p-5 bg-[rgba(18,18,18,0.1)] hover:bg-[rgba(18,18,18,0.2)] rounded-[5px] mb-2 last:mb-0 cursor-pointer gap-5 transition-colors duration-200"
+                            className="flex items-start min-[810px]:items-start items-center p-5 bg-[rgba(18,18,18,0.1)] hover:bg-[rgba(18,18,18,0.2)] rounded-[5px] mb-2 last:mb-0 cursor-pointer gap-3 min-[810px]:gap-5 transition-colors duration-200"
                             style={{ cursor: 'pointer' }}
                             onClick={() => {
                               const etherscanUrl = createEtherscanLink(tx.hash, tx.network);
                               window.open(etherscanUrl, '_blank');
                             }}
                           >
-                            <div className="flex items-center space-x-3">
-                              <div
-                                className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                                  tx.status === 'Pending' ? 'bg-[#F07F1D]' : 'bg-white'
-                                }`}
-                              >
-                                {tx.icon}
-                              </div>
-                              <div>
-                                <div className="text-sm font-medium text-white">{tx.type}</div>
-                                <div className="text-xs text-white">{tx.date}</div>
-                              </div>
+                            {/* Icon - always on the left */}
+                            <div
+                              className={`w-13.5 h-13.5 rounded-full flex items-center justify-center flex-shrink-0 ${
+                                tx.status === 'Pending' ? 'bg-[#F07F1D]' : 'bg-white'
+                              }`}
+                            >
+                              {tx.icon}
                             </div>
-                            <div className="text-right">
-                              <div className="text-sm font-medium text-white">{tx.amount}</div>
-                              <div
-                                className={`text-xs font-medium ${
-                                  tx.status === 'Completed'
-                                    ? 'text-green-400'
-                                    : tx.status === 'Pending'
-                                    ? 'text-gray-400'
-                                    : 'text-red-400'
-                                }`}
-                              >
-                                {tx.status}
+
+                            {/* Content - responsive layout */}
+                            <div className="flex-1 min-w-0">
+                              {/* Desktop: horizontal layout */}
+                              <div className="hidden min-[600px]:flex items-center justify-between">
+                                <div className="flex items-center space-x-3">
+                                  <div>
+                                    <div className="text-lg font-semibold text-white leading-[20px]">{tx.type}</div>
+                                    <div className="mt-2.5 text-base text-[#bfbfbf] leading-[1.5] tracking-[0.8px] font-normal text-left">
+                                      {tx.date}
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <div className="text-xl text-white leading-[20px] tracking-[0px] font-semibold whitespace-pre text-left">
+                                    {tx.amount}
+                                  </div>
+                                  <div
+                                    className={`mt-2.5 text-base font-normal leading-[1.5] tracking-[0.8px] text-right ${
+                                      tx.status === 'Completed'
+                                        ? 'text-[#25ff21]'
+                                        : tx.status === 'Pending'
+                                        ? 'text-[#bfbfbf]'
+                                        : 'text-[#ff1312]'
+                                    }`}
+                                  >
+                                    {tx.status}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Mobile: vertical layout */}
+                              <div className="min-[600px]:hidden space-y-1">
+                                <div className="text-base font-semibold text-white leading-[20px]">{tx.type}</div>
+                                <div className="text-base text-white leading-[20px] tracking-[0px] font-semibold whitespace-pre text-left">
+                                  {tx.amount}
+                                </div>
+                                <div className="text-sm text-[#bfbfbf] leading-[1.5] tracking-[0.8px] font-normal text-left">
+                                  {tx.date}
+                                </div>
+                                <div
+                                  className={`text-sm font-normal leading-[1.5] tracking-[0.8px] text-left whitespace-pre ${
+                                    tx.status === 'Completed'
+                                      ? 'text-[#25ff21]'
+                                      : tx.status === 'Pending'
+                                      ? 'text-[#bfbfbf]'
+                                      : 'text-[#ff1312]'
+                                  }`}
+                                >
+                                  {tx.status}
+                                </div>
                               </div>
                             </div>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <div className="text-center py-8 text-[#bfbfbf]">
-                        <svg
-                          className="w-12 h-12 mx-auto mb-3 text-[#2b2b2b]"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                          />
-                        </svg>
-                        <p className="text-sm text-[#8a8a8a] mt-1">No transactions yet</p>
+                      <div className="flex flex-col items-center justify-center py-8 bg-[rgba(18,18,18,0.1)] rounded-[5px]">
+                        <TransactionsIcon className="w-11 h-12.5 mb-5" />
+                        <p className="text-base text-[#bfbfbf] tracking-[0.8px] leading-[1.5] text-center font-normal">
+                          No transactions yet
+                        </p>
                       </div>
                     )}
 
-                    {transactionHistory.length > 2 && !showAllHistory && (
+                    {transactionHistory.length > 5 && !showAllHistory && (
                       <div className="mt-4 text-center space-y-3">
                         <Button
                           variant="white"
@@ -1260,8 +1349,8 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                         HPP(ETH) → HPP(Mainnet)
                       </h2>
                       <p className="text-base font-normal text-white tracking-[0.8px] text-left leading-[1.5]">
-                        Once you have HPP tokens on Ethereum, bridge them to the HPP Mainnet for full ecosystem access
-                        (listings, governance, utilities, and more).
+                        Once you have HPP tokens on Ethereum, bridge them to the HPP Mainnet for full ecosystem
+                        access(listings, governance, utilities, and more).
                       </p>
                     </div>
                   </div>
@@ -1274,7 +1363,7 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                         <div className="w-20 h-20 min-[810px]:w-25 min-[810px]:h-25 min-[1440px]:w-27.5 min-[1440px]:h-27.5 rounded-lg flex items-center justify-center mb-2.5">
                           <Image src={HPPEth} alt="HPP (ETH)" />
                         </div>
-                        <span className="text-base leading-[1.2em] tracking-[0.8px] font-normal text-white text-center">
+                        <span className="text-base leading-[1.2em] tracking-[0.8px] font-normal text-white text-center ml-[-10px]">
                           HPP
                           <br className="block min-[810px]:hidden" />
                           (ETH)
@@ -1298,7 +1387,7 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                         <div className="w-20 h-20 min-[810px]:w-25 min-[810px]:h-25 min-[1440px]:w-27.5 min-[1440px]:h-27.5 rounded-lg flex items-center justify-center mb-2.5">
                           <Image src={HPPMainnet} alt="HPP Mainnet" />
                         </div>
-                        <span className="text-base leading-[1.2em] tracking-[0.8px] font-normal text-white text-center">
+                        <span className="text-base leading-[1.2em] tracking-[0.8px] font-normal text-white text-center -ml-2.5">
                           HPP
                           <br className="block min-[810px]:hidden" />
                           (Mainnet)
