@@ -2,7 +2,7 @@ import React from 'react';
 
 interface ButtonProps {
   children: React.ReactNode;
-  variant?: 'primary' | 'secondary' | 'white';
+  variant?: 'primary' | 'secondary' | 'white' | 'black';
   size?: 'sm' | 'md' | 'lg';
   className?: string;
   onClick?: () => void;
@@ -33,12 +33,13 @@ export default function Button({
   const variantClasses = {
     primary: 'bg-primary text-white focus:ring-transparent',
     secondary: 'bg-gray-100 text-gray-900 focus:ring-transparent',
-    white: 'bg-white text-black border border-gray-200 focus:ring-transparent',
+    white: '!bg-white !text-black border border-gray-200 focus:ring-transparent',
+    black: 'bg-black text-white focus:ring-transparent',
   } as const;
 
   const sizeClasses = {
     sm: 'px-3 py-1.5 text-sm',
-    md: 'px-5 py-3 text-sm text-semibold',
+    md: 'px-5 py-3 text-base text-semibold',
     lg: 'px-5 py-4 text-semibold leading-[1]',
   };
 
@@ -55,16 +56,16 @@ export default function Button({
         rel={external ? 'noopener noreferrer' : undefined}
         className={classes}
       >
-        {icon}
         {children}
+        {icon}
       </a>
     );
   }
 
   return (
     <button className={classes} onClick={onClick} disabled={disabled}>
-      {icon}
       {children}
+      {icon}
     </button>
   );
 }

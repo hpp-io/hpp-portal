@@ -20,6 +20,11 @@ export { default as BuildIcon } from './Build.svg';
 export { default as BlockExplorerIcon } from './Block Explorer.svg';
 export { default as FaqCloseIcon } from './FaqClose.svg';
 export { default as FaqOpenIcon } from './FaqOpen.svg';
+export { default as WalletIcon } from './Wallet.svg';
+export { default as CompleteIcon } from './Complete.svg';
+export { default as PendingIcon } from './Pending.svg';
+export { default as FailedIcon } from './Failed.svg';
+export { default as TransactionsIcon } from './Transactions.svg';
 
 // PNG
 export { default as Aergo } from './Aergo.png';
@@ -34,3 +39,11 @@ export { default as Eigen } from './Eigen.png';
 export { default as Orbiter } from './Orbiter.png';
 export { default as Conduit } from './Conduit.png';
 export { default as FooterHPPLogo } from './FooterHPPlogo.png';
+export { default as AergoMainnet } from './Aergo(Mainnet).png';
+export { default as HPPEth } from './HPP(ETH).png';
+export { default as HPPMainnet } from './HPP(Mainnet).png';
+export { default as AergoEth } from './Aergo(ETH).png';
+export { default as AqtEth } from './Aqt(ETH).png';
+export { default as AergoToken } from './Aergo(Token).png';
+export { default as AQTToken } from './AQT(Token).png';
+export { default as HPPToken } from './HPP(Token).png';

@@ -8,22 +8,56 @@ import WalletButton from '@/components/ui/WalletButton';
 import Header from '@/components/ui/Header';
 import Footer from '@/components/ui/Footer';
 import { useToast } from '@/hooks/useToast';
-import { useAccount, useChainId, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import {
+  useAccount,
+  useDisconnect,
+  useChainId,
+  useReadContract,
+  useWriteContract,
+  useWaitForTransactionReceipt,
+} from 'wagmi';
 import { navItems, communityLinks } from '@/config/navigation';
 import { parseUnits, formatUnits, erc20Abi } from 'viem';
 import Big from 'big.js';
+import dayjs from 'dayjs';
+import Image from 'next/image';
+import {
+  AergoMainnet,
+  HPPEth,
+  HPPMainnet,
+  AergoEth,
+  AqtEth,
+  WalletIcon,
+  AergoToken,
+  AQTToken,
+  HPPToken,
+  CompleteIcon,
+  PendingIcon,
+  FailedIcon,
+  TransactionsIcon,
+} from '@/assets/icons';
+import { useRouter } from 'next/navigation';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 
 // Constants
 const AERGO_DECIMAL = 18;
 const HISTORY_PAGE_SIZE = 20;
-const USE_CONTRACT_CENTRIC_HISTORY = true;
 
 // AQT fixed rate: 1 AQT = 7.43026 HPP (no decimals allowed for AQT input)
 const AQT_TO_HPP_RATE = new Big('7.43026');
+const AERGO_TO_HPP_RATE = new Big('1');
 
-function computeHppFromAqt(amount: string): string {
+function computeHppFromToken(amount: string, token: MigrationToken): string {
   try {
-    const hpp = new Big(amount || '0').times(AQT_TO_HPP_RATE);
+    let rate: Big;
+    if (token === 'AQT') {
+      rate = AQT_TO_HPP_RATE;
+    } else {
+      // AERGO
+      rate = AERGO_TO_HPP_RATE;
+    }
+
+    const hpp = new Big(amount || '0').times(rate);
     // Keep up to 5 decimals as the rate has 5 dp
     return hpp.toFixed(5);
   } catch {
@@ -34,7 +68,7 @@ function computeHppFromAqt(amount: string): string {
 // Transaction interface
 interface Transaction {
   id: string;
-  type: 'Migration' | 'Approval' | 'Other';
+  type: string;
   date: string;
   amount: string;
   status: 'Pending' | 'Completed' | 'Failed';
@@ -64,7 +98,9 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
 
   const { showToast } = useToast();
   const { isConnected, address } = useAccount();
+  const { disconnect } = useDisconnect();
   const chainId = useChainId();
+  const router = useRouter();
 
   // Decide whether to swap to server list or keep current (to preserve local Pending until resolved)
   const updateHistoryWithServer = (incoming: Transaction[]) => {
@@ -235,20 +271,66 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
 
   // No background polling: status changes only on explicit refresh/View All
 
-  // Decode first uint256 argument (amount) from contract call input
-  const decodeAmountFromInput = (input?: string): string | null => {
-    try {
-      if (!input || input.length < 10 + 64) return null;
-      const amountHex = input.slice(10, 10 + 64);
-      const amountBigInt = BigInt(`0x${amountHex}`);
-      const raw = formatUnits(amountBigInt, 18);
-      const num = parseFloat(raw);
-      if (isNaN(num)) return null;
-      return num.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-    } catch {
-      return null;
+  // Polling state management
+  const pollingRefs = useRef<Map<string, NodeJS.Timeout>>(new Map());
+
+  // Start polling for a specific transaction
+  const startTransactionPolling = (txHash: string, walletAddress: string) => {
+    // Clear any existing polling for this transaction
+    if (pollingRefs.current.has(txHash)) {
+      clearTimeout(pollingRefs.current.get(txHash)!);
     }
+
+    const pollTransaction = async () => {
+      try {
+        // Check if transaction is still pending in our local state
+        const currentHistory = transactionHistory.find((tx) => tx.id === txHash);
+
+        if (!currentHistory || currentHistory.status !== 'Pending') {
+          // Transaction is no longer pending, stop polling
+          pollingRefs.current.delete(txHash);
+          return;
+        }
+
+        // Fetch latest history to check for status updates
+        const fetchedTransactions = await fetchTransactionHistory(walletAddress, { page: 1, append: false });
+
+        // Check if the specific transaction is now completed in the fetched data
+        if (fetchedTransactions && fetchedTransactions.length > 0) {
+          const completedTx = fetchedTransactions.find((tx: Transaction) => tx.id === txHash);
+
+          if (completedTx) {
+            // Transaction found in server data, it's completed
+            pollingRefs.current.delete(txHash);
+            return;
+          }
+        }
+
+        // Transaction still not found in server data, continue polling
+        const timeoutId = setTimeout(pollTransaction, 10000); // Poll every 10 seconds
+        pollingRefs.current.set(txHash, timeoutId);
+      } catch (error) {
+        console.error('Error during transaction polling:', error);
+        // Continue polling even if there's an error
+        const timeoutId = setTimeout(pollTransaction, 15000); // Retry after 15 seconds on error
+        pollingRefs.current.set(txHash, timeoutId);
+      }
+    };
+
+    // Start first poll after 5 seconds
+    const initialTimeoutId = setTimeout(pollTransaction, 5000);
+    pollingRefs.current.set(txHash, initialTimeoutId);
   };
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      pollingRefs.current.forEach((timeoutId) => {
+        clearTimeout(timeoutId);
+      });
+      pollingRefs.current.clear();
+    };
+  }, []);
 
   // Fetch ALL migration history (no pagination in UI)
   const fetchAllMigrationHistory = async (walletAddress: string) => {
@@ -262,77 +344,44 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
       const aggregated: Transaction[] = [];
       const seen = new Set<string>();
 
-      if (USE_CONTRACT_CENTRIC_HISTORY) {
-        let page = 1;
-        while (true) {
-          const res = await fetch(
-            `${baseUrl}?module=account&action=txlist&address=${MIGRATION_CONTRACT_ADDRESS}&startblock=0&endblock=99999999&page=${page}&offset=${HISTORY_PAGE_SIZE}&sort=desc&apikey=${apiKey}`
-          );
-          const data = await res.json();
-          if (data.status !== '1') break;
+      let page = 1;
+      while (true) {
+        const res = await fetch(
+          `${baseUrl}?module=account&action=tokentx&address=${walletAddress}&startblock=0&endblock=99999999&page=${page}&offset=${HISTORY_PAGE_SIZE}&sort=desc&apikey=${apiKey}`
+        );
+        const data = await res.json();
+        if (data.status !== '1') break;
 
-          const walletLc = walletAddress.toLowerCase();
-          const mapped: Transaction[] = (data.result || [])
-            .filter((tx: any) => tx.from?.toLowerCase() === walletLc)
-            .map((tx: any) => {
-              const type: Transaction['type'] = 'Migration';
-              let status: Transaction['status'] = 'Completed';
-              if (tx.confirmations === '0') status = 'Pending';
-              else if (tx.isError === '1') status = 'Failed';
-              const amt = decodeAmountFromInput(tx.input);
-              return {
-                id: tx.hash,
-                type,
-                date: new Date(parseInt(tx.timeStamp) * 1000).toLocaleString('ko-KR'),
-                amount: amt ? `${amt} ${token} → ${amt} HPP` : `${token} → HPP`,
-                status,
-                hash: tx.hash,
-                network,
-                icon: getTransactionIcon(type, status),
-              } as Transaction;
-            });
+        const walletLc = walletAddress.toLowerCase();
+        const contractLc = MIGRATION_CONTRACT_ADDRESS.toLowerCase();
 
-          for (const t of mapped) {
-            if (!seen.has(t.id)) {
-              seen.add(t.id);
-              aggregated.push(t);
-            }
-          }
-
-          const pageHasMore = Array.isArray(data.result) ? data.result.length === HISTORY_PAGE_SIZE : false;
-          if (!pageHasMore) break;
-          page += 1;
-          if (page > 100) break; // hard cap safety
-        }
-      } else {
-        let page = 1;
-        while (true) {
-          const normalTxResponse = await fetch(
-            `${baseUrl}?module=account&action=txlist&address=${walletAddress}&startblock=0&endblock=99999999&page=${page}&offset=${HISTORY_PAGE_SIZE}&sort=desc&apikey=${apiKey}`
-          );
-          const internalTxResponse = await fetch(
-            `${baseUrl}?module=account&action=txlistinternal&address=${walletAddress}&startblock=0&endblock=99999999&page=${page}&offset=${HISTORY_PAGE_SIZE}&sort=desc&apikey=${apiKey}`
-          );
-          const normalTxData = await normalTxResponse.json();
-          const internalTxData = await internalTxResponse.json();
-          if (normalTxData.status !== '1' && internalTxData.status !== '1') break;
-
-          const allTransactions = [...(normalTxData.result || []), ...(internalTxData.result || [])];
-          const filtered = allTransactions.filter(
-            (tx: any) => tx.to?.toLowerCase() === MIGRATION_CONTRACT_ADDRESS.toLowerCase()
-          );
-
-          const mapped: Transaction[] = filtered.map((tx: any) => {
-            const type: Transaction['type'] = 'Migration';
+        const mapped: Transaction[] = (data.result || [])
+          .filter((tx: any) => {
+            // Find transfers where user sends tokens TO the migration contract
+            return tx.from?.toLowerCase() === walletLc && tx.to?.toLowerCase() === contractLc;
+          })
+          .map((tx: any) => {
+            const type = `Migration: ${token} → HPP`;
             let status: Transaction['status'] = 'Completed';
-            if (tx.confirmations === '0') status = 'Pending';
-            else if (tx.isError === '1') status = 'Failed';
-            const amt = decodeAmountFromInput(tx.input);
+
+            // Get actual token amount from the transfer
+            const fromAmount = formatUnits(BigInt(tx.value), parseInt(tx.tokenDecimal));
+            let toAmount = fromAmount;
+
+            // Calculate HPP amount using the conversion rate
+            toAmount = computeHppFromToken(fromAmount, token);
+
             return {
               id: tx.hash,
               type,
-              date: new Date(parseInt(tx.timeStamp) * 1000).toLocaleString('ko-KR'),
-              amount: amt ? `${amt} ${token} → ${amt} HPP` : `${token} → HPP`,
+              date: dayjs(parseInt(tx.timeStamp) * 1000).format('YYYY-MM-DD HH:mm:ss'),
+              amount: `${parseFloat(fromAmount).toLocaleString('en-US', {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 6,
+              })} ${token} → ${parseFloat(toAmount).toLocaleString('en-US', {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 6,
+              })} HPP`,
               status,
               hash: tx.hash,
               network,
@@ -340,24 +389,17 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
             } as Transaction;
           });
 
-          for (const t of mapped) {
-            if (!seen.has(t.id)) {
-              seen.add(t.id);
-              aggregated.push(t);
-            }
+        for (const t of mapped) {
+          if (!seen.has(t.id)) {
+            seen.add(t.id);
+            aggregated.push(t);
           }
-
-          const normalHasMore = Array.isArray(normalTxData.result)
-            ? normalTxData.result.length === HISTORY_PAGE_SIZE
-            : false;
-          const internalHasMore = Array.isArray(internalTxData.result)
-            ? internalTxData.result.length === HISTORY_PAGE_SIZE
-            : false;
-          const mayHaveMore = normalHasMore || internalHasMore;
-          if (!mayHaveMore) break;
-          page += 1;
-          if (page > 100) break; // hard cap safety
         }
+
+        const pageHasMore = Array.isArray(data.result) ? data.result.length === HISTORY_PAGE_SIZE : false;
+        if (!pageHasMore) break;
+        page += 1;
+        if (page > 100) break; // hard cap safety
       }
 
       // newest first
@@ -382,6 +424,11 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
 
     // Refetch balance after successful migration
     refetchHppBalance();
+
+    // Start polling for transaction status updates
+    if (address && migrationHash) {
+      startTransactionPolling(migrationHash, address);
+    }
   };
 
   // Fetch transaction history from Etherscan (supports pagination)
@@ -395,89 +442,65 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
       const apiKey = process.env.NEXT_PUBLIC_ETHERSCAN_API_KEY;
       const baseUrl = network === 'mainnet' ? 'https://api.etherscan.io/api' : 'https://api-sepolia.etherscan.io/api';
 
-      if (USE_CONTRACT_CENTRIC_HISTORY) {
-        // Query only the migration contract txs, then filter by user address as the sender
-        const contractTxResponse = await fetch(
-          `${baseUrl}?module=account&action=txlist&address=${MIGRATION_CONTRACT_ADDRESS}&startblock=0&endblock=99999999&page=${page}&offset=${HISTORY_PAGE_SIZE}&sort=desc&apikey=${apiKey}`
-        );
-        const contractTxData = await contractTxResponse.json();
+      // Query only token transfer events for the user's wallet
+      const tokenTxResponse = await fetch(
+        `${baseUrl}?module=account&action=tokentx&address=${walletAddress}&startblock=0&endblock=99999999&page=${page}&offset=${HISTORY_PAGE_SIZE}&sort=desc&apikey=${apiKey}`
+      );
+      const tokenTxData = await tokenTxResponse.json();
 
-        if (contractTxData.status === '1') {
-          const walletLc = walletAddress.toLowerCase();
-          const relevantTransactions = (contractTxData.result || [])
-            .filter((tx: any) => tx.from?.toLowerCase() === walletLc)
-            .map((tx: any) => {
-              const type: Transaction['type'] = 'Migration';
-              let status: Transaction['status'] = 'Completed';
-              if (tx.confirmations === '0') status = 'Pending';
-              else if (tx.isError === '1') status = 'Failed';
-              const amt = decodeAmountFromInput(tx.input);
-              return {
-                id: tx.hash,
-                type,
-                date: new Date(parseInt(tx.timeStamp) * 1000).toLocaleString('ko-KR'),
-                amount: amt ? `${amt} ${token} → ${amt} HPP` : `${token} → HPP`,
-                status,
-                hash: tx.hash,
-                network,
-                icon: getTransactionIcon(type, status),
-              } as Transaction;
-            });
+      if (tokenTxData.status === '1') {
+        const walletLc = walletAddress.toLowerCase();
+        const contractLc = MIGRATION_CONTRACT_ADDRESS.toLowerCase();
 
-          updateHistoryWithServer(relevantTransactions);
-        } else {
-          // No data; keep existing (e.g., preserve local pending)
-        }
-      } else {
-        // Legacy wallet-centric mode (fallback)
-        // Fetch normal transactions
-        const normalTxResponse = await fetch(
-          `${baseUrl}?module=account&action=txlist&address=${walletAddress}&startblock=0&endblock=99999999&page=${page}&offset=${HISTORY_PAGE_SIZE}&sort=desc&apikey=${apiKey}`
-        );
-        // Fetch internal transactions (for contract interactions)
-        const internalTxResponse = await fetch(
-          `${baseUrl}?module=account&action=txlistinternal&address=${walletAddress}&startblock=0&endblock=99999999&page=${page}&offset=${HISTORY_PAGE_SIZE}&sort=desc&apikey=${apiKey}`
-        );
+        // Filter for migration-related token transfers
+        const relevantTransactions = (tokenTxData.result || [])
+          .filter((tx: any) => {
+            // Find transfers where user sends tokens TO the migration contract
+            return tx.from?.toLowerCase() === walletLc && tx.to?.toLowerCase() === contractLc;
+          })
+          .map((tx: any) => {
+            const type = `Migration: ${token} → HPP`;
+            let status: Transaction['status'] = 'Completed';
 
-        const normalTxData = await normalTxResponse.json();
-        const internalTxData = await internalTxResponse.json();
+            // Note: tokenTx doesn't have confirmations field, so we'll assume completed
+            // If you need pending status, you might need to check recent block numbers
 
-        if (normalTxData.status === '1' || internalTxData.status === '1') {
-          const allTransactions = [...(normalTxData.result || []), ...(internalTxData.result || [])];
-          const relevantTransactions = allTransactions
-            .filter((tx: any) => {
-              const toAddress = tx.to?.toLowerCase();
-              const isApproval = tx.input?.includes('0x095ea7b3'); // approve
-              if (isApproval) return false;
-              return toAddress === MIGRATION_CONTRACT_ADDRESS.toLowerCase();
-            })
-            .sort((a: any, b: any) => Number(b.timeStamp) - Number(a.timeStamp))
-            .map((tx: any) => {
-              const type: Transaction['type'] = 'Migration';
-              let status: Transaction['status'] = 'Completed';
-              if (tx.confirmations === '0') status = 'Pending';
-              else if (tx.isError === '1') status = 'Failed';
-              const amt = decodeAmountFromInput(tx.input);
-              return {
-                id: tx.hash,
-                type,
-                date: new Date(parseInt(tx.timeStamp) * 1000).toLocaleString('ko-KR'),
-                amount: amt ? `${amt} AERGO → ${amt} HPP` : 'AERGO → HPP',
-                status,
-                hash: tx.hash,
-                network,
-                icon: getTransactionIcon(type, status),
-              } as Transaction;
-            });
+            // Get actual token amount from the transfer
+            const fromAmount = formatUnits(BigInt(tx.value), parseInt(tx.tokenDecimal));
+            let toAmount = fromAmount;
 
-          updateHistoryWithServer(relevantTransactions);
-        } else {
-          // No data; keep existing
-        }
+            // Calculate HPP amount using the conversion rate
+            toAmount = computeHppFromToken(fromAmount, token);
+
+            return {
+              id: tx.hash,
+              type,
+              date: dayjs(parseInt(tx.timeStamp) * 1000).format('YYYY-MM-DD HH:mm:ss'),
+              amount: `${parseFloat(fromAmount).toLocaleString('en-US', {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 6,
+              })} ${token} → ${parseFloat(toAmount).toLocaleString('en-US', {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 6,
+              })} HPP`,
+              status,
+              hash: tx.hash,
+              network,
+              icon: getTransactionIcon(type, status),
+            } as Transaction;
+          });
+
+        updateHistoryWithServer(relevantTransactions);
+
+        // Return the fetched transactions for polling purposes
+        return relevantTransactions;
       }
+
+      return [];
     } catch (error) {
       console.error('Failed to fetch transaction history:', error);
       showToast('Error', 'Failed to fetch transaction history.', 'error');
+      return [];
     } finally {
       setIsLoadingHistory(false);
     }
@@ -486,41 +509,11 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
   // Get appropriate icon for transaction type and status
   const getTransactionIcon = (type: Transaction['type'], status: Transaction['status']) => {
     if (status === 'Pending') {
-      return (
-        <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-          />
-        </svg>
-      );
+      return <PendingIcon className="w-8.5 h-8.5 text-white" />;
     } else if (status === 'Completed') {
-      if (type === 'Migration') {
-        return (
-          <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
-            />
-          </svg>
-        );
-      } else {
-        return (
-          <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-          </svg>
-        );
-      }
+      return <CompleteIcon className="w-8.5 h-8.5 text-black" />;
     } else {
-      return (
-        <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-        </svg>
-      );
+      return <FailedIcon className="w-8.5 h-8.5 text-white" />;
     }
   };
 
@@ -548,6 +541,33 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
       return;
     }
 
+    // Check if amount exceeds balance (using Big.js for precision)
+    if (balance) {
+      try {
+        const balanceBig = new Big(balance.replace(/,/g, ''));
+        const amountBig = new Big(value);
+        if (amountBig.gt(balanceBig)) {
+          setInputError(`Insufficient balance. You have ${balanceBig.toFixed()} ${token}`);
+          setToAmount('');
+          return;
+        }
+      } catch (error) {
+        // If Big.js fails, fallback to regular comparison
+        if (numericValue > parseFloat(balance.replace(/,/g, ''))) {
+          setInputError(`Insufficient balance. You have ${parseFloat(balance.replace(/,/g, '')).toFixed(4)} ${token}`);
+          setToAmount('');
+          return;
+        }
+      }
+    }
+
+    // Check if amount is too small (minimum 0.0001)
+    if (numericValue < 0.0001) {
+      setInputError('Amount must be at least 0.0001');
+      setToAmount('');
+      return;
+    }
+
     // Conversion: AERGO 1:1, AQT 1:7.43026 (integer math via big.js)
     if (token === 'AERGO') {
       setToAmount(value);
@@ -558,7 +578,7 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
         setToAmount('');
         return;
       }
-      const quoted = computeHppFromAqt(value || '0');
+      const quoted = computeHppFromToken(value || '0', token);
       setToAmount(quoted);
     }
   };
@@ -573,6 +593,32 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
       fetchTransactionHistory(address, { page: 1, append: false });
     }
   }, [isConnected, address, chainId]);
+
+  // Validation function to check if migration button should be disabled
+  const isMigrationDisabled = () => {
+    if (!isConnected || !address) return true;
+    if (!fromAmount || parseFloat(fromAmount) <= 0) return true;
+    if (inputError) return true;
+    if (isApproving || isSwapping) return true;
+    if (isBalanceLoading) return true; // Disable while balance is loading
+
+    // Check if amount exceeds balance (using Big.js for precision)
+    if (balance && fromAmount) {
+      try {
+        const balanceBig = new Big(balance.replace(/,/g, ''));
+        const amountBig = new Big(fromAmount);
+        if (amountBig.gt(balanceBig)) return true;
+      } catch (error) {
+        // If Big.js fails, fallback to regular comparison
+        if (parseFloat(fromAmount) > parseFloat(balance.replace(/,/g, ''))) return true;
+      }
+    }
+
+    // Check if amount is too small
+    if (parseFloat(fromAmount) < 0.0001) return true;
+
+    return false;
+  };
 
   const handleMigrationClick = async () => {
     if (!isConnected || !address) {
@@ -622,7 +668,7 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
         approvalInFlightRef.current = true;
         setTimeout(() => {
           if (approvalInFlightRef.current) {
-            showToast('Approval sent', 'The network may be busy. Please hold on a moment.', 'loading');
+            showToast('Approval sent', 'The network may be busy.\nPlease hold on a moment.', 'loading');
           }
         }, 7000);
       }
@@ -687,11 +733,17 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
           ? lastSubmittedAmountRef.current
           : numeric.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
         const network: 'mainnet' | 'sepolia' = chainId === 11155111 ? 'sepolia' : 'mainnet';
+        // Calculate HPP amount for migrations
+        let hppAmount = formatted;
+        if (token === 'AQT') {
+          hppAmount = computeHppFromToken(lastSubmittedAmountRef.current, token);
+        }
+
         const pendingTx: Transaction = {
           id: migrationHash,
-          type: 'Migration',
-          date: new Date().toLocaleString('ko-KR'),
-          amount: `${formatted} ${token} → ${formatted} HPP`,
+          type: `Migration: ${token} → HPP`,
+          date: dayjs().format('YYYY-MM-DD HH:mm:ss'),
+          amount: `${formatted} ${token} → ${hppAmount} HPP`,
           status: 'Pending',
           hash: migrationHash,
           network,
@@ -699,11 +751,10 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
         } as Transaction;
         setTransactionHistory((prev) => [pendingTx, ...prev.filter((t) => t.id !== migrationHash)]);
       } catch {}
-      // Keep Pending until user refreshes history; no background polling
 
       setTimeout(() => {
         if (migrationInFlightRef.current) {
-          showToast('Migration sent', 'The network may be busy. Please hold on a moment.', 'loading');
+          showToast('Migration sent', 'The network may be busy.\nPlease hold on a moment.', 'loading');
         }
       }, 7000);
     } catch (error: any) {
@@ -767,591 +818,605 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
             sidebarOpen ? 'opacity-50 min-[1200px]:opacity-100' : ''
           }`}
         >
-          <div className="p-4 lg:p-8 max-w-6xl mx-auto">
-            <div className="lg:max-w-full 2xl:max-w-[80%] mx-auto">
-              {/* Header Section */}
-              <div className="text-center mb-8">
-                <h1 className="text-3xl font-medium text-white mb-3">{token} → HPP Migration</h1>
-                <p className="text-[#bfbfbf] text-lg">
-                  Move your {token} tokens to the HPP Layer2 network using the <br />
-                  appropriate migration path based on your source chain.
-                </p>
-                <p className="text-[#FF6B6B] text-lg">Migration Page will be activated soon.</p>
+          {/* Go Back Button */}
+          <div className="ml-4 max-w-6xl mx-auto mb-4 mt-3">
+            <Button
+              size="sm"
+              onClick={() => router.back()}
+              className="flex items-center space-x-1 cursor-pointer !bg-[#121212] text-white rounded-[5px]"
+            >
+              <svg className="w-4 h-4 text-[#FFFFFF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M15 19l-7-7 7-7" />
+              </svg>
+              <span>Go Back</span>
+            </Button>
+          </div>
+
+          <div className="bg-[#121212] border-b border-[#161616] py-7.5">
+            <div className="px-4 max-w-6xl mx-auto">
+              <h1 className="text-[50px] min-[1200px]:text-[70px] leading-[1.5] font-[900] text-white">
+                Migrate to HPP
+              </h1>
+              <p className="text-xl text-[#bfbfbf] font-semibold leading-[1.5] max-w-5xl">
+                Move your {token} tokens to the HPP Mainnet using the official migration paths.
+                <br />
+                Follow the steps carefully to ensure a secure and complete migration.
+              </p>
+              <div className="mt-5">
+                <Button
+                  variant="white"
+                  size="lg"
+                  className="cursor-pointer"
+                  onClick={() => {
+                    const guideUrl =
+                      token === 'AERGO'
+                        ? 'https://paper.hpp.io/guide/AERGO_Migration_Guide_ENG_vF.pdf'
+                        : 'https://paper.hpp.io/guide/AQT_Migration_Guide_ENG_vF.pdf';
+                    window.open(guideUrl, '_blank', 'noopener,noreferrer');
+                  }}
+                >
+                  View Step-by-Step Guide
+                </Button>
               </div>
+            </div>
+          </div>
 
-              {/* Migration Cards */}
-              <div className="space-y-8">
-                {/* Step 1 Card (AERGO only) */}
-                {token === 'AERGO' && (
-                  <div className="bg-[#111111] border border-[#161616] rounded-[5px]">
-                    <div className="p-6">
-                      <div className="flex items-start mb-6">
-                        <div className="w-8 h-8 bg-gray-800 rounded flex items-center justify-center mr-4 flex-shrink-0">
-                          <span className="text-white font-semibold text-sm">1</span>
-                        </div>
-                        <div className="flex-1">
-                          <h2 className="text-xl font-medium text-white mb-3">AERGO (Mainnet) → HPP (ETH)</h2>
-                          <p className="text-[#bfbfbf]">
-                            If you hold AERGO on the <strong>AERGO mainnet</strong>, use the official Aergo Bridge to
-                            migrate to HPP via Ethereum.
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Flow Diagram */}
-                      <div className="flex items-center justify-center mb-6">
-                        <div className="flex items-center space-x-8">
-                          {/* AERGO Mainnet */}
-                          <div className="flex flex-col items-center">
-                            <div className="w-24 h-16 bg-[#1f2937] rounded-lg flex items-center justify-center mb-3">
-                              <span className="text-white text-base font-medium">AERGO</span>
-                            </div>
-                            <span className="text-sm text-[#bfbfbf] text-center whitespace-nowrap">AERGO Mainnet</span>
-                          </div>
-
-                          {/* Aergo Bridge */}
-                          <div className="flex flex-col items-center">
-                            <div className="flex items-center mb-3">
-                              <div className="w-20 sm:w-32 md:w-40 h-0.5 bg-gray-300"></div>
-                              <svg
-                                className="w-4 sm:w-5 md:w-6 h-3 sm:h-4 text-gray-400 mx-0.5 sm:mx-1"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={3}
-                                  d="M2 12h16M12 6l6 6-6 6"
-                                />
-                              </svg>
-                              <div className="w-20 sm:w-32 md:w-40 h-0.5 bg-gray-300"></div>
-                            </div>
-                            <span className="text-sm text-[#bfbfbf] text-center whitespace-nowrap">Aergo Bridge</span>
-                          </div>
-
-                          {/* HPP (ETH) */}
-                          <div className="flex flex-col items-center">
-                            <div className="w-24 h-16 bg-black rounded-lg flex items-center justify-center mb-3">
-                              <span className="text-white text-base font-medium">HPP</span>
-                            </div>
-                            <span className="text-sm text-[#bfbfbf] text-center whitespace-nowrap">HPP (ETH)</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Action Buttons */}
-                      <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
-                        <Button
-                          variant="primary"
-                          size="md"
-                          href="https://bridge.aergo.io/"
-                          external={true}
-                          className="flex items-center justify-center space-x-2 whitespace-nowrap"
-                        >
-                          Go to Aergo Bridge
-                        </Button>
-
-                        <Button
-                          variant="white"
-                          size="md"
-                          className="flex items-center justify-center space-x-2 whitespace-nowrap"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
-                            />
-                          </svg>
-                          <span>View Step-by-Step Guide</span>
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Main Swap Card */}
-                <div className="bg-[#111111] border border-[#161616] rounded-[5px]">
+          <div className="p-4 lg:p-8 max-w-6xl mx-auto">
+            <h2 className="text-[30px] font-black text-white leading-[1.5em] mb-8 mt-12.5 min-[1400px]:mt-25">
+              Step 1: Convert to HPP(ETH)
+            </h2>
+            {/* Migration Cards */}
+            <div className="space-y-8">
+              {/* Step 1 Card (AERGO only) */}
+              {token === 'AERGO' && (
+                <div className="bg-primary border border-[#161616] rounded-[5px]">
                   <div className="p-6">
-                    <div className="flex items-start mb-6">
-                      <div className="w-8 h-8 bg-gray-800 rounded flex items-center justify-center mr-4 flex-shrink-0">
-                        <span className="text-white font-semibold text-sm">{token === 'AERGO' ? '2' : '1'}</span>
-                      </div>
+                    <div className="flex items-start mb-5">
                       <div className="flex-1">
-                        <h2 className="text-xl font-medium text-white mb-3">{token} (ETH) → HPP (ETH)</h2>
-                        <p className="text-[#bfbfbf]">Migrate your {token} tokens on Ethereum directly to HPP.</p>
+                        <h2 className="text-xl font-semibold text-white mb-3 tracking-[0em] leading-[1]">
+                          AERGO(Mainnet) → HPP(ETH)
+                        </h2>
+                        <p className="text-base font-normal text-white tracking-[0.8px] text-left leading-[1.5]">
+                          If you hold AERGO on the AERGO mainnet, use the official Aergo Bridge to migrate to HPP via
+                          Ethereum.
+                        </p>
                       </div>
                     </div>
 
                     {/* Flow Diagram */}
-                    <div className="flex items-center justify-center mb-6">
-                      <div className="flex items-center space-x-8">
-                        {/* From token (ETH) */}
+                    <div className="w-full h-min flex flex-row justify-center items-center p-5 bg-[rgba(18,18,18,0.1)] overflow-hidden rounded-[5px]">
+                      <div className="flex items-center gap-6 min-[480px]:gap-8 min-[640px]:gap-12 min-[810px]:gap-15">
+                        {/* AERGO Mainnet */}
                         <div className="flex flex-col items-center">
-                          <div className="w-24 h-16 bg-[#1f2937] rounded-lg flex items-center justify-center mb-3">
-                            <span className="text-white text-base font-medium">{token}</span>
+                          <div className="w-20 h-20 min-[810px]:w-25 min-[810px]:h-25 min-[1440px]:w-27.5 min-[1440px]:h-27.5 rounded-lg flex items-center justify-center mb-2.5">
+                            <Image src={AergoMainnet} alt="AERGO Mainnet" />
                           </div>
-                          <span className="text-sm text-[#bfbfbf] text-center whitespace-nowrap">{token} (ETH)</span>
+                          <span className="text-base leading-[1.2em] tracking-[0.8px] font-normal text-white text-center -ml-2.5">
+                            AERGO
+                            <br className="block min-[810px]:hidden" />
+                            (Mainnet)
+                          </span>
                         </div>
 
-                        {/* HPP Bridge */}
+                        {/* Aergo Bridge */}
                         <div className="flex flex-col items-center">
                           <div className="flex items-center mb-3">
-                            <div className="w-20 sm:w-32 md:w-40 h-0.5 bg-gray-300"></div>
-                            <svg
-                              className="w-4 sm:w-5 md:w-6 h-3 sm:h-4 text-gray-400 mx-0.5 sm:mx-1"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={3}
-                                d="M2 12h16M12 6l6 6-6 6"
-                              />
-                            </svg>
-                            <div className="w-20 sm:w-32 md:w-40 h-0.5 bg-gray-300"></div>
+                            <DotLottieReact
+                              src="/lotties/RightArrow.lottie"
+                              autoplay
+                              loop
+                              className="w-25 h-25 min-[810px]:w-[150px] min-[810px]:h-[150px]"
+                            />
                           </div>
-                          <span className="text-sm text-[#bfbfbf] text-center whitespace-nowrap">HPP Bridge</span>
                         </div>
 
                         {/* HPP (ETH) */}
                         <div className="flex flex-col items-center">
-                          <div className="w-24 h-16 bg-black rounded-lg flex items-center justify-center mb-3">
-                            <span className="text-white text-base font-medium">HPP</span>
+                          <div className="w-20 h-20 min-[810px]:w-25 min-[810px]:h-25 min-[1440px]:w-27.5 min-[1440px]:h-27.5 rounded-lg flex items-center justify-center mb-2.5">
+                            <Image src={HPPEth} alt="HPP (ETH)" />
                           </div>
-                          <span className="text-sm text-[#bfbfbf] text-center whitespace-nowrap">HPP (ETH)</span>
+                          <span className="text-base leading-[1.2em] tracking-[0.8px] font-normal text-white text-center -ml-2.5">
+                            HPP
+                            <br className="block min-[810px]:hidden" />
+                            (ETH)
+                          </span>
                         </div>
                       </div>
                     </div>
 
                     {/* Action Buttons */}
-                    <div className="space-y-3">
+                    <div className="flex justify-center mt-5">
                       <Button
-                        variant="white"
-                        size="sm"
+                        variant="black"
+                        size="lg"
+                        href="https://bridge.aergo.io/"
+                        external={true}
                         className="flex items-center justify-center space-x-2 whitespace-nowrap"
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        Go to Aergo Bridge
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Main Swap Card */}
+              <div className="bg-primary border border-[#161616] rounded-[5px]">
+                <div className="p-6">
+                  <div className="flex items-start mb-5">
+                    <div className="flex-1">
+                      <h2 className="text-xl font-semibold text-white mb-3 tracking-[0em] leading-[1] whitespace-pre-wrap break-words">
+                        {token}(ETH) → HPP(ETH)
+                      </h2>
+                      <p className="text-base font-normal text-white tracking-[0.8px] text-left leading-[1.5] whitespace-pre-wrap break-words">
+                        If your {token} tokens are already on Ethereum, connect your wallet and migrate directly.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Flow Diagram */}
+                  <div className="w-full h-min flex flex-row justify-center items-center p-5 bg-[rgba(18,18,18,0.1)] overflow-hidden rounded-[5px]">
+                    <div className="flex items-center gap-6 min-[480px]:gap-8 min-[640px]:gap-12 min-[810px]:gap-15">
+                      {/* From token (ETH) */}
+                      <div className="flex flex-col items-center">
+                        <div className="w-20 h-20 min-[810px]:w-25 min-[810px]:h-25 min-[1440px]:w-27.5 min-[1440px]:h-27.5 rounded-lg flex items-center justify-center mb-2.5">
+                          <Image src={token === 'AERGO' ? AergoEth : AqtEth} alt={`${token}(ETH)`} />
+                        </div>
+                        <span className="text-base leading-[1.2em] tracking-[0.8px] font-normal text-white text-center">
+                          {token}
+                          <br className="block min-[810px]:hidden" />
+                          (ETH)
+                        </span>
+                      </div>
+
+                      {/* HPP Bridge */}
+                      <div className="flex flex-col items-center">
+                        <div className="flex items-center mb-3">
+                          <DotLottieReact
+                            src="/lotties/RightArrow.lottie"
+                            autoplay
+                            loop
+                            className="w-25 h-25 min-[810px]:w-[150px] min-[810px]:h-[150px]"
+                          />
+                        </div>
+                      </div>
+
+                      {/* HPP (ETH) */}
+                      <div className="flex flex-col items-center">
+                        <div className="w-20 h-20 min-[810px]:w-25 min-[810px]:h-25 min-[1440px]:w-27.5 min-[1440px]:h-27.5 rounded-lg flex items-center justify-center mb-2.5">
+                          <Image src={HPPEth} alt="HPP (ETH)" />
+                        </div>
+                        <span className="text-base leading-[1.2em] tracking-[0.8px] font-normal text-white text-center ml-[-10px]">
+                          HPP
+                          <br className="block min-[810px]:hidden" />
+                          (ETH)
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="space-y-3">
+                    {isConnected ? (
+                      <div className="mt-5 bg-primary rounded-lg p-4 border border-dashed border-white/50">
+                        <div className="flex flex-col items-center text-center min-[810px]:flex-row min-[810px]:items-center min-[810px]:justify-between min-[810px]:text-left">
+                          <div className="flex flex-col items-center min-[810px]:flex-row min-[810px]:items-center min-[810px]:space-x-4 mb-4 min-[810px]:mb-0">
+                            <WalletIcon className="w-12 h-12 text-white mb-3 min-[810px]:mb-0" />
+                            <div className="flex flex-col items-center min-[810px]:items-start">
+                              <span className="text-white font-semibold text-xl tracking-[0.8px] leading-[1.5em] min-[810px]:mb-0">
+                                Wallet Connected
+                              </span>
+                              <div
+                                className="text-base text-white font-normal tracking-[0.8px] leading-[1.5em] max-w-full text-center min-[810px]:text-left"
+                                style={{
+                                  wordBreak: 'break-all',
+                                  overflowWrap: 'break-word',
+                                  whiteSpace: 'normal',
+                                }}
+                              >
+                                {address}
+                              </div>
+                            </div>
+                          </div>
+                          <Button variant="white" size="md" onClick={() => disconnect()} className="cursor-pointer">
+                            Disconnect
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center mt-5">
+                        <WalletButton size="lg" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Token Migration Form */}
+                  {isConnected && (
+                    <div className="mt-8">
+                      <div className="bg-[rgba(18,18,18,0.1)] overflow-hidden rounded-[5px] p-5">
+                        {/* From Section */}
+                        <div className="bg-white rounded-lg p-5 mb-4">
+                          <div className="flex justify-end mb-2">
+                            <button
+                              className="px-[10px] py-[3px] min-[810px]:px-[15px] min-[810px]:py-[5px] text-[10px] min-[810px]:text-xs bg-[#d9d9d9] text-black rounded-[5px] cursor-pointer hover:bg-[#d0d0d0] transition-colors"
+                              onClick={() => {
+                                const cleanBalance = (balance || '0').replace(/,/g, '');
+                                handleFromAmountChange(cleanBalance);
+                              }}
+                            >
+                              Max
+                            </button>
+                          </div>
+                          <div className="flex items-center justify-between mb-2">
+                            <label className="text-sm min-[810px]:text-xl font-semibold text-black tracking-[0.8px] leading-[1.2] text-left">
+                              From
+                            </label>
+                            <div className="flex flex-col items-end space-y-1">
+                              <span className="text-sm min-[810px]:text-xl font-semibold text-black tracking-[0.8px] leading-[1.2] text-right min-[810px]:text-left">
+                                Balance:
+                                <br className="block min-[810px]:hidden" />{' '}
+                                {isBalanceLoading ? 'Loading...' : `${balance || '0'}`}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-3">
+                            <div className="flex-1">
+                              <input
+                                type="text"
+                                inputMode="decimal"
+                                value={
+                                  fromAmount === ''
+                                    ? ''
+                                    : isNaN(Number(fromAmount))
+                                    ? '0'
+                                    : token === 'AQT'
+                                    ? Number(fromAmount).toLocaleString()
+                                    : fromAmount.includes('.')
+                                    ? (() => {
+                                        // Apply commas only to integer part when decimal point exists
+                                        const parts = fromAmount.split('.');
+                                        const integerPart = parts[0];
+                                        const decimalPart = parts[1] || '';
+                                        return (
+                                          Number(integerPart).toLocaleString() + (decimalPart ? '.' + decimalPart : '.')
+                                        );
+                                      })()
+                                    : Number(fromAmount).toLocaleString()
+                                }
+                                onChange={(e) => {
+                                  const value = e.target.value.replace(/,/g, '');
+                                  if (token === 'AQT') {
+                                    // AQT: integers only (no decimals)
+                                    if (/^\d*$/.test(value) || value === '') {
+                                      handleFromAmountChange(value);
+                                    }
+                                  } else {
+                                    // AERGO: allow digits with optional single decimal point
+                                    if (/^\d*(\.)?\d*$/.test(value) || value === '') {
+                                      handleFromAmountChange(value);
+                                    }
+                                  }
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    (e.target as HTMLInputElement).blur();
+                                  }
+                                }}
+                                onWheel={(e) => {
+                                  // prevent accidental value changes by scroll
+                                  (e.target as HTMLInputElement).blur();
+                                }}
+                                className={`w-full border-0 rounded-lg focus:outline-none focus:ring-0 text-[25px] min-[810px]:text-[40px] bg-transparent pl-0 text-black placeholder:text-[#bfbfbf] font-semibold tracking-[0.8px] leading-[1.2] text-left ${
+                                  inputError ? 'border-red-500' : ''
+                                }`}
+                                placeholder={token === 'AQT' ? '0' : '0.0'}
+                                autoComplete="off"
+                                spellCheck={false}
+                              />
+                            </div>
+                            <Image
+                              src={token === 'AERGO' ? AergoToken : token === 'AQT' ? AQTToken : HPPToken}
+                              alt={`${token} token`}
+                              className="w-15 h-7.5 min-[810px]:w-30 min-[810px]:h-12"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Direction Indicator */}
+                        <div className="flex justify-center mb-4">
+                          <DotLottieReact src="/lotties/DownArrow.lottie" autoplay loop className="w-12.5 h-12.5" />
+                        </div>
+
+                        {/* To Section */}
+                        <div className="bg-white rounded-lg px-5 pt-5 pb-2.5">
+                          <div className="flex items-center justify-between">
+                            <label className="text-sm min-[810px]:text-xl font-semibold text-black tracking-[0.8px] leading-[1.2] text-left">
+                              To
+                            </label>
+                            <span className="text-sm min-[810px]:text-xl font-semibold text-black tracking-[0.8px] leading-[1.2] text-right min-[810px]:text-left">
+                              Balance:
+                              <br className="block min-[810px]:hidden" />{' '}
+                              {isHppBalanceLoading ? 'Loading...' : `${hppBalance || '0'}`}
+                            </span>
+                          </div>
+                          <div className="flex items-center space-x-3">
+                            <input
+                              type="text"
+                              value={
+                                toAmount === ''
+                                  ? ''
+                                  : isNaN(Number(toAmount))
+                                  ? '0'
+                                  : (() => {
+                                      const num = Number(toAmount);
+                                      if (Number.isInteger(num)) {
+                                        return num.toLocaleString();
+                                      } else {
+                                        // Apply commas only to integer part when decimal point exists
+                                        const parts = toAmount.split('.');
+                                        const integerPart = parts[0];
+                                        const decimalPart = parts[1] || '';
+                                        // Remove trailing zeros from decimal part
+                                        const cleanDecimalPart = decimalPart.replace(/0+$/, '');
+                                        return (
+                                          Number(integerPart).toLocaleString() +
+                                          (cleanDecimalPart ? '.' + cleanDecimalPart : '')
+                                        );
+                                      }
+                                    })()
+                              }
+                              readOnly
+                              className="w-full py-3 border-0 rounded-lg focus:outline-none focus:ring-0 text-[25px] min-[810px]:text-[40px] bg-transparent pl-0 text-black placeholder:text-[#bfbfbf] font-semibold tracking-[0.8px] leading-[1.2] text-left cursor-default pointer-events-none"
+                              placeholder="0.0"
+                              style={{ cursor: 'default' }}
+                            />
+                            <Image
+                              src={HPPToken}
+                              alt="HPP token"
+                              className="w-15 h-7.5 min-[810px]:w-30 min-[810px]:h-12"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      {/* Migrate Button */}
+                      <div className="flex justify-center px-5">
+                        <Button
+                          variant="black"
+                          size="lg"
+                          className="mt-5 w-full font-medium py-3 px-6 rounded-[5px] hover:brightness-105 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                          onClick={handleMigrationClick}
+                          disabled={isMigrationDisabled()}
+                        >
+                          {isApproving ? 'Approving...' : isSwapping ? 'Migrating...' : 'Migrate Tokens'}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Transaction History */}
+              {isConnected && (
+                <div className="mt-8">
+                  <div className="bg-primary border border-[#161616] rounded-[5px] p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold leading-[1em] text-white">Transaction History</h3>
+                      <button
+                        onClick={() => address && fetchTransactionHistory(address)}
+                        disabled={isLoadingHistory}
+                        aria-label="Refresh"
+                        className="flex items-center px-3 py-2 text-sm text-white rounded-lg cursor-pointer transition-all duration-200"
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <svg
+                          className={`w-4 h-4 transition-transform duration-500 ${
+                            isLoadingHistory ? 'animate-spin-reverse' : ''
+                          }`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
                           <path
                             strokeLinecap="round"
                             strokeLinejoin="round"
                             strokeWidth={2}
-                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
                           />
                         </svg>
-                        <span>View Step-by-Step Guide</span>
-                      </Button>
-
-                      {isConnected ? (
-                        <div className="bg-[#0f0f0f] rounded-lg p-4 border border-[#161616]">
-                          <div className="flex items-center justify-between">
-                            <div className="flex flex-col">
-                              <div className="flex items-center space-x-3">
-                                <svg
-                                  className="w-5 h-5 text-white"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                                  />
-                                </svg>
-                                <span className="text-white">Wallet Connected</span>
-                              </div>
-                              <div className="mt-2 text-xs text-[#bfbfbf] font-mono">{address}</div>
-                            </div>
-                            <WalletButton />
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="bg-[#0f0f0f] rounded-lg p-4">
-                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
-                            <div className="flex items-center space-x-3">
-                              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9v-9m0-9v9"
-                                />
-                              </svg>
-                              <span className="text-white">Connect your wallet to start migration</span>
-                            </div>
-                            <WalletButton />
-                          </div>
-                        </div>
-                      )}
+                      </button>
                     </div>
 
-                    {/* Token Migration Form */}
-                    {isConnected && (
-                      <div className="mt-8">
-                        <div className="bg-[#111111] border border-[#161616] rounded-[5px] p-6">
-                          {/* From Section */}
-                          <div className="bg-[#0f0f0f] rounded-lg p-4 mb-4 border border-[#161616]">
-                            <div className="flex items-center justify-between mb-2">
-                              <label className="text-sm font-medium text-[#bfbfbf]">From</label>
-                              <div className="flex items-center space-x-2">
-                                <span className="text-sm text-[#bfbfbf]">
-                                  Balance: {isBalanceLoading ? 'Loading...' : `${balance || '0'} ${token}`}
-                                </span>
-                                {/* Approval Status Check */}
-                                {isConnected && (
-                                  <div className="relative group">
-                                    {isAllowanceLoading ? (
-                                      <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin"></div>
-                                    ) : allowanceData &&
-                                      fromAmount &&
-                                      parseFloat(fromAmount) > 0 &&
-                                      parseUnits(fromAmount, 18) <= allowanceData ? (
-                                      <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
-                                        <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                          <path
-                                            fillRule="evenodd"
-                                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                            clipRule="evenodd"
-                                          />
-                                        </svg>
-                                      </div>
-                                    ) : allowanceData && fromAmount && parseFloat(fromAmount) > 0 ? (
-                                      <div className="w-4 h-4 bg-orange-500 rounded-full flex items-center justify-center">
-                                        <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                          <path
-                                            fillRule="evenodd"
-                                            d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                                            clipRule="evenodd"
-                                          />
-                                        </svg>
-                                      </div>
-                                    ) : null}
-
-                                    {/* Popover */}
-                                    <div className="absolute bottom-full right-0 mb-2 px-3 py-2 bg-black text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                                      <div className="text-center">
-                                        <div className="font-medium mb-1">Approval Status</div>
-                                        {isAllowanceLoading ? (
-                                          <div>Checking allowance...</div>
-                                        ) : allowanceData &&
-                                          fromAmount &&
-                                          parseFloat(fromAmount) > 0 &&
-                                          parseUnits(fromAmount, 18) <= allowanceData ? (
-                                          <div className="text-green-400">✓ Approved for this amount</div>
-                                        ) : allowanceData && fromAmount && parseFloat(fromAmount) > 0 ? (
-                                          <div className="text-orange-400">⚠ Needs approval</div>
-                                        ) : null}
-                                        {allowanceData && (
-                                          <div className="text-[#bfbfbf] mt-1">
-                                            Current allowance: {formatUnits(allowanceData, 18)} {token}
-                                          </div>
-                                        )}
-                                      </div>
-                                      {/* Arrow */}
-                                      <div className="absolute top-full right-2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-black"></div>
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex items-center space-x-3">
-                              <div className="flex-1">
-                                <input
-                                  type="text"
-                                  inputMode="decimal"
-                                  value={fromAmount === '' ? '' : fromAmount}
-                                  onChange={(e) => {
-                                    const value = e.target.value;
-                                    if (token === 'AQT') {
-                                      // AQT: integers only (no decimals)
-                                      if (/^\d*$/.test(value) || value === '') {
-                                        handleFromAmountChange(value);
-                                      }
-                                    } else {
-                                      // AERGO: allow digits with optional single decimal point
-                                      if (/^\d*(\.)?\d*$/.test(value) || value === '') {
-                                        handleFromAmountChange(value);
-                                      }
-                                    }
-                                  }}
-                                  onWheel={(e) => {
-                                    // prevent accidental value changes by scroll
-                                    (e.target as HTMLInputElement).blur();
-                                  }}
-                                  className={`w-full py-3 border-0 rounded-lg focus:outline-none focus:ring-0 text-lg bg-transparent pl-0 text-white placeholder:text-[#8a8a8a] ${
-                                    inputError ? 'border-red-500' : ''
-                                  }`}
-                                  placeholder="0.0"
-                                  autoComplete="off"
-                                  spellCheck={false}
-                                />
-                                {inputError && <div className="mt-1 text-sm text-red-600">{inputError}</div>}
-                              </div>
-                              <button className="flex items-center space-x-2 px-3 py-2 bg-[#0f0f0f] border border-[#161616] rounded-lg hover:bg-[#141414] transition-colors">
-                                <div className="w-5 h-5 bg-gray-700 rounded-full flex items-center justify-center">
-                                  <span className="text-white text-xs font-medium">{token[0]}</span>
-                                </div>
-                                <span className="text-sm font-medium text-white">{token}</span>
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* Direction Indicator */}
-                          <div className="flex justify-center mb-4">
-                            <div className="w-8 h-8 bg-[#0f0f0f] rounded-lg flex items-center justify-center border border-[#161616]">
-                              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M19 14l-7 7m0 0l-7-7m7 7V3"
-                                />
-                              </svg>
-                            </div>
-                          </div>
-
-                          {/* To Section */}
-                          <div className="bg-[#0f0f0f] rounded-lg p-4 mb-4 border border-[#161616]">
-                            <div className="flex items-center justify-between mb-2">
-                              <label className="text-sm font-medium text-[#bfbfbf]">To</label>
-                              <span className="text-sm text-[#bfbfbf]">
-                                Balance: {isHppBalanceLoading ? 'Loading...' : `${hppBalance || '0'} HPP`}
-                              </span>
-                            </div>
-                            <div className="flex items-center space-x-3">
-                              <input
-                                type="text"
-                                value={toAmount === '' ? '' : toAmount}
-                                readOnly
-                                className="flex-1 py-3 border-0 rounded-lg bg-transparent text-lg pl-0 cursor-default pointer-events-none text-white"
-                                placeholder="0.0"
-                                style={{ cursor: 'default' }}
-                              />
-                              <div className="flex flex-col space-y-1">
-                                <button className="flex items-center space-x-2 px-3 py-2 bg-[#0f0f0f] border border-[#161616] rounded-lg hover:bg-[#141414] transition-colors">
-                                  <div className="w-5 h-5 bg-gray-700 rounded-full flex items-center justify-center">
-                                    <span className="text-white text-xs font-medium">H</span>
-                                  </div>
-                                  <span className="text-sm font-medium text-white">HPP</span>
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Migrate Button */}
-                          <Button
-                            variant="primary"
-                            size="lg"
-                            className="w-full font-medium py-3 px-6 rounded-lg hover:brightness-105 transition"
-                            onClick={handleMigrationClick}
-                            disabled={isApproving || isSwapping}
+                    {transactionHistory.length > 0 ? (
+                      <div className="space-y-2">
+                        {(showAllHistory ? transactionHistory : transactionHistory.slice(0, 5)).map((tx) => (
+                          <div
+                            key={tx.id}
+                            className="flex items-start min-[810px]:items-start items-center p-5 bg-[rgba(18,18,18,0.1)] hover:bg-[rgba(18,18,18,0.2)] rounded-[5px] mb-2 last:mb-0 cursor-pointer gap-3 min-[810px]:gap-5 transition-colors duration-200"
+                            style={{ cursor: 'pointer' }}
+                            onClick={() => {
+                              const etherscanUrl = createEtherscanLink(tx.hash, tx.network);
+                              window.open(etherscanUrl, '_blank');
+                            }}
                           >
-                            {isApproving ? 'Approving...' : isSwapping ? 'Migrating...' : 'Migrate Tokens'}
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Transaction History */}
-                    {isConnected && (
-                      <div className="mt-8">
-                        <div className="bg-[#111111] border border-[#161616] rounded-[5px] p-6">
-                          <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-lg font-medium text-white">Transaction History</h3>
-                            <button
-                              onClick={() => address && fetchTransactionHistory(address)}
-                              disabled={isLoadingHistory}
-                              aria-label="Refresh"
-                              className="flex items-center px-3 py-2 text-sm text-[#bfbfbf] hover:text-white hover:bg-[#141414] rounded-lg transition-colors cursor-pointer"
-                              style={{ cursor: 'pointer' }}
+                            {/* Icon - always on the left */}
+                            <div
+                              className={`w-13.5 h-13.5 rounded-full flex items-center justify-center flex-shrink-0 ${
+                                tx.status === 'Pending' ? 'bg-[#F07F1D]' : 'bg-white'
+                              }`}
                             >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                                />
-                              </svg>
-                            </button>
-                          </div>
-
-                          {isLoadingHistory ? (
-                            <div className="flex items-center justify-center py-8">
-                              <div
-                                aria-label="Loading"
-                                className="w-6 h-6 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin"
-                              ></div>
+                              {tx.icon}
                             </div>
-                          ) : transactionHistory.length > 0 ? (
-                            <div className="space-y-2">
-                              {(showAllHistory ? transactionHistory : transactionHistory.slice(0, 2)).map((tx) => (
-                                <div
-                                  key={tx.id}
-                                  className="flex items-center justify-between py-3 border-b border-[#161616] last:border-b-0 hover:bg-[#0f0f0f] transition-colors cursor-pointer"
-                                  style={{ cursor: 'pointer' }}
-                                  onClick={() => {
-                                    const etherscanUrl = createEtherscanLink(tx.hash, tx.network);
-                                    window.open(etherscanUrl, '_blank');
-                                  }}
-                                >
-                                  <div className="flex items-center space-x-3">
-                                    <div className="w-8 h-8 bg-[#1f2937] rounded-full flex items-center justify-center">
-                                      {tx.icon}
-                                    </div>
-                                    <div>
-                                      <div className="text-sm font-normal text-white">{tx.type}</div>
-                                      <div className="text-xs text-[#bfbfbf]">{tx.date}</div>
-                                    </div>
-                                  </div>
-                                  <div className="text-right">
-                                    <div className="text-sm font-normal text-white">{tx.amount}</div>
-                                    <div
-                                      className={`text-xs font-medium ${
-                                        tx.status === 'Completed'
-                                          ? 'text-green-400'
-                                          : tx.status === 'Pending'
-                                          ? 'text-yellow-400'
-                                          : 'text-red-400'
-                                      }`}
-                                    >
-                                      {tx.status}
+
+                            {/* Content - responsive layout */}
+                            <div className="flex-1 min-w-0">
+                              {/* Desktop: horizontal layout */}
+                              <div className="hidden min-[600px]:flex items-center justify-between">
+                                <div className="flex items-center space-x-3">
+                                  <div>
+                                    <div className="text-lg font-semibold text-white leading-[20px]">{tx.type}</div>
+                                    <div className="mt-2.5 text-base text-[#bfbfbf] leading-[1.5] tracking-[0.8px] font-normal text-left">
+                                      {tx.date}
                                     </div>
                                   </div>
                                 </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <div className="text-center py-8 text-[#bfbfbf]">
-                              <svg
-                                className="w-12 h-12 mx-auto mb-3 text-[#2b2b2b]"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                                />
-                              </svg>
-                              <p className="text-sm text-[#8a8a8a] mt-1">No transactions yet</p>
-                            </div>
-                          )}
+                                <div className="text-right">
+                                  <div className="text-xl text-white leading-[20px] tracking-[0px] font-semibold whitespace-pre text-left">
+                                    {tx.amount}
+                                  </div>
+                                  <div
+                                    className={`mt-2.5 text-base font-normal leading-[1.5] tracking-[0.8px] text-right ${
+                                      tx.status === 'Completed'
+                                        ? 'text-[#25ff21]'
+                                        : tx.status === 'Pending'
+                                        ? 'text-[#bfbfbf]'
+                                        : 'text-[#ff1312]'
+                                    }`}
+                                  >
+                                    {tx.status}
+                                  </div>
+                                </div>
+                              </div>
 
-                          {transactionHistory.length > 2 && !showAllHistory && (
-                            <div className="mt-4 text-center space-y-3">
-                              <button
-                                onClick={() => {
-                                  setShowAllHistory(true);
-                                  if (address) {
-                                    fetchAllMigrationHistory(address);
-                                  }
-                                }}
-                                className="text-sm text-[#bfbfbf] hover:text-white bg-transparent cursor-pointer px-2 py-1 focus:outline-none"
-                                style={{ cursor: 'pointer' }}
-                              >
-                                View All Transactions
-                              </button>
+                              {/* Mobile: vertical layout */}
+                              <div className="min-[600px]:hidden space-y-1">
+                                <div className="text-base font-semibold text-white leading-[20px]">{tx.type}</div>
+                                <div className="text-base text-white leading-[20px] tracking-[0px] font-semibold whitespace-pre text-left">
+                                  {tx.amount}
+                                </div>
+                                <div className="text-sm text-[#bfbfbf] leading-[1.5] tracking-[0.8px] font-normal text-left">
+                                  {tx.date}
+                                </div>
+                                <div
+                                  className={`text-sm font-normal leading-[1.5] tracking-[0.8px] text-left whitespace-pre ${
+                                    tx.status === 'Completed'
+                                      ? 'text-[#25ff21]'
+                                      : tx.status === 'Pending'
+                                      ? 'text-[#bfbfbf]'
+                                      : 'text-[#ff1312]'
+                                  }`}
+                                >
+                                  {tx.status}
+                                </div>
+                              </div>
                             </div>
-                          )}
-                        </div>
+                          </div>
+                        ))}
                       </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Complete Your Migration Section */}
-                <div className="bg-[#121212] -mx-4 lg:-mx-8 xl:-mx-32 2xl:-mx-64 px-4 lg:px-8 py-8 mt-12 border-t border-[#161616]">
-                  <div className="text-center mb-8">
-                    <h2 className="text-2xl font-medium text-white mb-3">Complete Your Migration</h2>
-                    <p className="text-[#bfbfbf]">
-                      Once you have HPP tokens on Ethereum, bridge them to the native HPP <br />
-                      network for full ecosystem access and benefits.
-                    </p>
-                  </div>
-
-                  <div className="max-w-4xl mx-auto">
-                    <div className="bg-[#111111] border border-[#161616] rounded-[5px] p-6">
-                      <div className="text-center">
-                        <h3 className="text-xl font-normal text-white mb-4">HPP (ETH) → HPP Native</h3>
-                        <p className="text-[#bfbfbf] mb-6">
-                          Use the Arbitrum Canonical Bridge to move your tokens to the native HPP network.
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-8 bg-[rgba(18,18,18,0.1)] rounded-[5px]">
+                        <TransactionsIcon className="w-11 h-12.5 mb-5" />
+                        <p className="text-base text-[#bfbfbf] tracking-[0.8px] leading-[1.5] text-center font-normal">
+                          No transactions yet
                         </p>
                       </div>
+                    )}
 
-                      {/* Flow Diagram */}
-                      <div className="flex items-center justify-center mb-6">
-                        <div className="flex items-center space-x-8">
-                          {/* HPP (ETH) */}
-                          <div className="flex flex-col items-center">
-                            <div className="w-24 h-16 bg-[#1f2937] rounded-lg flex items-center justify-center mb-3">
-                              <span className="text-white text-base font-medium">HPP</span>
-                            </div>
-                            <span className="text-sm text-[#bfbfbf] text-center whitespace-nowrap">Ethereum</span>
-                          </div>
+                    {transactionHistory.length > 5 && !showAllHistory && (
+                      <div className="mt-4 text-center space-y-3">
+                        <Button
+                          variant="white"
+                          size="lg"
+                          onClick={() => {
+                            setShowAllHistory(true);
+                            if (address) {
+                              fetchAllMigrationHistory(address);
+                            }
+                          }}
+                        >
+                          View All Transactions
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
 
-                          {/* Arbitrum Bridge */}
-                          <div className="flex flex-col items-center">
-                            <div className="flex items-center mb-3">
-                              <div className="w-20 sm:w-32 md:w-40 h-0.5 bg-gray-300"></div>
-                              <svg
-                                className="w-4 sm:w-5 md:w-6 h-3 sm:h-4 text-gray-400 mx-0.5 sm:mx-1"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={3}
-                                  d="M2 12h16M12 6l6 6-6 6"
-                                />
-                              </svg>
-                              <div className="w-20 sm:w-32 md:w-40 h-0.5 bg-gray-300"></div>
-                            </div>
-                          </div>
+          {/* Step 2 Section */}
+          <div className="p-4 lg:p-8 max-w-6xl mx-auto">
+            <h2 className="text-[30px] font-black text-white leading-[1.5em] mb-8 mt-12.5 min-[1400px]:mt-25">
+              Step 2: Finalize Migration to HPP(Mainnet)
+            </h2>
+            {/* Migration Cards */}
+            <div className="space-y-8">
+              {/* Step 2 Card */}
+              <div className="bg-[#121212] border border-[#161616] rounded-[5px]">
+                <div className="p-6">
+                  <div className="flex items-start mb-5">
+                    <div className="flex-1">
+                      <h2 className="text-xl font-semibold text-white mb-3 tracking-[0em] leading-[1]">
+                        HPP(ETH) → HPP(Mainnet)
+                      </h2>
+                      <p className="text-base font-normal text-white tracking-[0.8px] text-left leading-[1.5]">
+                        Once you have HPP tokens on Ethereum, bridge them to the HPP Mainnet for full ecosystem
+                        access(listings, governance, utilities, and more).
+                      </p>
+                    </div>
+                  </div>
 
-                          {/* HPP Native */}
-                          <div className="flex flex-col items-center">
-                            <div className="w-24 h-16 bg-black rounded-lg flex items-center justify-center mb-3">
-                              <span className="text-white text-base font-medium">HPP</span>
-                            </div>
-                            <span className="text-sm text-[#bfbfbf] text-center whitespace-nowrap">Native</span>
-                          </div>
+                  {/* Flow Diagram */}
+                  <div className="w-full h-min flex flex-row justify-center items-center p-5 bg-[rgba(255,255,255,0.05)] overflow-hidden rounded-[5px]">
+                    <div className="flex items-center gap-6 min-[480px]:gap-8 min-[640px]:gap-12 min-[810px]:gap-15">
+                      {/* HPP (ETH) */}
+                      <div className="flex flex-col items-center">
+                        <div className="w-20 h-20 min-[810px]:w-25 min-[810px]:h-25 min-[1440px]:w-27.5 min-[1440px]:h-27.5 rounded-lg flex items-center justify-center mb-2.5">
+                          <Image src={HPPEth} alt="HPP (ETH)" />
+                        </div>
+                        <span className="text-base leading-[1.2em] tracking-[0.8px] font-normal text-white text-center ml-[-10px]">
+                          HPP
+                          <br className="block min-[810px]:hidden" />
+                          (ETH)
+                        </span>
+                      </div>
+
+                      {/* HPP Bridge */}
+                      <div className="flex flex-col items-center">
+                        <div className="flex items-center mb-3">
+                          <DotLottieReact
+                            src="/lotties/RightArrow.lottie"
+                            autoplay
+                            loop
+                            className="w-25 h-25 min-[810px]:w-[150px] min-[810px]:h-[150px]"
+                          />
                         </div>
                       </div>
 
-                      {/* Action Button */}
-                      <div className="text-center">
-                        <Button
-                          variant="primary"
-                          size="lg"
-                          href="https://bridge.arbitrum.io/?destinationChain=190415&sourceChain=ethereum&token=0xe33fbe7584eb79e2673abe576b7ac8c0de62565c"
-                          external={true}
-                          className="flex items-center justify-center space-x-2 mx-auto"
-                        >
-                          Go to Bridge
-                        </Button>
+                      {/* HPP Mainnet */}
+                      <div className="flex flex-col items-center">
+                        <div className="w-20 h-20 min-[810px]:w-25 min-[810px]:h-25 min-[1440px]:w-27.5 min-[1440px]:h-27.5 rounded-lg flex items-center justify-center mb-2.5">
+                          <Image src={HPPMainnet} alt="HPP Mainnet" />
+                        </div>
+                        <span className="text-base leading-[1.2em] tracking-[0.8px] font-normal text-white text-center -ml-2.5">
+                          HPP
+                          <br className="block min-[810px]:hidden" />
+                          (Mainnet)
+                        </span>
                       </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Need Help Section */}
-                <NeedHelp />
+                  {/* Action Buttons */}
+                  <div className="flex justify-center mt-5">
+                    <Button
+                      variant="primary"
+                      size="lg"
+                      href="https://bridge.arbitrum.io/?destinationChain=190415&sourceChain=ethereum&token=0xe33fbe7584eb79e2673abe576b7ac8c0de62565c"
+                      external={true}
+                      className="flex items-center justify-center space-x-2 whitespace-nowrap"
+                    >
+                      Go to HPP Bridge
+                    </Button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
+          {/* Need Help Section */}
+          <NeedHelp />
+
+          {/* Footer */}
           <Footer />
         </main>
       </div>

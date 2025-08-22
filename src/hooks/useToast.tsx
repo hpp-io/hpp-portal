@@ -1,6 +1,8 @@
 'use client';
 
 import { createContext, useContext, useState, ReactNode } from 'react';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import Button from '@/components/ui/Button';
 
 interface ToastContextType {
   showToast: (
@@ -109,48 +111,24 @@ function Toast() {
     switch (type) {
       case 'error':
         return {
-          container: 'bg-white border-red-200',
-          title: 'text-red-900',
-          message: 'text-red-700',
-          icon: (
-            <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-          ),
+          container: 'bg-primary',
+          title: 'text-white font-semibold text-[20px] leading-[1.5em]',
+          message: 'text-white font-normal text-[20px] leading-[1.5em]',
+          icon: <DotLottieReact src="/lotties/Exclamation.lottie" autoplay loop className="w-35 h-35" />,
         };
       case 'loading':
         return {
-          container: 'bg-white border-gray-200',
-          title: 'text-gray-900',
-          message: 'text-gray-700',
-          icon: <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div>,
+          container: 'bg-primary',
+          title: 'text-white font-semibold text-[20px] leading-[1.5em]',
+          message: 'text-white font-normal text-[20px] leading-[1.5em]',
+          icon: <DotLottieReact src="/lotties/Loading.lottie" autoplay loop className="w-35 h-35" />,
         };
       default:
         return {
-          container: 'bg-white border-gray-200',
-          title: 'text-gray-900',
-          message: 'text-gray-700',
-          icon: (
-            <div className="relative">
-              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center animate-pulse">
-                <svg
-                  className="w-6 h-6 text-green-600 animate-bounce"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              {/* Ripple effect */}
-              <div className="absolute inset-0 w-12 h-12 bg-green-200 rounded-full animate-ping opacity-75"></div>
-            </div>
-          ),
+          container: 'bg-primary',
+          title: 'text-white font-semibold text-[20px] leading-[1.5em]',
+          message: 'text-white font-normal text-[20px] leading-[1.5em]',
+          icon: <DotLottieReact src="/lotties/CheckMark.lottie" autoplay loop className="w-35 h-35" />,
         };
     }
   };
@@ -164,9 +142,9 @@ function Toast() {
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
       }}
     >
-      <div className={`rounded-lg p-6 md:p-8 shadow-xl max-w-md w-full mx-4 border relative ${styles.container}`}>
+      <div className={`rounded-lg p-6 md:p-8 shadow-xl max-w-md w-full mx-4 relative ${styles.container}`}>
         {/* Confetti effect for success */}
-        {type === 'success' && (
+        {/* {type === 'success' && (
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
             {[...Array(20)].map((_, i) => (
               <div
@@ -184,14 +162,11 @@ function Toast() {
               />
             ))}
           </div>
-        )}
+        )} */}
 
         {/* Close button for success and error types */}
         {(type === 'success' || type === 'error') && (
-          <button
-            onClick={hideToast}
-            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
-          >
+          <button onClick={hideToast} className="absolute top-4 right-4 text-white cursor-pointer">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -211,27 +186,20 @@ function Toast() {
               type === 'error' ? 'max-h-48' : 'max-h-32'
             }`}
           >
-            <p className="break-words whitespace-pre-wrap pr-2">{message}</p>
+            <p className="break-words whitespace-pre-line pr-2">{message}</p>
           </div>
 
           {/* Link for success type */}
           {type === 'success' && link && (
-            <a
+            <Button
+              variant="white"
+              size="md"
               href={link.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`inline-flex items-center space-x-2 ${styles.message} hover:underline`}
+              external={true}
+              className="inline-flex items-center justify-center"
             >
               <span>{link.text}</span>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                />
-              </svg>
-            </a>
+            </Button>
           )}
         </div>
       </div>
