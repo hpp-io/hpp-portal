@@ -9,17 +9,23 @@ export default function NeedHelp() {
         If you're unsure about which migration path to use or need assistance, our support team is here to help.
       </p>
       <div className="flex flex-row gap-4 justify-center items-center">
-      <Button variant="primary" size="lg" className="cursor-pointer w-40 h-12 px-6 py-3">
+        <Button
+          variant="primary"
+          size="lg"
+          href="https://t.me/aergoofficial"
+          external
+          className="cursor-pointer w-40 h-12 px-6 py-3"
+        >
           Contact Support
         </Button>
         <Button
           variant="primary"
           size="lg"
-          href="https://docs.hpp.io"
-          external={true}
+          href="https://docs.hpp.io/community/migration-guides"
+          external
           className="cursor-pointer w-40 h-12 px-6 py-3"
         >
-          FAQ
+          Docs
         </Button>
       </div>
     </div>
