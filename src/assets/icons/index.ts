@@ -23,6 +23,8 @@ export { default as FaqOpenIcon } from './FaqOpen.svg';
 export { default as WalletIcon } from './Wallet.svg';
 export { default as CompleteIcon } from './Complete.svg';
 export { default as PendingIcon } from './Pending.svg';
+export { default as FailedIcon } from './Failed.svg';
+export { default as TransactionsIcon } from './Transactions.svg';
 
 // PNG
 export { default as Aergo } from './Aergo.png';
