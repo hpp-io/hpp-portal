@@ -4,8 +4,7 @@ import MigrationClient from '../MigrationClient';
 
 export const metadata: Metadata = {
   title: 'Migration (AERGO) | HPP Portal',
-  description: 'AERGO → HPP migration.',
-  robots: { index: false, follow: false },
+  description: 'Move your AERGO tokens to the HPP Mainnet using the official migration paths.',
 };
 
 export default function AergoMigrationTestPage() {

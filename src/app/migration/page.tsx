@@ -4,7 +4,7 @@ import SelectionClient from './SelectionClient';
 
 export const metadata: Metadata = {
   title: 'Migration | HPP Portal',
-  description: 'Choose a token to migrate path.',
+  description: 'Select the option that matches your current token holdings to migrate into the HPP Mainnet.',
 };
 
 export default function MigrationTestPage() {
