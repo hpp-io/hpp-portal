@@ -114,16 +114,7 @@ function Toast() {
           container: 'bg-primary',
           title: 'text-white font-semibold text-[20px] leading-[1.5em]',
           message: 'text-white font-normal text-[20px] leading-[1.5em]',
-          icon: (
-            <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-          ),
+          icon: <DotLottieReact src="/lotties/Exclamation.lottie" autoplay loop className="w-35 h-35" />,
         };
       case 'loading':
         return {
