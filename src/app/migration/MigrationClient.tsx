@@ -293,7 +293,7 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
         }
 
         // Fetch latest history to check for status updates
-        const fetchedTransactions = await fetchTransactionHistory(walletAddress, { page: 1, append: false });
+        const fetchedTransactions = await fetchTransactionHistory(walletAddress);
 
         // Check if the specific transaction is now completed in the fetched data
         if (fetchedTransactions && fetchedTransactions.length > 0) {
@@ -332,87 +332,6 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
     };
   }, []);
 
-  // Fetch ALL migration history (no pagination in UI)
-  const fetchAllMigrationHistory = async (walletAddress: string) => {
-    if (!walletAddress) return;
-    setIsLoadingHistory(true);
-    try {
-      const network: 'mainnet' | 'sepolia' = chainId === 11155111 ? 'sepolia' : 'mainnet';
-      const apiKey = process.env.NEXT_PUBLIC_ETHERSCAN_API_KEY;
-      const baseUrl = network === 'mainnet' ? 'https://api.etherscan.io/api' : 'https://api-sepolia.etherscan.io/api';
-
-      const aggregated: Transaction[] = [];
-      const seen = new Set<string>();
-
-      let page = 1;
-      while (true) {
-        const res = await fetch(
-          `${baseUrl}?module=account&action=tokentx&address=${walletAddress}&startblock=0&endblock=99999999&page=${page}&offset=${HISTORY_PAGE_SIZE}&sort=desc&apikey=${apiKey}`
-        );
-        const data = await res.json();
-        if (data.status !== '1') break;
-
-        const walletLc = walletAddress.toLowerCase();
-        const contractLc = MIGRATION_CONTRACT_ADDRESS.toLowerCase();
-
-        const mapped: Transaction[] = (data.result || [])
-          .filter((tx: any) => {
-            // Find transfers where user sends tokens TO the migration contract
-            return tx.from?.toLowerCase() === walletLc && tx.to?.toLowerCase() === contractLc;
-          })
-          .map((tx: any) => {
-            const type = `Migration: ${token} → HPP`;
-            let status: Transaction['status'] = 'Completed';
-
-            // Get actual token amount from the transfer
-            const fromAmount = formatUnits(BigInt(tx.value), parseInt(tx.tokenDecimal));
-            let toAmount = fromAmount;
-
-            // Calculate HPP amount using the conversion rate
-            toAmount = computeHppFromToken(fromAmount, token);
-
-            return {
-              id: tx.hash,
-              type,
-              date: dayjs(parseInt(tx.timeStamp) * 1000).format('YYYY-MM-DD HH:mm:ss'),
-              amount: `${parseFloat(fromAmount).toLocaleString('en-US', {
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 6,
-              })} ${token} → ${parseFloat(toAmount).toLocaleString('en-US', {
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 6,
-              })} HPP`,
-              status,
-              hash: tx.hash,
-              network,
-              icon: getTransactionIcon(type, status),
-            } as Transaction;
-          });
-
-        for (const t of mapped) {
-          if (!seen.has(t.id)) {
-            seen.add(t.id);
-            aggregated.push(t);
-          }
-        }
-
-        const pageHasMore = Array.isArray(data.result) ? data.result.length === HISTORY_PAGE_SIZE : false;
-        if (!pageHasMore) break;
-        page += 1;
-        if (page > 100) break; // hard cap safety
-      }
-
-      // newest first
-      aggregated.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      updateHistoryWithServer(aggregated);
-    } catch (error) {
-      console.error('Failed to fetch ALL transaction history:', error);
-      showToast('Error', 'Failed to fetch ALL transaction history.', 'error');
-    } finally {
-      setIsLoadingHistory(false);
-    }
-  };
-
   // Utility function to handle successful migration
   const handleMigrationSuccess = (txHash: string, network: 'mainnet' | 'sepolia' = 'mainnet') => {
     const etherscanUrl = createEtherscanLink(txHash, network);
@@ -431,20 +350,20 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
     }
   };
 
-  // Fetch transaction history from Etherscan (supports pagination)
-  const fetchTransactionHistory = async (walletAddress: string, options?: { page?: number; append?: boolean }) => {
+  // Fetch transaction history from Etherscan
+  const fetchTransactionHistory = async (walletAddress: string) => {
     if (!walletAddress) return;
 
-    const page = options?.page ?? 1;
     setIsLoadingHistory(true);
     try {
       const network: 'mainnet' | 'sepolia' = chainId === 11155111 ? 'sepolia' : 'mainnet';
       const apiKey = process.env.NEXT_PUBLIC_ETHERSCAN_API_KEY;
       const baseUrl = network === 'mainnet' ? 'https://api.etherscan.io/api' : 'https://api-sepolia.etherscan.io/api';
 
-      // Query only token transfer events for the user's wallet
+      // Use large offset to get maximum results in single request
+      const largeOffset = 10000; // Etherscan max is 10000
       const tokenTxResponse = await fetch(
-        `${baseUrl}?module=account&action=tokentx&address=${walletAddress}&startblock=0&endblock=99999999&page=${page}&offset=${HISTORY_PAGE_SIZE}&sort=desc&apikey=${apiKey}`
+        `${baseUrl}?module=account&action=tokentx&address=${walletAddress}&startblock=0&endblock=99999999&offset=${largeOffset}&sort=desc&apikey=${apiKey}`
       );
       const tokenTxData = await tokenTxResponse.json();
 
@@ -461,9 +380,6 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
           .map((tx: any) => {
             const type = `Migration: ${token} → HPP`;
             let status: Transaction['status'] = 'Completed';
-
-            // Note: tokenTx doesn't have confirmations field, so we'll assume completed
-            // If you need pending status, you might need to check recent block numbers
 
             // Get actual token amount from the transfer
             const fromAmount = formatUnits(BigInt(tx.value), parseInt(tx.tokenDecimal));
@@ -490,9 +406,11 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
             } as Transaction;
           });
 
+        // Sort by date (newest first)
+        relevantTransactions.sort(
+          (a: Transaction, b: Transaction) => new Date(b.date).getTime() - new Date(a.date).getTime()
+        );
         updateHistoryWithServer(relevantTransactions);
-
-        // Return the fetched transactions for polling purposes
         return relevantTransactions;
       }
 
@@ -590,7 +508,7 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
       setTransactionHistory([]);
       setShowAllHistory(false);
       // Initial history fetch is safe now due to merge logic
-      fetchTransactionHistory(address, { page: 1, append: false });
+      fetchTransactionHistory(address);
     }
   }, [isConnected, address, chainId]);
 
@@ -1306,7 +1224,7 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                       <div className="flex flex-col items-center justify-center py-8 bg-[rgba(18,18,18,0.1)] rounded-[5px]">
                         <TransactionsIcon className="w-11 h-12.5 mb-5" />
                         <p className="text-base text-[#bfbfbf] tracking-[0.8px] leading-[1.5] text-center font-normal">
-                          No transactions yet
+                          {isLoadingHistory ? 'Fetching transaction history...' : 'No transactions yet'}
                         </p>
                       </div>
                     )}
@@ -1318,9 +1236,6 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                           size="lg"
                           onClick={() => {
                             setShowAllHistory(true);
-                            if (address) {
-                              fetchAllMigrationHistory(address);
-                            }
                           }}
                         >
                           View All Transactions
