@@ -38,10 +38,10 @@ import {
 } from '@/assets/icons';
 import { useRouter } from 'next/navigation';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import axios from 'axios';
 
 // Constants
 const AERGO_DECIMAL = 18;
-const HISTORY_PAGE_SIZE = 20;
 
 // AQT fixed rate: 1 AQT = 7.43026 HPP (no decimals allowed for AQT input)
 const AQT_TO_HPP_RATE = new Big('7.43026');
@@ -350,22 +350,26 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
     }
   };
 
-  // Fetch transaction history from Etherscan
+  // Fetch transaction history from Blockscout (Etherscan-compatible API)
   const fetchTransactionHistory = async (walletAddress: string) => {
     if (!walletAddress) return;
 
     setIsLoadingHistory(true);
     try {
       const network: 'mainnet' | 'sepolia' = chainId === 11155111 ? 'sepolia' : 'mainnet';
-      const apiKey = process.env.NEXT_PUBLIC_ETHERSCAN_API_KEY;
-      const baseUrl = network === 'mainnet' ? 'https://api.etherscan.io/api' : 'https://api-sepolia.etherscan.io/api';
 
       // Use large offset to get maximum results in single request
       const largeOffset = 10000; // Etherscan max is 10000
-      const tokenTxResponse = await fetch(
-        `${baseUrl}?module=account&action=tokentx&address=${walletAddress}&startblock=0&endblock=99999999&offset=${largeOffset}&sort=desc&apikey=${apiKey}`
-      );
-      const tokenTxData = await tokenTxResponse.json();
+      // Call Blockscout directly from the client (no proxy)
+      const baseUrl =
+        network === 'sepolia' ? 'https://eth-sepolia.blockscout.com/api' : 'https://eth.blockscout.com/api';
+      const requestParams = `module=account&action=tokentx&address=${walletAddress}&startblock=0&endblock=99999999&offset=${largeOffset}&sort=desc`;
+      const requestUrl = `${baseUrl}?${requestParams}`;
+      console.log(requestUrl, 'requestUrl');
+      const tokenTxResponse = await axios.get(requestUrl, { headers: { accept: 'application/json' } });
+      console.log(tokenTxResponse, 'tokenTxResponse');
+      const tokenTxData = tokenTxResponse.data;
+      console.log(tokenTxData, 'tokenTxData');
 
       if (tokenTxData.status === '1') {
         const walletLc = walletAddress.toLowerCase();
@@ -1222,8 +1226,23 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                       </div>
                     ) : (
                       <div className="flex flex-col items-center justify-center py-8 bg-[rgba(18,18,18,0.1)] rounded-[5px]">
-                        <TransactionsIcon className="w-11 h-12.5 mb-5" />
-                        <p className="text-base text-[#bfbfbf] tracking-[0.8px] leading-[1.5] text-center font-normal">
+                        {isLoadingHistory ? (
+                          <div className="mb-4">
+                            <DotLottieReact
+                              src="/lotties/Loading.lottie"
+                              autoplay
+                              loop
+                              style={{ width: 48, height: 48 }}
+                            />
+                          </div>
+                        ) : (
+                          <TransactionsIcon className="w-11 h-12.5 mb-4" />
+                        )}
+                        <p
+                          className={`text-base text-[#bfbfbf] tracking-[0.8px] leading-[1.5] text-center font-normal ${
+                            isLoadingHistory ? 'animate-pulse' : ''
+                          }`}
+                        >
                           {isLoadingHistory ? 'Fetching transaction history...' : 'No transactions yet'}
                         </p>
                       </div>
