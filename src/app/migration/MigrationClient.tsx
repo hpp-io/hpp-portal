@@ -365,11 +365,8 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
         network === 'sepolia' ? 'https://eth-sepolia.blockscout.com/api' : 'https://eth.blockscout.com/api';
       const requestParams = `module=account&action=tokentx&address=${walletAddress}&startblock=0&endblock=99999999&offset=${largeOffset}&sort=desc`;
       const requestUrl = `${baseUrl}?${requestParams}`;
-      console.log(requestUrl, 'requestUrl');
       const tokenTxResponse = await axios.get(requestUrl, { headers: { accept: 'application/json' } });
-      console.log(tokenTxResponse, 'tokenTxResponse');
       const tokenTxData = tokenTxResponse.data;
-      console.log(tokenTxData, 'tokenTxData');
 
       if (tokenTxData.status === '1') {
         const walletLc = walletAddress.toLowerCase();
