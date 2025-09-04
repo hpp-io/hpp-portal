@@ -185,6 +185,20 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
     },
   });
 
+  // Reset balances and refetch when account changes
+  useEffect(() => {
+    if (!isConnected || !address) {
+      setHppBalance('0');
+      setBalance('0');
+      return;
+    }
+    // Optimistically clear while fetching new owner's balances
+    setHppBalance('0');
+    setBalance('0');
+    refetchHppBalance();
+    refetchBalance();
+  }, [address, isConnected, refetchHppBalance, refetchBalance]);
+
   // Allowance query for migration contract (from token -> migration contract)
   const {
     data: allowanceData,
