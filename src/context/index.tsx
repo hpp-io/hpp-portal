@@ -4,6 +4,7 @@ import { wagmiAdapter, projectId } from '@/config/walletConfig';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createAppKit } from '@reown/appkit/react';
 import { mainnet, sepolia } from '@reown/appkit/networks';
+import type { Chain } from 'viem';
 import React, { type ReactNode } from 'react';
 import { cookieToInitialState, WagmiProvider, type Config } from 'wagmi';
 
@@ -24,12 +25,17 @@ const metadata = {
   icons: [`${siteUrl}/ogImage.png`],
 };
 
+// Determine AppKit networks from NEXT_PUBLIC_CHAIN
+const selectedChainEnv = (process.env.NEXT_PUBLIC_CHAIN || 'mainnet').toLowerCase();
+const appKitNetworks: [Chain] = selectedChainEnv === 'sepolia' ? [sepolia] : [mainnet];
+const appKitDefaultNetwork: Chain = selectedChainEnv === 'sepolia' ? sepolia : mainnet;
+
 // Create the AppKit
 createAppKit({
   adapters: [wagmiAdapter],
   projectId,
-  networks: [mainnet, sepolia],
-  defaultNetwork: mainnet,
+  networks: appKitNetworks,
+  defaultNetwork: appKitDefaultNetwork,
   metadata: metadata,
   themeMode: 'light',
   allowUnsupportedChain: true,

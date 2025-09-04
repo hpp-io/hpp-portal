@@ -14,12 +14,8 @@ interface WalletButtonProps {
 export default function WalletButton({ labelOverride, size = 'lg', className = '' }: WalletButtonProps) {
   const { open } = useAppKit();
 
-  const handleClick = () => {
-    open();
-  };
-
   return (
-    <Button variant="black" size={size} onClick={handleClick} className={className}>
+    <Button variant="black" size={size} onClick={() => open({ view: 'Connect' })} className={className}>
       {labelOverride || 'Connect Wallet'}
     </Button>
   );
