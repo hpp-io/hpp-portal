@@ -981,11 +981,11 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                             </button>
                           </div>
                           <div className="flex items-center justify-between mb-2">
-                            <label className="text-sm min-[810px]:text-xl font-semibold text-black tracking-[0.8px] leading-[1.2] text-left">
+                            <label className="text-sm min-[810px]:text-lg font-semibold text-black tracking-[0.8px] leading-[1.2] text-left">
                               From
                             </label>
                             <div className="flex flex-col items-end space-y-1">
-                              <span className="text-sm min-[810px]:text-xl font-semibold text-black tracking-[0.8px] leading-[1.2] text-right min-[810px]:text-left">
+                              <span className="text-sm min-[810px]:text-base font-semibold text-black tracking-[0.8px] leading-[1.2] text-right min-[810px]:text-left">
                                 Balance:
                                 <br className="block min-[810px]:hidden" />{' '}
                                 {isBalanceLoading ? 'Loading...' : `${balance || '0'}`}
@@ -1063,10 +1063,10 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                         {/* To Section */}
                         <div className="bg-white rounded-lg px-5 pt-5 pb-2.5">
                           <div className="flex items-center justify-between">
-                            <label className="text-sm min-[810px]:text-xl font-semibold text-black tracking-[0.8px] leading-[1.2] text-left">
+                            <label className="text-sm min-[810px]:text-lg font-semibold text-black tracking-[0.8px] leading-[1.2] text-left">
                               To
                             </label>
-                            <span className="text-sm min-[810px]:text-xl font-semibold text-black tracking-[0.8px] leading-[1.2] text-right min-[810px]:text-left">
+                            <span className="text-sm min-[810px]:text-base font-semibold text-black tracking-[0.8px] leading-[1.2] text-right min-[810px]:text-left">
                               Balance:
                               <br className="block min-[810px]:hidden" />{' '}
                               {isHppBalanceLoading ? 'Loading...' : `${hppBalance || '0'}`}
