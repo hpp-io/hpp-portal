@@ -817,7 +817,7 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                     </div>
 
                     {/* Flow Diagram */}
-                    <div className="w-full h-min flex flex-row justify-center items-center p-5 bg-[rgba(18,18,18,0.1)] overflow-hidden rounded-[5px]">
+                    <div className="w-full h-min flex flex-row justify-center items-center p-5 overflow-hidden rounded-[5px]">
                       <div className="flex items-center gap-6 min-[480px]:gap-8 min-[640px]:gap-12 min-[810px]:gap-15">
                         {/* AERGO Mainnet */}
                         <div className="flex flex-col items-center">
@@ -888,7 +888,7 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                   </div>
 
                   {/* Flow Diagram */}
-                  <div className="w-full h-min flex flex-row justify-center items-center p-5 bg-[rgba(18,18,18,0.1)] overflow-hidden rounded-[5px]">
+                  <div className="w-full h-min flex flex-row justify-center items-center p-5 overflow-hidden rounded-[5px]">
                     <div className="flex items-center gap-6 min-[480px]:gap-8 min-[640px]:gap-12 min-[810px]:gap-15">
                       {/* From token (ETH) */}
                       <div className="flex flex-col items-center">
@@ -966,7 +966,7 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                   {/* Token Migration Form */}
                   {isConnected && (
                     <div className="mt-8">
-                      <div className="bg-[rgba(18,18,18,0.1)] overflow-hidden rounded-[5px] p-5">
+                      <div className="overflow-hidden rounded-[5px]">
                         {/* From Section */}
                         <div className="bg-white rounded-lg p-5 mb-4">
                           <div className="flex justify-end mb-2">
@@ -1112,7 +1112,7 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                         </div>
                       </div>
                       {/* Migrate Button */}
-                      <div className="flex justify-center px-5">
+                      <div className="flex justify-center">
                         <Button
                           variant="black"
                           size="lg"
@@ -1301,7 +1301,7 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                   </div>
 
                   {/* Flow Diagram */}
-                  <div className="w-full h-min flex flex-row justify-center items-center p-5 bg-[rgba(255,255,255,0.05)] overflow-hidden rounded-[5px]">
+                  <div className="w-full h-min flex flex-row justify-center items-center p-5 overflow-hidden rounded-[5px]">
                     <div className="flex items-center gap-6 min-[480px]:gap-8 min-[640px]:gap-12 min-[810px]:gap-15">
                       {/* HPP (ETH) */}
                       <div className="flex flex-col items-center">
