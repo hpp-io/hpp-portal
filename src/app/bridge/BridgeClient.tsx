@@ -15,6 +15,12 @@ export default function BridgeClient() {
   const [openFaqs, setOpenFaqs] = useState<number[]>([]);
   const faqData = bridgeData.faq;
 
+  const currentEnv = (process.env.NEXT_PUBLIC_ENV || 'development').toLowerCase();
+  const isProduction = currentEnv === 'production';
+  const arbitrumBridgeHref = isProduction
+    ? 'https://bridge.arbitrum.io/?destinationChain=190415&sourceChain=ethereum&token=0xe33fbe7584eb79e2673abe576b7ac8c0de62565c'
+    : 'https://portal.arbitrum.io/bridge?destinationChain=hpp-sepolia&sanitized=true&sourceChain=sepolia&tab=bridge&token=0xb34e0d1fee60e078d611d4218afb004b639c7b76';
+
   const openFaq = (id: number) => {
     setOpenFaqs((prev) => (prev.includes(id) ? prev : [...prev, id]));
   };
@@ -70,13 +76,7 @@ export default function BridgeClient() {
                   </p>
                 </div>
                 <div className="pt-6">
-                  <Button
-                    variant="white"
-                    size="lg"
-                    href="https://bridge.arbitrum.io/?destinationChain=190415&sourceChain=ethereum&token=0xe33fbe7584eb79e2673abe576b7ac8c0de62565c"
-                    external
-                    className="cursor-pointer"
-                  >
+                  <Button variant="white" size="lg" href={arbitrumBridgeHref} external className="cursor-pointer">
                     Go to Bridge
                   </Button>
                 </div>
