@@ -9,14 +9,15 @@ import Footer from '@/components/ui/Footer';
 import Button from '@/components/ui/Button';
 import WalletButton from '@/components/ui/WalletButton';
 import { WalletIcon, HPPLogoIcon, HPPTickerIcon, InfoIcon } from '@/assets/icons';
-import { useAccount, useDisconnect } from 'wagmi';
+import { useAccount, useDisconnect, useWalletClient } from 'wagmi';
 import { formatUnits, parseUnits, createWalletClient, custom } from 'viem';
 import Big from 'big.js';
 import { navItems, communityLinks } from '@/config/navigation';
 import { standardArbErc20Abi, hppStakingAbi } from './abi';
 import { formatDisplayAmount, PERCENTS, computePercentAmount, formatTokenBalance } from '@/lib/helpers';
-import { useHppPublicClient } from './hppClient';
+import { useHppPublicClient, useHppChain } from './hppClient';
 import { useToast } from '@/hooks/useToast';
+import { useEnsureChain } from '@/lib/wallet';
 
 type StakingTab = 'stake' | 'unstake' | 'claim';
 
@@ -36,6 +37,9 @@ export default function StakingClient() {
   >([]);
   const [isCooldownsLoading, setIsCooldownsLoading] = useState<boolean>(false);
   const [cooldownsInitialized, setCooldownsInitialized] = useState<boolean>(false);
+  const [isClaimInfoOpen, setIsClaimInfoOpen] = useState<boolean>(false);
+  const [claimInfoPos, setClaimInfoPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const claimInfoRef = React.useRef<HTMLDivElement | null>(null);
   const [nowSecTick, setNowSecTick] = useState<number>(Math.floor(Date.now() / 1000));
   const HPP_TOKEN_ADDRESS = process.env.NEXT_PUBLIC_HPP_TOKEN_CONTRACT as `0x${string}`;
   const HPP_STAKING_ADDRESS = process.env.NEXT_PUBLIC_HPP_STAKING_CONTRACT as `0x${string}`;
@@ -45,6 +49,18 @@ export default function StakingClient() {
   // HPP network public client (Sepolia in dev, Mainnet in prod)
   const publicClient = useHppPublicClient();
   const { showToast } = useToast();
+  const ensureChain = useEnsureChain();
+  const { data: walletClient } = useWalletClient();
+  React.useEffect(() => {
+    if (!isClaimInfoOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (claimInfoRef.current && !claimInfoRef.current.contains(e.target as Node)) {
+        setIsClaimInfoOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [isClaimInfoOpen]);
   // Read cooldown duration (seconds) from staking contract
   const fetchCooldownDuration = React.useCallback(async () => {
     try {
@@ -109,7 +125,7 @@ export default function StakingClient() {
         })) as bigint;
         if (cancelled) return;
         const value = formatUnits(result, DECIMALS);
-        const formatted = formatTokenBalance(value, 3);
+        const formatted = formatTokenBalance(value, 2);
         setHppBalance(formatted);
         setIsHppBalanceLoading(false);
       } catch (_e) {
@@ -127,37 +143,19 @@ export default function StakingClient() {
 
   // Writes are handled via viem wallet client
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const HPP_CHAIN_ID = (process.env.NEXT_PUBLIC_ENV || 'development').toLowerCase() === 'production' ? 190415 : 181228;
+  const { chain: hppChain, id: HPP_CHAIN_ID } = useHppChain();
 
   // Ensure wallet is connected to HPP network for writes
   const ensureHppChain = async () => {
-    const provider = (window as any).ethereum;
-    if (!provider?.request) return;
-    const hexId = '0x' + HPP_CHAIN_ID.toString(16);
-    try {
-      await provider.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: hexId }] });
-    } catch (switchErr: any) {
-      // 4902: chain not added
-      if (switchErr?.code === 4902) {
-        const isMainnet = HPP_CHAIN_ID === 190415;
-        const chainName = isMainnet ? 'HPP Mainnet' : 'HPP Sepolia';
-        const rpcUrl = process.env.NEXT_PUBLIC_HPP_RPC_URL as string;
-        await provider.request({
-          method: 'wallet_addEthereumChain',
-          params: [
-            {
-              chainId: hexId,
-              chainName,
-              nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-              rpcUrls: [rpcUrl],
-            },
-          ],
-        });
-        await provider.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: hexId }] });
-      } else {
-        throw switchErr;
-      }
-    }
+    const isMainnet = HPP_CHAIN_ID === 190415;
+    const chainName = isMainnet ? 'HPP Mainnet' : 'HPP Sepolia';
+    const rpcUrl = process.env.NEXT_PUBLIC_HPP_RPC_URL as string;
+
+    await ensureChain(HPP_CHAIN_ID, {
+      chainName,
+      rpcUrls: [rpcUrl],
+      nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+    });
   };
 
   // Balance refresh helper
@@ -176,7 +174,7 @@ export default function StakingClient() {
         args: [address],
       })) as bigint;
       const value = formatUnits(result, DECIMALS);
-      const formatted = formatTokenBalance(value, 3);
+      const formatted = formatTokenBalance(value, 2);
       setHppBalance(formatted);
     } catch (_e) {
       setHppBalance('0');
@@ -201,7 +199,7 @@ export default function StakingClient() {
         args: [address],
       })) as bigint;
       const value = formatUnits(result, DECIMALS);
-      const formatted = formatTokenBalance(value, 3);
+      const formatted = formatTokenBalance(value, 2);
       setStakedTotal(formatted);
     } catch (_e) {
       setStakedTotal('0');
@@ -244,7 +242,6 @@ export default function StakingClient() {
       }> = [];
       const nowSec = Math.floor(Date.now() / 1000);
 
-      // Use multicall to fetch all cooldown entries in one RPC roundtrip
       const contracts = Array.from({ length: count }, (_, rel) => ({
         address: HPP_STAKING_ADDRESS,
         abi: hppStakingAbi,
@@ -252,7 +249,6 @@ export default function StakingClient() {
         args: [address as `0x${string}`, BigInt(rel)],
       }));
 
-      // Execute in parallel (Multicall not available on HPP → avoid extra roundtrip/try-catch)
       const results = (await Promise.all(
         contracts.map((c, rel) =>
           publicClient.readContract({
@@ -265,7 +261,7 @@ export default function StakingClient() {
       )) as unknown as Array<[bigint, bigint]>;
 
       results.forEach(([amountBn, unlockTimeBn]) => {
-        const amountStr = formatTokenBalance(formatUnits(amountBn, DECIMALS), 3);
+        const amountStr = formatTokenBalance(formatUnits(amountBn, DECIMALS), 2);
         const end = Number(unlockTimeBn);
         const cooling = nowSec < end;
         // Show the initial unstake (cooldown start) time derived from unlockTime - cooldown
@@ -316,15 +312,10 @@ export default function StakingClient() {
 
       // Make sure wallet is on HPP network
       await ensureHppChain();
-      const walletClient = createWalletClient({
-        chain: {
-          id: HPP_CHAIN_ID,
-          name: HPP_CHAIN_ID === 190415 ? 'HPP Mainnet' : 'HPP Sepolia',
-          nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-          rpcUrls: { default: { http: [process.env.NEXT_PUBLIC_HPP_RPC_URL as string] } },
-        } as const,
-        transport: custom((window as any).ethereum),
-      });
+      if (!walletClient) {
+        showToast('Error', 'Wallet not ready. Please reconnect and try again.', 'error');
+        return;
+      }
 
       setIsSubmitting(true);
       // 1) Check allowance
@@ -345,6 +336,7 @@ export default function StakingClient() {
           functionName: 'approve',
           args: [HPP_STAKING_ADDRESS, amountWei],
           account: address as `0x${string}`,
+          chain: hppChain,
         });
         // Wait for approve confirmation
         await publicClient.waitForTransactionReceipt({ hash: approveHash as `0x${string}` });
@@ -362,6 +354,7 @@ export default function StakingClient() {
         functionName: 'stake',
         args: [amountWei],
         account: address as `0x${string}`,
+        chain: hppChain,
       });
       // Wait for stake confirmation
       const receipt = await publicClient.waitForTransactionReceipt({ hash: stakeHash as `0x${string}` });
@@ -382,6 +375,7 @@ export default function StakingClient() {
         showToast('Stake failed', 'Transaction was rejected or failed.', 'error');
       }
     } catch (_e) {
+      console.log(_e, '_e');
       showToast('Error', 'Failed to process staking request.', 'error');
     } finally {
       setIsSubmitting(false);
@@ -399,15 +393,10 @@ export default function StakingClient() {
 
       // Ensure HPP chain
       await ensureHppChain();
-      const walletClient = createWalletClient({
-        chain: {
-          id: HPP_CHAIN_ID,
-          name: HPP_CHAIN_ID === 190415 ? 'HPP Mainnet' : 'HPP Sepolia',
-          nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-          rpcUrls: { default: { http: [process.env.NEXT_PUBLIC_HPP_RPC_URL as string] } },
-        } as const,
-        transport: custom((window as any).ethereum),
-      });
+      if (!walletClient) {
+        showToast('Error', 'Wallet not ready. Please reconnect and try again.', 'error');
+        return;
+      }
 
       setIsSubmitting(true);
       showToast('Waiting for unstake...', 'Please confirm in your wallet.', 'loading');
@@ -417,6 +406,7 @@ export default function StakingClient() {
         functionName: 'unstake',
         args: [amountWei],
         account: address as `0x${string}`,
+        chain: hppChain,
       });
       const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash as `0x${string}` });
       if (receipt.status === 'success') {
@@ -444,15 +434,10 @@ export default function StakingClient() {
       if (!address || !isConnected) return;
       // Ensure HPP chain
       await ensureHppChain();
-      const walletClient = createWalletClient({
-        chain: {
-          id: HPP_CHAIN_ID,
-          name: HPP_CHAIN_ID === 190415 ? 'HPP Mainnet' : 'HPP Sepolia',
-          nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-          rpcUrls: { default: { http: [process.env.NEXT_PUBLIC_HPP_RPC_URL as string] } },
-        } as const,
-        transport: custom((window as any).ethereum),
-      });
+      if (!walletClient) {
+        showToast('Error', 'Wallet not ready. Please reconnect and try again.', 'error');
+        return;
+      }
 
       setIsSubmitting(true);
       showToast('Waiting for claim...', 'Please confirm in your wallet.', 'loading');
@@ -474,6 +459,7 @@ export default function StakingClient() {
         functionName: 'withdraw',
         args: [],
         account: address as `0x${string}`,
+        chain: hppChain,
       });
 
       const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash as `0x${string}` });
@@ -563,7 +549,7 @@ export default function StakingClient() {
   }, [cooldowns, nowSecTick]);
   const derivedWithdrawable = React.useMemo(() => {
     const val = formatUnits(derivedWithdrawableWei, DECIMALS);
-    return formatTokenBalance(val, 3);
+    return formatTokenBalance(val, 2);
   }, [derivedWithdrawableWei]);
 
   const TabButton = ({ id, label }: { id: StakingTab; label: string }) => (
@@ -857,7 +843,24 @@ export default function StakingClient() {
                               <h3 className="text-white text-base font-normal leading-[1.2] tracking-[0.8px]">
                                 Claim Available
                               </h3>
-                              <InfoIcon className="w-5.5 h-5.5" />
+                              <button
+                                type="button"
+                                aria-label="Claim info"
+                                onClick={(e) => {
+                                  const margin = 12;
+                                  const width = 320; // approximate popover width
+                                  const height = 180; // approximate popover height
+                                  const maxLeft = Math.max(0, window.innerWidth - width - margin);
+                                  const maxTop = Math.max(0, window.innerHeight - height - margin);
+                                  const x = Math.min(e.clientX + margin, maxLeft);
+                                  const y = Math.min(e.clientY + margin, maxTop);
+                                  setClaimInfoPos({ x, y });
+                                  setIsClaimInfoOpen(true);
+                                }}
+                                className="cursor-pointer"
+                              >
+                                <InfoIcon className="w-5.5 h-5.5" />
+                              </button>
                             </div>
                             <div className="flex items-center justify-center gap-2.5 mt-4 mb-4">
                               <HPPTickerIcon className="w-5.5 h-5.5" />
@@ -948,6 +951,47 @@ export default function StakingClient() {
           <Footer />
         </main>
       </div>
+      {/* Claim Info Popover */}
+      {isClaimInfoOpen && (
+        <>
+          <div
+            className="fixed inset-0 z-[90] bg-black/50"
+            onClick={() => setIsClaimInfoOpen(false)}
+            aria-hidden="true"
+          />
+          <div
+            className="fixed z-[100]"
+            style={{ top: claimInfoPos.y, left: claimInfoPos.x }}
+            role="dialog"
+            aria-modal="true"
+          >
+            <div
+              ref={claimInfoRef}
+              className="relative w-[360px] max-w-[90vw] rounded-[5px] bg-primary text-white py-7.5 px-5 shadow-xl"
+            >
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-lg font-semibold leading-[1.5] tracking-[0]">Claim</h2>
+                <button
+                  type="button"
+                  aria-label="Close"
+                  className="text-white cursor-pointer"
+                  onClick={() => setIsClaimInfoOpen(false)}
+                >
+                  <svg className="w-5.5 h-5.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <p className="text-base leading-[1.5] tracking-[0] mb-5">
+                After unstaking, you can claim your tokens after a {formatCooldownDuration(cooldownSeconds)} cooldown.
+              </p>
+              <p className="text-base leading-[1.5] tracking-[0]">
+                When the cooldown is over, your tokens will be accumulated to ‘Claim Available.’
+              </p>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
