@@ -15,6 +15,7 @@ import {
   useReadContract,
   useWriteContract,
   useWaitForTransactionReceipt,
+  useSwitchChain,
 } from 'wagmi';
 import { navItems, communityLinks } from '@/config/navigation';
 import { parseUnits, formatUnits, erc20Abi } from 'viem';
@@ -39,6 +40,7 @@ import {
 import { useRouter } from 'next/navigation';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import axios from 'axios';
+import { hppMigrationABI } from './abi';
 
 // Constants
 const AERGO_DECIMAL = 18;
@@ -101,6 +103,31 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
   const { disconnect } = useDisconnect();
   const chainId = useChainId();
   const router = useRouter();
+
+  // Ensure wallet is on Ethereum network (mainnet or sepolia) for migration writes
+  const selectedChainEnv = (process.env.NEXT_PUBLIC_CHAIN || 'mainnet').toLowerCase();
+  const ETH_CHAIN_ID = selectedChainEnv === 'sepolia' ? 11155111 : 1;
+  const { switchChainAsync } = useSwitchChain();
+  const ensureEthChain = async () => {
+    const provider = (window as any).ethereum;
+    if (!provider?.request) return;
+    const hexId = '0x' + ETH_CHAIN_ID.toString(16);
+    try {
+      // First ask wagmi to switch (updates connector state)
+      if (switchChainAsync) {
+        await switchChainAsync({ chainId: ETH_CHAIN_ID });
+      } else {
+        await provider.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: hexId }] });
+      }
+    } catch (_e) {
+      // Fallback to direct provider switch if wagmi hook failed
+      try {
+        await provider.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: hexId }] });
+      } catch {
+        // ignore; most wallets already have Ethereum networks
+      }
+    }
+  };
 
   // Decide whether to swap to server list or keep current (to preserve local Pending until resolved)
   const updateHistoryWithServer = (incoming: Transaction[]) => {
@@ -589,6 +616,7 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
 
         showToast('Approving...', 'Please wait while we approve the transaction...', 'loading');
 
+        await ensureEthChain();
         const approveHash = await approveTokens({
           address: FROM_TOKEN_ADDRESS,
           abi: erc20Abi,
@@ -649,6 +677,7 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
       // cache amount for later status updates
       lastSubmittedAmountRef.current = fromAmount;
 
+      await ensureEthChain();
       const migrationHash = await swapTokens({
         address: hppMigrationContract as `0x${string}`,
         abi: hppMigrationABI,
@@ -1371,26 +1400,3 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
     </div>
   );
 }
-
-// Contract addresses and ABIs
-// Unused legacy constants removed (addresses are sourced above via isProd guard)
-
-// HPP Migration Contract ABI
-const hppMigrationABI = [
-  {
-    name: 'swapAergoForHPP',
-    type: 'function',
-    stateMutability: 'nonpayable',
-    inputs: [{ name: 'amount', type: 'uint256' }],
-    outputs: [],
-    modifiers: ['nonReentrant', 'whenNotPaused'],
-  },
-  {
-    name: 'migrateAQTtoHPP',
-    type: 'function',
-    stateMutability: 'nonpayable',
-    inputs: [{ name: 'amount', type: 'uint256' }],
-    outputs: [],
-    modifiers: ['nonReentrant', 'whenNotPaused'],
-  },
-] as const;
