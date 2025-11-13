@@ -10,4 +10,3 @@ export const metadata: Metadata = {
 export default function StakingPage() {
   return <StakingClient />;
 }
-
