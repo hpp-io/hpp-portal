@@ -27,6 +27,8 @@ export { default as FailedIcon } from './Failed.svg';
 export { default as TransactionsIcon } from './Transactions.svg';
 export { default as StakingIcon } from './Staking.svg';
 export { default as HPPLogoIcon } from './HPPLogo.svg';
+export { default as HPPTickerIcon } from './HPPTicker.svg';
+export { default as InfoIcon } from './Info.svg';
 
 // PNG
 export { default as Aergo } from './Aergo.png';
