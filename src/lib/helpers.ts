@@ -26,4 +26,22 @@ export function computePercentAmount(balance: string, percent: number, decimals 
   return str.replace(/\.?0+$/, '');
 }
 
+// Format token balance with thousands separators, flooring to avoid rounding up
+export function formatTokenBalance(raw: string, decimals: number = 3): string {
+  try {
+    const floored = new Big(raw).round(decimals, 0).toString(); // 0 = round down
+    const [intPart, fracPart] = floored.split('.');
+    const num = Number(`${intPart}.${fracPart ?? ''}`);
+    return num.toLocaleString('en-US', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: decimals,
+    });
+  } catch {
+    return parseFloat(raw).toLocaleString('en-US', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: decimals,
+    });
+  }
+}
+
 

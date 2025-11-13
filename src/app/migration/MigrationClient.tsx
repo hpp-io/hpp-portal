@@ -963,11 +963,14 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                       <div className="mt-5 bg-primary rounded-lg p-4 border border-dashed border-white/50">
                         <div className="flex flex-col items-center text-center min-[810px]:flex-row min-[810px]:items-center min-[810px]:justify-between min-[810px]:text-left">
                           <div className="flex flex-col items-center min-[810px]:flex-row min-[810px]:items-center min-[810px]:space-x-4 mb-4 min-[810px]:mb-0">
-                            <WalletIcon className="w-12 h-12 text-white mb-3 min-[810px]:mb-0" />
+                            <WalletIcon className="hidden min-[810px]:block w-12 h-12 text-white" />
                             <div className="flex flex-col items-center min-[810px]:items-start">
-                              <span className="text-white font-semibold text-xl tracking-[0.8px] leading-[1.5em] min-[810px]:mb-0">
-                                Wallet Connected
-                              </span>
+                              <div className="flex items-center gap-2.5 mb-2">
+                                <WalletIcon className="w-5.5 h-5.5 text-white min-[810px]:hidden" />
+                                <span className="text-white font-semibold text-xl tracking-[0.8px] leading-[1.5em]">
+                                  Wallet Connected
+                                </span>
+                              </div>
                               <div
                                 className="text-base text-white font-normal tracking-[0.8px] leading-[1.5em] max-w-full text-center min-[810px]:text-left"
                                 style={{

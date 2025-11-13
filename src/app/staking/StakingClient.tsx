@@ -1,18 +1,20 @@
 'use client';
 
 import React, { useState } from 'react';
+import dayjs from '@/lib/dayjs';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import Sidebar from '@/components/ui/Sidebar';
 import Header from '@/components/ui/Header';
 import Footer from '@/components/ui/Footer';
 import Button from '@/components/ui/Button';
 import WalletButton from '@/components/ui/WalletButton';
-import { WalletIcon, HPPLogoIcon } from '@/assets/icons';
+import { WalletIcon, HPPLogoIcon, HPPTickerIcon, InfoIcon } from '@/assets/icons';
 import { useAccount, useDisconnect } from 'wagmi';
 import { formatUnits, parseUnits, createWalletClient, custom } from 'viem';
 import Big from 'big.js';
 import { navItems, communityLinks } from '@/config/navigation';
 import { standardArbErc20Abi, hppStakingAbi } from './abi';
-import { formatDisplayAmount, PERCENTS, computePercentAmount } from './helpers';
+import { formatDisplayAmount, PERCENTS, computePercentAmount, formatTokenBalance } from '@/lib/helpers';
 import { useHppPublicClient } from './hppClient';
 import { useToast } from '@/hooks/useToast';
 
@@ -27,13 +29,36 @@ export default function StakingClient() {
   const [hppBalance, setHppBalance] = useState<string>('0');
   const [isHppBalanceLoading, setIsHppBalanceLoading] = useState<boolean>(false);
   const [inputError, setInputError] = useState<string>('');
+  const [stakedTotal, setStakedTotal] = useState<string>('0');
+  const [isStakedTotalLoading, setIsStakedTotalLoading] = useState<boolean>(false);
+  const [cooldowns, setCooldowns] = useState<
+    Array<{ date: string; note: string; amount: string; amountWei: bigint; cooling: boolean; unlock: number }>
+  >([]);
+  const [isCooldownsLoading, setIsCooldownsLoading] = useState<boolean>(false);
+  const [cooldownsInitialized, setCooldownsInitialized] = useState<boolean>(false);
+  const [nowSecTick, setNowSecTick] = useState<number>(Math.floor(Date.now() / 1000));
   const HPP_TOKEN_ADDRESS = process.env.NEXT_PUBLIC_HPP_TOKEN_CONTRACT as `0x${string}`;
   const HPP_STAKING_ADDRESS = process.env.NEXT_PUBLIC_HPP_STAKING_CONTRACT as `0x${string}`;
   const DECIMALS = 18;
+  const [cooldownSeconds, setCooldownSeconds] = useState<number>(0);
 
   // HPP network public client (Sepolia in dev, Mainnet in prod)
   const publicClient = useHppPublicClient();
   const { showToast } = useToast();
+  // Read cooldown duration (seconds) from staking contract
+  const fetchCooldownDuration = React.useCallback(async () => {
+    try {
+      const result = (await publicClient.readContract({
+        address: HPP_STAKING_ADDRESS,
+        abi: hppStakingAbi,
+        functionName: 'cooldownDuration',
+      })) as bigint;
+      const secs = Number(result);
+      if (Number.isFinite(secs) && secs > 0) setCooldownSeconds(secs);
+    } catch {
+      // keep previous/fallback value
+    }
+  }, [publicClient, HPP_STAKING_ADDRESS]);
 
   const handleAmountChange = (raw: string) => {
     const value = raw.replace(/,/g, '');
@@ -42,7 +67,9 @@ export default function StakingClient() {
       setAmount(value);
       // validate against available balance
       try {
-        const cleanBal = (hppBalance || '0').replace(/,/g, '') || '0';
+        // Use different base by tab: stake uses wallet HPP balance, unstake uses staked total
+        const baseBalanceStr = (activeTab === 'unstake' ? stakedTotal : hppBalance) || '0';
+        const cleanBal = baseBalanceStr.replace(/,/g, '') || '0';
         const v = new Big(value === '' || value === '.' ? '0' : value);
         const b = new Big(cleanBal);
         if (v.gt(b)) {
@@ -58,6 +85,10 @@ export default function StakingClient() {
 
   const setPercent = (p: number) => {
     handleAmountChange(computePercentAmount(hppBalance, p, DECIMALS));
+  };
+  // Percent helper for Unstake (use stakedTotal as base)
+  const setUnstakePercent = (p: number) => {
+    handleAmountChange(computePercentAmount(stakedTotal, p, DECIMALS));
   };
 
   React.useEffect(() => {
@@ -78,10 +109,7 @@ export default function StakingClient() {
         })) as bigint;
         if (cancelled) return;
         const value = formatUnits(result, DECIMALS);
-        const formatted = parseFloat(value).toLocaleString('en-US', {
-          minimumFractionDigits: 0,
-          maximumFractionDigits: 2,
-        });
+        const formatted = formatTokenBalance(value, 3);
         setHppBalance(formatted);
         setIsHppBalanceLoading(false);
       } catch (_e) {
@@ -148,10 +176,7 @@ export default function StakingClient() {
         args: [address],
       })) as bigint;
       const value = formatUnits(result, DECIMALS);
-      const formatted = parseFloat(value).toLocaleString('en-US', {
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 2,
-      });
+      const formatted = formatTokenBalance(value, 3);
       setHppBalance(formatted);
     } catch (_e) {
       setHppBalance('0');
@@ -159,6 +184,127 @@ export default function StakingClient() {
       setIsHppBalanceLoading(false);
     }
   }, [publicClient, address, isConnected, HPP_TOKEN_ADDRESS]);
+
+  // Read total staked using staking contract stakedBalance(address)
+  const fetchStakedTotal = React.useCallback(async () => {
+    if (!isConnected || !address || !HPP_STAKING_ADDRESS) {
+      setStakedTotal('0');
+      setIsStakedTotalLoading(false);
+      return;
+    }
+    try {
+      setIsStakedTotalLoading(true);
+      const result = (await publicClient.readContract({
+        address: HPP_STAKING_ADDRESS,
+        abi: hppStakingAbi,
+        functionName: 'stakedBalance',
+        args: [address],
+      })) as bigint;
+      const value = formatUnits(result, DECIMALS);
+      const formatted = formatTokenBalance(value, 3);
+      setStakedTotal(formatted);
+    } catch (_e) {
+      setStakedTotal('0');
+    } finally {
+      setIsStakedTotalLoading(false);
+    }
+  }, [publicClient, address, isConnected, HPP_STAKING_ADDRESS]);
+
+  // Fetch cooldown entries for claim history
+  const fetchCooldowns = React.useCallback(async () => {
+    if (!isConnected || !address || !HPP_STAKING_ADDRESS) {
+      setCooldowns([]);
+      return;
+    }
+    try {
+      setIsCooldownsLoading(true);
+      // 1) read info
+      const [totalLength, firstValidIndex, validCount] = (await publicClient.readContract({
+        address: HPP_STAKING_ADDRESS,
+        abi: hppStakingAbi,
+        functionName: 'getCooldownArrayInfo',
+        args: [address],
+      })) as unknown as [bigint, bigint, bigint];
+
+      const total = Number(totalLength);
+      const start = Number(firstValidIndex);
+      const count = Number(validCount);
+      if (!Number.isFinite(total) || !Number.isFinite(start) || !Number.isFinite(count) || total === 0 || count === 0) {
+        setCooldowns([]);
+        setIsCooldownsLoading(false);
+        return;
+      }
+      const items: Array<{
+        date: string;
+        note: string;
+        amount: string;
+        amountWei: bigint;
+        cooling: boolean;
+        unlock: number;
+      }> = [];
+      const nowSec = Math.floor(Date.now() / 1000);
+
+      // Use multicall to fetch all cooldown entries in one RPC roundtrip
+      const contracts = Array.from({ length: count }, (_, rel) => ({
+        address: HPP_STAKING_ADDRESS,
+        abi: hppStakingAbi,
+        functionName: 'getCooldown' as const,
+        args: [address as `0x${string}`, BigInt(rel)],
+      }));
+
+      // Execute in parallel (Multicall not available on HPP → avoid extra roundtrip/try-catch)
+      const results = (await Promise.all(
+        contracts.map((c, rel) =>
+          publicClient.readContract({
+            address: c.address,
+            abi: c.abi,
+            functionName: c.functionName,
+            args: [address as `0x${string}`, BigInt(rel)] as readonly [`0x${string}`, bigint],
+          })
+        )
+      )) as unknown as Array<[bigint, bigint]>;
+
+      results.forEach(([amountBn, unlockTimeBn]) => {
+        const amountStr = formatTokenBalance(formatUnits(amountBn, DECIMALS), 3);
+        const end = Number(unlockTimeBn);
+        const cooling = nowSec < end;
+        // Show the initial unstake (cooldown start) time derived from unlockTime - cooldown
+        const startTime = Math.max(0, end - cooldownSeconds);
+        const date = formatLocalDateTime(startTime);
+
+        let note: string;
+        if (cooling) {
+          const remaining = Math.max(0, end - nowSec);
+          const d = Math.floor(remaining / 86400);
+          const h = Math.floor((remaining % 86400) / 3600);
+          const m = Math.floor((remaining % 3600) / 60);
+          const s = Math.floor(remaining % 60);
+          note = `You will be able to claim in ${String(d).padStart(2, '0')}:${String(h).padStart(2, '0')}:${String(
+            m
+          ).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        } else {
+          note = 'You are able to claim.';
+        }
+
+        items.push({
+          date,
+          note,
+          amount: `${amountStr} HPP`,
+          amountWei: amountBn,
+          cooling,
+          unlock: end,
+        });
+      });
+      // Sort by unlock time DESC so the most recent (latest) is on top
+      items.sort((a, b) => b.unlock - a.unlock);
+      setCooldowns(items);
+    } catch {
+      setCooldowns([]);
+    } finally {
+      setIsCooldownsLoading(false);
+      setCooldownsInitialized(true);
+    }
+  }, [publicClient, address, isConnected, HPP_STAKING_ADDRESS, hppStakingAbi, DECIMALS, cooldownSeconds]);
 
   const onStake = async () => {
     try {
@@ -227,8 +373,9 @@ export default function StakingClient() {
           text: 'View on Explorer',
           url: txUrl,
         });
-        // Refresh balance and reset input (do not auto-close toast)
+        // Refresh balances and reset input (do not auto-close toast)
         await fetchHppBalance();
+        await fetchStakedTotal();
         setAmount('');
         setInputError('');
       } else {
@@ -241,10 +388,183 @@ export default function StakingClient() {
     }
   };
 
-  // Initial balance fetch and on deps change
+  // Unstake using the amount currently entered in the input
+  const onUnstake = async () => {
+    try {
+      if (!address || !isConnected) return;
+      // Parse requested unstake amount from input
+      const clean = (amount || '0').replace(/,/g, '');
+      if (!clean || Number(clean) <= 0) return;
+      const amountWei = parseUnits(clean as `${number}`, DECIMALS);
+
+      // Ensure HPP chain
+      await ensureHppChain();
+      const walletClient = createWalletClient({
+        chain: {
+          id: HPP_CHAIN_ID,
+          name: HPP_CHAIN_ID === 190415 ? 'HPP Mainnet' : 'HPP Sepolia',
+          nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+          rpcUrls: { default: { http: [process.env.NEXT_PUBLIC_HPP_RPC_URL as string] } },
+        } as const,
+        transport: custom((window as any).ethereum),
+      });
+
+      setIsSubmitting(true);
+      showToast('Waiting for unstake...', 'Please confirm in your wallet.', 'loading');
+      const txHash = await walletClient.writeContract({
+        address: HPP_STAKING_ADDRESS,
+        abi: hppStakingAbi,
+        functionName: 'unstake',
+        args: [amountWei],
+        account: address as `0x${string}`,
+      });
+      const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash as `0x${string}` });
+      if (receipt.status === 'success') {
+        const explorerBase = HPP_CHAIN_ID === 190415 ? 'https://explorer.hpp.io' : 'https://sepolia-explorer.hpp.io';
+        const txUrl = `${explorerBase}/tx/${txHash}`;
+        showToast('Unstake requested', 'Cooldown started.\nYou can withdraw after it ends.', 'success', {
+          text: 'View on Explorer',
+          url: txUrl,
+        });
+        // Refresh balances
+        await fetchStakedTotal();
+      } else {
+        showToast('Unstake failed', 'Transaction was rejected or failed.', 'error');
+      }
+    } catch (_e) {
+      showToast('Error', 'Failed to submit unstake request.', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Claim withdrawable HPP
+  const onClaim = async () => {
+    try {
+      if (!address || !isConnected) return;
+      // Ensure HPP chain
+      await ensureHppChain();
+      const walletClient = createWalletClient({
+        chain: {
+          id: HPP_CHAIN_ID,
+          name: HPP_CHAIN_ID === 190415 ? 'HPP Mainnet' : 'HPP Sepolia',
+          nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+          rpcUrls: { default: { http: [process.env.NEXT_PUBLIC_HPP_RPC_URL as string] } },
+        } as const,
+        transport: custom((window as any).ethereum),
+      });
+
+      setIsSubmitting(true);
+      showToast('Waiting for claim...', 'Please confirm in your wallet.', 'loading');
+
+      // minimal ABI for withdraw()
+      const withdrawAbi = [
+        {
+          type: 'function',
+          name: 'withdraw',
+          stateMutability: 'nonpayable',
+          inputs: [],
+          outputs: [],
+        },
+      ] as const;
+
+      const txHash = await walletClient.writeContract({
+        address: HPP_STAKING_ADDRESS,
+        abi: withdrawAbi,
+        functionName: 'withdraw',
+        args: [],
+        account: address as `0x${string}`,
+      });
+
+      const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash as `0x${string}` });
+      if (receipt.status === 'success') {
+        const explorerBase = HPP_CHAIN_ID === 190415 ? 'https://explorer.hpp.io' : 'https://sepolia-explorer.hpp.io';
+        const txUrl = `${explorerBase}/tx/${txHash}`;
+        showToast('Claim confirmed', 'Your HPP has been claimed successfully.', 'success', {
+          text: 'View on Explorer',
+          url: txUrl,
+        });
+        // Refresh amounts relevant to claim
+        await fetchHppBalance();
+        await fetchCooldowns();
+      } else {
+        showToast('Claim failed', 'Transaction was rejected or failed.', 'error');
+      }
+    } catch (_e) {
+      showToast('Error', 'Failed to process claim request.', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Reset input/errors and refresh balances when tab changes
   React.useEffect(() => {
+    setAmount('');
+    setInputError('');
     fetchHppBalance();
-  }, [fetchHppBalance]);
+    fetchStakedTotal();
+    setCooldowns([]);
+    if (activeTab === 'claim') {
+      setCooldownsInitialized(false);
+      fetchCooldownDuration().finally(() => {
+        fetchCooldowns();
+      });
+    }
+  }, [activeTab, fetchHppBalance, fetchStakedTotal, fetchCooldowns, fetchCooldownDuration]);
+
+  // Fetch cooldown duration on initial mount so stake/unstake messages have the correct value
+  React.useEffect(() => {
+    fetchCooldownDuration();
+  }, [fetchCooldownDuration]);
+
+  // Tick every second on Claim tab to update countdowns
+  React.useEffect(() => {
+    if (activeTab !== 'claim') return;
+    const id = setInterval(() => setNowSecTick(Math.floor(Date.now() / 1000)), 1000);
+    return () => clearInterval(id);
+  }, [activeTab]);
+
+  // When countdown reaches zero, flip to claimable in UI without refetching
+  React.useEffect(() => {
+    if (activeTab !== 'claim') return;
+    const anyExpired = cooldowns.some((c) => c.cooling && c.unlock <= nowSecTick);
+    if (!anyExpired) return;
+    const updated = cooldowns.map((c) => (c.cooling && c.unlock <= nowSecTick ? { ...c, cooling: false } : c));
+    // Keep latest first by unlock time
+    updated.sort((a, b) => b.unlock - a.unlock);
+    setCooldowns(updated);
+  }, [nowSecTick, cooldowns, activeTab]);
+
+  const formatRemaining = (seconds: number) => {
+    const s = Math.max(0, seconds);
+    const d = Math.floor(s / 86400);
+    const h = Math.floor((s % 86400) / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = Math.floor(s % 60);
+    return `${String(d).padStart(2, '0')}:${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(
+      sec
+    ).padStart(2, '0')}`;
+  };
+
+  // Local date formatter (YYYY-MM-DD HH:mm) in user's timezone via dayjs
+  const formatLocalDateTime = (epochSeconds: number) => dayjs.unix(epochSeconds).format('YYYY-MM-DD HH:mm');
+
+  // Duration formatter for cooldownSeconds (minutes, hours, days, months) via dayjs
+  const formatCooldownDuration = (totalSeconds: number) => {
+    const s = Math.max(0, Math.floor(totalSeconds));
+    if (!s) return '';
+    return dayjs.duration(s, 'seconds').humanize();
+  };
+
+  // Derived withdrawable from cooldowns (updates per second without needing new block)
+  const derivedWithdrawableWei = React.useMemo(() => {
+    if (!cooldowns?.length) return BigInt(0);
+    return cooldowns.reduce((acc, c) => (c.unlock <= nowSecTick ? acc + (c.amountWei || BigInt(0)) : acc), BigInt(0));
+  }, [cooldowns, nowSecTick]);
+  const derivedWithdrawable = React.useMemo(() => {
+    const val = formatUnits(derivedWithdrawableWei, DECIMALS);
+    return formatTokenBalance(val, 3);
+  }, [derivedWithdrawableWei]);
 
   const TabButton = ({ id, label }: { id: StakingTab; label: string }) => (
     <button
@@ -306,11 +626,14 @@ export default function StakingClient() {
                   <div className="my-5 rounded-lg p-4 border border-dashed border-white/50">
                     <div className="flex flex-col items-center text-center min-[810px]:flex-row min-[810px]:items-center min-[810px]:justify-between min-[810px]:text-left">
                       <div className="flex flex-col items-center min-[810px]:flex-row min-[810px]:items-center min-[810px]:space-x-4 mb-4 min-[810px]:mb-0">
-                        <WalletIcon className="w-12 h-12 text-white mb-3 min-[810px]:mb-0" />
+                        <WalletIcon className="hidden min-[810px]:block w-12 h-12 text-white" />
                         <div className="flex flex-col items-center min-[810px]:items-start">
-                          <span className="text-white font-semibold text-xl tracking-[0.8px] leading-[1.5em] min-[810px]:mb-0">
-                            Wallet Connected
-                          </span>
+                          <div className="flex items-center gap-2.5 mb-2">
+                            <WalletIcon className="w-5.5 h-5.5 text-white min-[810px]:hidden" />
+                            <span className="text-white font-semibold text-xl tracking-[0.8px] leading-[1.5em]">
+                              Wallet Connected
+                            </span>
+                          </div>
                           <div
                             className="text-base text-white font-normal tracking-[0.8px] leading-[1.5em] max-w-full text-center min-[810px]:text-left"
                             style={{ wordBreak: 'break-all', overflowWrap: 'break-word', whiteSpace: 'normal' }}
@@ -355,7 +678,8 @@ export default function StakingClient() {
                               Staking Available:
                             </h3>
                             <div className="text-white text-base leading-[1.2] tracking-[0.8px] font-normal">
-                              {isHppBalanceLoading ? 'Loading...' : `${hppBalance} HPP`}
+                              {`${hppBalance} HPP`}
+                              {/* {isHppBalanceLoading ? 'Loading...' : `${hppBalance} HPP`} */}
                             </div>
                           </div>
 
@@ -390,7 +714,7 @@ export default function StakingClient() {
                               <button
                                 key={p}
                                 onClick={() => setPercent(p)}
-                                className="bg-white text-black rounded-[5px] py-2 font-semibold cursor-pointer"
+                                className="bg-white text-black rounded-[5px] py-2 font-semibold cursor-pointer transition-opacity duration-200 hover:opacity-90"
                               >
                                 {Math.round(p * 100)}%
                               </button>
@@ -400,16 +724,17 @@ export default function StakingClient() {
                           <div className="mt-4 space-y-2">
                             <div className="flex items-center justify-between text-base text-white leading-[1.2] tracking-[0.8px] font-normal">
                               <span>Total:</span>
-                              <span>0 HPP</span>
+                              <span>{stakedTotal} HPP</span>
                             </div>
                             <div className="text-base text-[#5DF23F] leading-[1.2] tracking-[0.8px] font-normal mt-2.5">
-                              HPP will be available to withdraw 7 days after unstaking.
+                              HPP will be available to withdraw {formatCooldownDuration(cooldownSeconds)} after
+                              unstaking.
                             </div>
                           </div>
 
                           <div className="mt-5">
                             <Button
-                              variant="white"
+                              variant="black"
                               size="lg"
                               disabled={
                                 isSubmitting ||
@@ -427,18 +752,12 @@ export default function StakingClient() {
                                 !amount ||
                                 amount === '.' ||
                                 Number(amount) <= 0
-                                  ? '!bg-[#bfbfbf] !text-black'
+                                  ? '!bg-[#9E9E9E] !text-white'
                                   : ''
-                              } !rounded-[5px]`}
+                              } !rounded-[5px] disabled:!opacity-100 disabled:!text-white`}
                               onClick={onStake}
                             >
-                              {isSubmitting
-                                ? 'Processing...'
-                                : isHppBalanceLoading
-                                ? 'Loading...'
-                                : inputError
-                                ? inputError
-                                : 'Stake'}
+                              {isSubmitting ? 'Processing...' : inputError ? inputError : 'Stake'}
                             </Button>
                           </div>
                         </>
@@ -451,7 +770,8 @@ export default function StakingClient() {
                               Unstaking Available:
                             </h3>
                             <div className="text-white text-base leading-[1.2] tracking-[0.8px] font-normal">
-                              {isHppBalanceLoading ? 'Loading...' : `${hppBalance} HPP`}
+                              {`${stakedTotal} HPP`}
+                              {/* {isStakedTotalLoading ? 'Loading...' : `${stakedTotal} HPP`} */}
                             </div>
                           </div>
 
@@ -483,8 +803,8 @@ export default function StakingClient() {
                             {PERCENTS.map((p) => (
                               <button
                                 key={p}
-                                onClick={() => setPercent(p)}
-                                className="bg-white text-black rounded-[5px] py-2 font-semibold cursor-pointer"
+                                onClick={() => setUnstakePercent(p)}
+                                className="bg-white text-black rounded-[5px] py-2 font-semibold cursor-pointer transition-opacity duration-200 hover:opacity-90"
                               >
                                 {Math.round(p * 100)}%
                               </button>
@@ -493,25 +813,37 @@ export default function StakingClient() {
 
                           <div className="mt-5">
                             <div className="text-base text-[#5DF23F] leading-[1.2] tracking-[0.8px] font-normal mt-2.5">
-                              HPP will be available to withdraw 7 days after unstaking.
+                              HPP will be available to withdraw {formatCooldownDuration(cooldownSeconds)} after
+                              unstaking.
                             </div>
                           </div>
 
                           <div className="mt-5">
                             <Button
-                              variant="white"
+                              variant="black"
                               size="lg"
                               disabled={
-                                isHppBalanceLoading || !!inputError || !amount || amount === '.' || Number(amount) <= 0
+                                isSubmitting ||
+                                isStakedTotalLoading ||
+                                !!inputError ||
+                                !amount ||
+                                amount === '.' ||
+                                Number((amount || '0').replace(/,/g, '')) <= 0
                               }
                               fullWidth
                               className={`${
-                                isHppBalanceLoading || !!inputError || !amount || amount === '.' || Number(amount) <= 0
-                                  ? '!bg-[#bfbfbf] !text-black !rounded-[5px]'
-                                  : '!rounded-[5px]'
-                              }`}
+                                isSubmitting ||
+                                isStakedTotalLoading ||
+                                !!inputError ||
+                                !amount ||
+                                amount === '.' ||
+                                Number((amount || '0').replace(/,/g, '')) <= 0
+                                  ? '!bg-[#9E9E9E] !text-white'
+                                  : ''
+                              } !rounded-[5px] disabled:!opacity-100 disabled:!text-white`}
+                              onClick={onUnstake}
                             >
-                              {isHppBalanceLoading ? 'Loading...' : inputError ? inputError : 'Unstake'}
+                              {isSubmitting ? 'Processing...' : 'Unstake'}
                             </Button>
                           </div>
                         </>
@@ -519,38 +851,33 @@ export default function StakingClient() {
 
                       {activeTab === 'claim' && (
                         <>
-                          {/* Available Claim Balance - Card 1 */}
+                          {/* Claim Available Card */}
                           <div className="rounded-[5px] p-6 min-[1200px]:p-8 bg-primary">
-                            <div className="flex items-center justify-between mb-3">
-                              <h3 className="text-white text-base font-semibold">Available Claim Balance</h3>
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                viewBox="0 0 24 24"
-                                className="w-5 h-5 text-white/80"
-                                fill="currentColor"
-                                aria-hidden
-                              >
-                                <path
-                                  fillRule="evenodd"
-                                  d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zm-.75 6.75a.75.75 0 011.5 0v6a.75.75 0 01-1.5 0v-6zm0 8.25a.75.75 0 101.5 0 .75.75 0 00-1.5 0z"
-                                  clipRule="evenodd"
-                                />
-                              </svg>
+                            <div className="flex items-center gap-2.5">
+                              <h3 className="text-white text-base font-normal leading-[1.2] tracking-[0.8px]">
+                                Claim Available
+                              </h3>
+                              <InfoIcon className="w-5.5 h-5.5" />
                             </div>
-
-                            <div className="rounded-[5px] bg-white flex items-center justify-between px-4 py-3">
-                              <input
-                                type="text"
-                                inputMode="decimal"
-                                className="bg-transparent outline-none text-black text-base w-full"
-                                defaultValue="6,000"
-                              />
-                              <span className="ml-3 text-black text-sm font-semibold">HPP</span>
+                            <div className="flex items-center justify-center gap-2.5 mt-4 mb-4">
+                              <HPPTickerIcon className="w-5.5 h-5.5" />
+                              <span className="text-white text-[25px] font-semibold leading-[1.2] tracking-[0.8px]">
+                                {derivedWithdrawable}
+                              </span>
                             </div>
 
                             <div className="mt-4">
-                              <Button variant="black" size="lg" fullWidth>
-                                Claim
+                              <Button
+                                variant="black"
+                                size="lg"
+                                fullWidth
+                                disabled={isSubmitting || derivedWithdrawableWei <= BigInt(0)}
+                                className={`${
+                                  isSubmitting || derivedWithdrawableWei <= BigInt(0) ? '!bg-[#9E9E9E] !text-white' : ''
+                                } !rounded-[5px] disabled:!opacity-100 disabled:!text-white`}
+                                onClick={onClaim}
+                              >
+                                {isSubmitting ? 'Processing...' : 'Claim'}
                               </Button>
                             </div>
                           </div>
@@ -558,48 +885,55 @@ export default function StakingClient() {
                           {/* Transactions - Card 2 */}
                           <div className="mt-2.5 rounded-[5px] p-6 min-[1200px]:p-8 bg-primary">
                             <div className="space-y-2.5">
-                              {[
-                                {
-                                  date: '2025-01-18 16:34',
-                                  note: 'Cooldown in 06:23:46:21',
-                                  amount: '1,000,000 HPP',
-                                  cooling: true,
-                                },
-                                {
-                                  date: '2025-01-16 19:52',
-                                  note: 'Cooldown in 06:23:46:21',
-                                  amount: '20,000 HPP',
-                                  cooling: true,
-                                },
-                                {
-                                  date: '2025-01-14 7:19',
-                                  note: 'You are able to claim.',
-                                  amount: '1,000 HPP',
-                                  cooling: false,
-                                },
-                                {
-                                  date: '2025-01-13 13:48',
-                                  note: 'You are able to claim.',
-                                  amount: '5,000 HPP',
-                                  cooling: false,
-                                },
-                              ].map((tx, idx) => (
-                                <div key={idx} className="rounded-[5px] bg-[#3f43aa]/60 px-4 py-3">
-                                  <div className="flex items-center justify-between">
-                                    <div>
-                                      <div className="text-white/90 text-[13px]">{tx.date}</div>
+                              {(isCooldownsLoading || !cooldownsInitialized) && (
+                                <div className="flex flex-col items-center justify-center py-8 bg-[rgba(18,18,18,0.1)] rounded-[5px]">
+                                  <div className="mb-4">
+                                    <DotLottieReact
+                                      src="/lotties/Loading.lottie"
+                                      autoplay
+                                      loop
+                                      style={{ width: 48, height: 48 }}
+                                    />
+                                  </div>
+                                  <p className="text-base text-[#bfbfbf] tracking-[0.8px] leading-[1.5] text-center font-normal animate-pulse">
+                                    Fetching cooldown entries...
+                                  </p>
+                                </div>
+                              )}
+                              {!isCooldownsLoading && cooldownsInitialized && cooldowns.length === 0 && (
+                                <div className="flex flex-col items-center justify-center py-8 bg-[rgba(18,18,18,0.1)] rounded-[5px]">
+                                  <p className="text-base text-[#bfbfbf] tracking-[0.8px] leading-[1.5] text-center font-normal">
+                                    No claim history.
+                                  </p>
+                                </div>
+                              )}
+                              {!isCooldownsLoading &&
+                                cooldownsInitialized &&
+                                cooldowns.map((tx, idx) => (
+                                  <div key={idx} className="rounded-[5px] bg-[#3f43aa]/60 px-4 py-3">
+                                    <div className="flex flex-col gap-2.5">
+                                      <div className="flex items-center justify-between">
+                                        <div className="text-white text-base leading-[1.2] tracking-[0.8px] font-normal">
+                                          {tx.date}
+                                        </div>
+                                        <div className="text-white text-base leading-[1.2] tracking-[0.8px] font-normal">
+                                          {tx.amount}
+                                        </div>
+                                      </div>
                                       <div
                                         className={
-                                          tx.cooling ? 'text-green-400 text-[13px]' : 'text-white/80 text-[13px]'
+                                          tx.cooling
+                                            ? 'text-[#25FF21] text-base leading-[1.2] tracking-[0.8px] font-normal'
+                                            : 'text-white text-base leading-[1.2] tracking-[0.8px] font-normal'
                                         }
                                       >
-                                        {tx.note}
+                                        {tx.cooling
+                                          ? `You will be able to claim in ${formatRemaining(tx.unlock - nowSecTick)}`
+                                          : 'You are able to claim.'}
                                       </div>
                                     </div>
-                                    <div className="text-white text-sm font-semibold">{tx.amount}</div>
                                   </div>
-                                </div>
-                              ))}
+                                ))}
                             </div>
                           </div>
                         </>
