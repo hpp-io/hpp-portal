@@ -31,8 +31,8 @@ export const homeData = {
       description: 'Move assets seamlessly between Ethereum and HPP Mainnet.',
     },
     {
-      title: 'Start Building',
-      description: 'Access tools, docs, and SDKs to launch AI-integrated smart contracts and autonomous agents on HPP.',
+      title: 'Staking',
+      description: 'Stake HPP to earn rewards and join the ecosystem.',
     },
   ],
   ecosystemProjects: [
