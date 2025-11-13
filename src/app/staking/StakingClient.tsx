@@ -27,11 +27,8 @@ export default function StakingClient() {
   const [hppBalance, setHppBalance] = useState<string>('0');
   const [isHppBalanceLoading, setIsHppBalanceLoading] = useState<boolean>(false);
   const [inputError, setInputError] = useState<string>('');
-<<<<<<< HEAD
   const [stakedTotal, setStakedTotal] = useState<string>('0');
   const [isStakedTotalLoading, setIsStakedTotalLoading] = useState<boolean>(false);
-=======
->>>>>>> develop
   const HPP_TOKEN_ADDRESS = process.env.NEXT_PUBLIC_HPP_TOKEN_CONTRACT as `0x${string}`;
   const HPP_STAKING_ADDRESS = process.env.NEXT_PUBLIC_HPP_STAKING_CONTRACT as `0x${string}`;
   const DECIMALS = 18;
@@ -435,11 +432,7 @@ export default function StakingClient() {
                           <div className="mt-4 space-y-2">
                             <div className="flex items-center justify-between text-base text-white leading-[1.2] tracking-[0.8px] font-normal">
                               <span>Total:</span>
-<<<<<<< HEAD
                               <span>{stakedTotal} HPP</span>
-=======
-                              <span>0 HPP</span>
->>>>>>> develop
                             </div>
                             <div className="text-base text-[#5DF23F] leading-[1.2] tracking-[0.8px] font-normal mt-2.5">
                               HPP will be available to withdraw 7 days after unstaking.
@@ -490,11 +483,7 @@ export default function StakingClient() {
                               Unstaking Available:
                             </h3>
                             <div className="text-white text-base leading-[1.2] tracking-[0.8px] font-normal">
-<<<<<<< HEAD
                               {isStakedTotalLoading ? 'Loading...' : `${stakedTotal} HPP`}
-=======
-                              {isHppBalanceLoading ? 'Loading...' : `${hppBalance} HPP`}
->>>>>>> develop
                             </div>
                           </div>
 
