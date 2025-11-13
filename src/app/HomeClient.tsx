@@ -78,7 +78,7 @@ export default function HomeClient() {
                     ? '/lotties/Migration.lottie'
                     : action.title === 'Bridge'
                     ? '/lotties/Bridge.lottie'
-                    : '/lotties/StartBuilding.lottie';
+                    : '/lotties/Staking.lottie';
 
                 const CardContent = (
                   <>
