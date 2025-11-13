@@ -7,6 +7,7 @@ import {
   GovernanceIcon,
   BlockExplorerIcon,
   BuildIcon,
+  StakingIcon,
 } from '@/assets/icons';
 
 export const navItems = [
@@ -21,6 +22,10 @@ export const navItems = [
   {
     label: 'Bridge',
     icon: <BridgeIcon />,
+  },
+  {
+    label: 'Staking',
+    icon: <StakingIcon />,
   },
   {
     label: 'Airdrop',
