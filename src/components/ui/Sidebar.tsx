@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { FooterHPPLogo, LinkIcon } from '@/assets/icons';
 import { usePathname } from 'next/navigation';
 import { socialLinks } from '@/static/uiData';
+import { useHppChain } from '@/app/staking/hppClient';
 
 interface NavItem {
   label: string;
@@ -48,8 +49,14 @@ function SocialLinks({ spacingClass = 'space-x-4', isMobile = false }: { spacing
 
 export default function Sidebar({ navItems, communityLinks, isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
+  const { id: HPP_CHAIN_ID } = useHppChain();
   const mobileHideWhenOpen = isOpen ? 'max-[1199px]:hidden' : '';
   const getHrefAndExternal = (item: NavItem): { href: string; external: boolean } => {
+    // Override Block Explorer link based on current HPP chain
+    if (item.label.toLowerCase() === 'block explorer') {
+      const explorerBase = HPP_CHAIN_ID === 190415 ? 'https://explorer.hpp.io' : 'https://sepolia-explorer.hpp.io';
+      return { href: explorerBase, external: true };
+    }
     if (item.external && item.href) {
       return { href: item.href, external: true };
     }
