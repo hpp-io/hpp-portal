@@ -10,7 +10,7 @@ import Button from '@/components/ui/Button';
 import WalletButton from '@/components/ui/WalletButton';
 import { WalletIcon, HPPLogoIcon, HPPTickerIcon, InfoIcon } from '@/assets/icons';
 import { useAccount, useDisconnect, useWalletClient } from 'wagmi';
-import { formatUnits, parseUnits, createWalletClient, custom } from 'viem';
+import { formatUnits, parseUnits } from 'viem';
 import Big from 'big.js';
 import { navItems, communityLinks } from '@/config/navigation';
 import { standardArbErc20Abi, hppStakingAbi } from './abi';
@@ -51,6 +51,7 @@ export default function StakingClient() {
   const { showToast } = useToast();
   const ensureChain = useEnsureChain();
   const { data: walletClient } = useWalletClient();
+  const { chain: hppChain, id: HPP_CHAIN_ID, rpcUrl } = useHppChain();
   React.useEffect(() => {
     if (!isClaimInfoOpen) return;
     const onDown = (e: MouseEvent) => {
@@ -143,18 +144,14 @@ export default function StakingClient() {
 
   // Writes are handled via viem wallet client
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { chain: hppChain, id: HPP_CHAIN_ID } = useHppChain();
+  // Ensure wallet is on HPP network (mainnet or sepolia) for staking writes
 
   // Ensure wallet is connected to HPP network for writes
   const ensureHppChain = async () => {
-    const isMainnet = HPP_CHAIN_ID === 190415;
-    const chainName = isMainnet ? 'HPP Mainnet' : 'HPP Sepolia';
-    const rpcUrl = process.env.NEXT_PUBLIC_HPP_RPC_URL as string;
-
     await ensureChain(HPP_CHAIN_ID, {
-      chainName,
+      chainName: hppChain.name,
       rpcUrls: [rpcUrl],
-      nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+      nativeCurrency: hppChain.nativeCurrency,
     });
   };
 
