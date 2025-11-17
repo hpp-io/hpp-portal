@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev --experimental-https --turbopack",
-    "build": "next build",
+    "clean": "rm -rf out",
+    "build": "yarn clean && next build",
     "start": "next start",
     "lint": "next lint"
   },
