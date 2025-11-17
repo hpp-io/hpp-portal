@@ -17,6 +17,7 @@ import { standardArbErc20Abi, hppStakingAbi } from './abi';
 import { formatDisplayAmount, PERCENTS, computePercentAmount, formatTokenBalance } from '@/lib/helpers';
 import { useHppPublicClient } from './hppClient';
 import { useToast } from '@/hooks/useToast';
+import { useEnsureChain } from '@/lib/wallet';
 
 type StakingTab = 'stake' | 'unstake' | 'claim';
 
@@ -128,36 +129,18 @@ export default function StakingClient() {
   // Writes are handled via viem wallet client
   const [isSubmitting, setIsSubmitting] = useState(false);
   const HPP_CHAIN_ID = (process.env.NEXT_PUBLIC_ENV || 'development').toLowerCase() === 'production' ? 190415 : 181228;
+  const ensureChain = useEnsureChain();
 
   // Ensure wallet is connected to HPP network for writes
   const ensureHppChain = async () => {
-    const provider = (window as any).ethereum;
-    if (!provider?.request) return;
-    const hexId = '0x' + HPP_CHAIN_ID.toString(16);
-    try {
-      await provider.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: hexId }] });
-    } catch (switchErr: any) {
-      // 4902: chain not added
-      if (switchErr?.code === 4902) {
-        const isMainnet = HPP_CHAIN_ID === 190415;
-        const chainName = isMainnet ? 'HPP Mainnet' : 'HPP Sepolia';
-        const rpcUrl = process.env.NEXT_PUBLIC_HPP_RPC_URL as string;
-        await provider.request({
-          method: 'wallet_addEthereumChain',
-          params: [
-            {
-              chainId: hexId,
-              chainName,
-              nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-              rpcUrls: [rpcUrl],
-            },
-          ],
-        });
-        await provider.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: hexId }] });
-      } else {
-        throw switchErr;
-      }
-    }
+    const isMainnet = HPP_CHAIN_ID === 190415;
+    const chainName = isMainnet ? 'HPP Mainnet' : 'HPP Sepolia';
+    const rpcUrl = process.env.NEXT_PUBLIC_HPP_RPC_URL as string;
+    await ensureChain(HPP_CHAIN_ID, {
+      chainName,
+      rpcUrls: [rpcUrl],
+      nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+    });
   };
 
   // Balance refresh helper
