@@ -108,6 +108,7 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
   // Ensure wallet is on Ethereum network (mainnet or sepolia) for migration writes
   const selectedChainEnv = (process.env.NEXT_PUBLIC_CHAIN || 'mainnet').toLowerCase();
   const ETH_CHAIN_ID = selectedChainEnv === 'sepolia' ? 11155111 : 1;
+
   const ensureEthChain = async () => {
     const isMainnet = ETH_CHAIN_ID === 1;
     const chainName = isMainnet ? 'Ethereum Mainnet' : 'Ethereum Sepolia';
