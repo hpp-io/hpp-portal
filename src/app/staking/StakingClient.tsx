@@ -81,13 +81,21 @@ export default function StakingClient() {
     const value = raw.replace(/,/g, '');
     // allow digits with optional single decimal point, or empty
     if (/^\d*(\.)?\d*$/.test(value) || value === '') {
-      setAmount(value);
+      // limit stake input to 2 decimal places
+      let twoDecimalAmount = value;
+      if (activeTab === 'stake' && value.includes('.')) {
+        const [intPart, fracPart = ''] = value.split('.');
+        if (fracPart.length > 2) {
+          twoDecimalAmount = `${intPart}.${fracPart.slice(0, 2)}`;
+        }
+      }
+      setAmount(twoDecimalAmount);
       // validate against available balance
       try {
         // Use different base by tab: stake uses wallet HPP balance, unstake uses staked total
         const baseBalanceStr = (activeTab === 'unstake' ? stakedTotal : hppBalance) || '0';
         const cleanBal = baseBalanceStr.replace(/,/g, '') || '0';
-        const v = new Big(value === '' || value === '.' ? '0' : value);
+        const v = new Big(twoDecimalAmount === '' || twoDecimalAmount === '.' ? '0' : twoDecimalAmount);
         const b = new Big(cleanBal);
         if (v.gt(b)) {
           setInputError('Insufficient HPP balance');
@@ -107,6 +115,18 @@ export default function StakingClient() {
   const setUnstakePercent = (p: number) => {
     handleAmountChange(computePercentAmount(stakedTotal, p, DECIMALS));
   };
+
+  // Derived: total after stake (current staked + input amount)
+  const totalAfterStake = React.useMemo(() => {
+    try {
+      const base = new Big((stakedTotal || '0').replace(/,/g, '') || '0');
+      const add = new Big((amount && amount !== '.' ? amount : '0').replace(/,/g, '') || '0');
+      const sum = base.plus(add);
+      return `${formatTokenBalance(sum.toString(), 2)} HPP`;
+    } catch {
+      return `${stakedTotal} HPP`;
+    }
+  }, [stakedTotal, amount]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -707,7 +727,7 @@ export default function StakingClient() {
                           <div className="mt-4 space-y-2">
                             <div className="flex items-center justify-between text-base text-white leading-[1.2] tracking-[0.8px] font-normal">
                               <span>Total:</span>
-                              <span>{stakedTotal} HPP</span>
+                              <span>{inputError ? `${stakedTotal} HPP` : totalAfterStake}</span>
                             </div>
                             <div className="text-base text-[#5DF23F] leading-[1.2] tracking-[0.8px] font-normal mt-2.5">
                               HPP will be available to withdraw {formatCooldownDuration(cooldownSeconds)} after
