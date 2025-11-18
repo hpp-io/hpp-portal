@@ -41,7 +41,7 @@ createAppKit({
   allowUnsupportedChain: true,
   featuredWalletIds: ['c57ca95b47569778a828d19178114f4db188b89b763c899ba0be274e97267d96'],
   includeWalletIds: ['c57ca95b47569778a828d19178114f4db188b89b763c899ba0be274e97267d96'],
-  debug: (process.env.NEXT_PUBLIC_ENV || 'development') !== 'production',
+  debug: process.env.NODE_ENV !== 'production',
   enableWalletGuide: true,
   allWallets: 'HIDE',
   enableWalletConnect: true,

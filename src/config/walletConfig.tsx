@@ -9,10 +9,9 @@ if (!projectId) {
   throw new Error('Project ID is not defined');
 }
 
-// Select network from NEXT_PUBLIC_ENV
-const selectedEnv = (process.env.NEXT_PUBLIC_ENV || 'development').toLowerCase();
-const selectedChain = selectedEnv === 'production' ? 'mainnet' : 'sepolia';
-export const networks = selectedChain === 'mainnet' ? [mainnet] : [sepolia];
+// Select Ethereum network from NEXT_PUBLIC_CHAIN
+const isSepolia = (process.env.NEXT_PUBLIC_CHAIN || 'mainnet').toLowerCase() === 'sepolia';
+export const networks = isSepolia ? [sepolia] : [mainnet];
 
 //Set up the Wagmi Adapter (Config)
 export const wagmiAdapter = new WagmiAdapter({

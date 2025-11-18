@@ -54,7 +54,6 @@ npm install
 NEXT_PUBLIC_APP_KIT_PROJECT_ID=
 
 # App environment and site URL
-NEXT_PUBLIC_ENV=development   # or production
 NEXT_PUBLIC_SITE_URL=https://localhost:3000
 
 # Etherscan (for history lookup)
@@ -71,9 +70,13 @@ NEXT_PUBLIC_SEPOLIA_ETH_AERGO_TOKEN_CONTRACT=0x...
 NEXT_PUBLIC_SEPOLIA_ETH_HPP_MIGRATION_CONTRACT=0x...
 
 # HPP chain (Mainnet / Sepolia)
-NEXT_PUBLIC_HPP_RPC_URL=https://...            # HPP RPC for current env
+NEXT_PUBLIC_HPP_CHAIN_ID=190415               # 190415 (Mainnet) or 181228 (Sepolia)
+NEXT_PUBLIC_HPP_RPC_URL=https://...           # HPP RPC for selected chain
 NEXT_PUBLIC_HPP_TOKEN_CONTRACT=0x...           # HPP token on HPP chain
 NEXT_PUBLIC_HPP_STAKING_CONTRACT=0x...         # Staking contract on HPP chain
+
+# Ethereum network for AppKit (Mainnet / Sepolia)
+NEXT_PUBLIC_CHAIN=mainnet                      # or sepolia
 ```
 
 3. Run the app (HTTPS dev server enabled)
