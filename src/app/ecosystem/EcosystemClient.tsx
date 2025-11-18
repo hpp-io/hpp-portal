@@ -37,10 +37,10 @@ export default function EcosystemClient() {
           {/* Hero Section */}
           <div className="bg-[#121212] border-b border-[#161616] py-7.5">
             <div className="px-4 max-w-6xl mx-auto">
-              <h1 className="text-[50px] min-[1200px]:text-[70px] leading-[1.5] font-[900] text-white">
+              <h1 className="text-[50px] leading-[1.5] font-[900] text-white text-center">
                 HPP <br className="hidden max-[810px]:inline" /> Ecosystem
               </h1>
-              <p className="text-xl text-[#bfbfbf] font-semibold leading-[1.5] max-w-7xl">
+              <p className="text-xl text-[#bfbfbf] font-semibold leading-[1.5] max-w-7xl text-center">
                 The HPP Ecosystem is an AI-native infrastructure designed for the full data lifecycle, uniting
                 intelligent agents, verifiable off-chain computation, and decentralized applications.
               </p>
