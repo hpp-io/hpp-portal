@@ -661,7 +661,7 @@ export default function StakingClient() {
 
                 {/* Panel */}
                 <div
-                  className={`mt-2.5 w-full ${
+                  className={`mt-2.5 w-full mb-25 ${
                     isConnected && activeTab === 'claim' ? '' : 'rounded-[5px] p-6 min-[1200px]:p-8 bg-primary'
                   }`}
                 >
