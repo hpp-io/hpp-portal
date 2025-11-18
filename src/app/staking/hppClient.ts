@@ -5,12 +5,11 @@ import { createPublicClient, http } from 'viem';
 
 export function useHppChain() {
   return React.useMemo(() => {
-    const env = (process.env.NEXT_PUBLIC_ENV || 'development').toLowerCase();
-    const isProd = env === 'production';
-    const id = isProd ? 190415 : 181228;
-    const name = isProd ? 'HPP Mainnet' : 'HPP Sepolia';
+    const id = Number(process.env.NEXT_PUBLIC_HPP_CHAIN_ID || '181228');
+    const name = id === 190415 ? 'HPP Mainnet' : 'HPP Sepolia';
     const rpcUrl =
-      (process.env.NEXT_PUBLIC_HPP_RPC_URL as string) || (isProd ? 'https://mainnet.hpp.io' : 'https://sepolia.hpp.io');
+      (process.env.NEXT_PUBLIC_HPP_RPC_URL as string) ||
+      (id === 190415 ? 'https://mainnet.hpp.io' : 'https://sepolia.hpp.io');
     return {
       chain: {
         id,
