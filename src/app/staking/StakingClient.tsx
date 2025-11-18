@@ -607,17 +607,12 @@ export default function StakingClient() {
           {/* Wrap content to push footer to bottom on mobile */}
           <div className="min-h-[calc(100vh-66px)] min-[1200px]:min-h-[calc(100vh-85px)] flex flex-col">
             {/* Hero Section */}
-            <div className="py-10">
+            <div className="bg-[#121212] border-b border-[#161616] py-7.5">
               <div className="px-4 max-w-6xl mx-auto">
-                <div className="text-center space-y-3">
-                  <div className="flex items-center justify-center">
-                    <HPPLogoIcon className="w-auto h-12 mr-3.75" />
-                    <p className="text-[40px] leading-[1.5] tracking-[0.8px] font-semibold text-white">Staking</p>
-                  </div>
-                  <p className="text-xl text-[#bfbfbf] leading-[1.5] font-normal">
-                    Stake your HPP to earn rewards and participate in HPP ecosystem
-                  </p>
-                </div>
+                <h1 className="text-[50px] leading-[1.5] font-[900] text-white text-center">HPP Staking</h1>
+                <p className="text-xl text-[#bfbfbf] font-semibold leading-[1.5] max-w-5xl text-center">
+                  Stake your HPP to earn rewards and participate in HPP ecosystem
+                </p>
               </div>
             </div>
 

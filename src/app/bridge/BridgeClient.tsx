@@ -54,8 +54,8 @@ export default function BridgeClient() {
           {/* Hero Section */}
           <div className="bg-[#121212] border-b border-[#161616] py-7.5">
             <div className="px-4 max-w-6xl mx-auto">
-              <h1 className="text-[50px] min-[1200px]:text-[70px] leading-[1.5] font-[900] text-white">Bridge</h1>
-              <p className="text-xl text-[#bfbfbf] font-semibold leading-[1.5] max-w-5xl">
+              <h1 className="text-[50px] leading-[1.5] font-[900] text-white text-center">Bridge</h1>
+              <p className="text-xl text-[#bfbfbf] font-semibold leading-[1.5] max-w-5xl text-center">
                 HPP Bridge enables seamless and secure token transfers across multiple networks, ensuring
                 interoperability within the HPP ecosystem.
               </p>
