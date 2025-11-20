@@ -18,7 +18,7 @@ interface SidebarProps {
   navItems: NavItem[];
   communityLinks: { label: string; href: string }[];
   isOpen: boolean;
-  onClose: () => void;
+  onClose?: () => void;
 }
 
 const SOCIAL_LINKS = socialLinks;
@@ -70,7 +70,7 @@ export default function Sidebar({ navItems, communityLinks, isOpen, onClose }: S
         <div
           className="fixed left-0 right-0 bottom-0 opacity-30 z-40 min-[1200px]:hidden top-[66px]"
           style={{ background: 'var(--color-primary)' }}
-          onClick={onClose}
+          onClick={() => onClose?.()}
         />
       )}
 
@@ -88,7 +88,7 @@ export default function Sidebar({ navItems, communityLinks, isOpen, onClose }: S
         ].join(' ')}
       >
         {/* Navigation */}
-        <nav className="flex-1 py-2 px-0">
+        <nav className="flex-1 px-0">
           <ul className={`space-y-0 ${isOpen ? 'max-[1199px]:pt-4' : ''}`}>
             {navItems.map((item, index) => {
               const { href, external } = getHrefAndExternal(item);
@@ -122,11 +122,17 @@ export default function Sidebar({ navItems, communityLinks, isOpen, onClose }: S
               return (
                 <li key={index} className={`border-b border-[#161616] py-2.5 px-2.5`}>
                   {external ? (
-                    <a href={href} target="_blank" rel="noopener noreferrer" className={rowClass} onClick={onClose}>
+                    <a
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={rowClass}
+                      onClick={() => onClose?.()}
+                    >
                       {Content}
                     </a>
                   ) : (
-                    <Link href={href} className={rowClass} onClick={onClose}>
+                    <Link href={href} className={rowClass} onClick={() => onClose?.()}>
                       {Content}
                     </Link>
                   )}
