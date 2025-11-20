@@ -39,6 +39,8 @@ import {
 import { useRouter } from 'next/navigation';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import axios from 'axios';
+import { hppMigrationABI } from './abi';
+import { useEnsureChain } from '@/lib/wallet';
 
 // Constants
 const AERGO_DECIMAL = 18;
@@ -101,6 +103,22 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
   const { disconnect } = useDisconnect();
   const chainId = useChainId();
   const router = useRouter();
+  const ensureChain = useEnsureChain();
+
+  // Ensure wallet is on Ethereum network (mainnet or sepolia) for migration writes
+  const selectedChainEnv = (process.env.NEXT_PUBLIC_CHAIN || 'mainnet').toLowerCase();
+  const ETH_CHAIN_ID = selectedChainEnv === 'sepolia' ? 11155111 : 1;
+
+  const ensureEthChain = async () => {
+    const isMainnet = ETH_CHAIN_ID === 1;
+    const chainName = isMainnet ? 'Ethereum Mainnet' : 'Ethereum Sepolia';
+    const rpcUrls = isMainnet ? ['https://eth.llamarpc.com'] : ['https://rpc.sepolia.org'];
+    await ensureChain(ETH_CHAIN_ID, {
+      chainName,
+      rpcUrls,
+      nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+    });
+  };
 
   // Decide whether to swap to server list or keep current (to preserve local Pending until resolved)
   const updateHistoryWithServer = (incoming: Transaction[]) => {
@@ -589,6 +607,7 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
 
         showToast('Approving...', 'Please wait while we approve the transaction...', 'loading');
 
+        await ensureEthChain();
         const approveHash = await approveTokens({
           address: FROM_TOKEN_ADDRESS,
           abi: erc20Abi,
@@ -649,6 +668,7 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
       // cache amount for later status updates
       lastSubmittedAmountRef.current = fromAmount;
 
+      await ensureEthChain();
       const migrationHash = await swapTokens({
         address: hppMigrationContract as `0x${string}`,
         abi: hppMigrationABI,
@@ -1371,26 +1391,3 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
     </div>
   );
 }
-
-// Contract addresses and ABIs
-// Unused legacy constants removed (addresses are sourced above via isProd guard)
-
-// HPP Migration Contract ABI
-const hppMigrationABI = [
-  {
-    name: 'swapAergoForHPP',
-    type: 'function',
-    stateMutability: 'nonpayable',
-    inputs: [{ name: 'amount', type: 'uint256' }],
-    outputs: [],
-    modifiers: ['nonReentrant', 'whenNotPaused'],
-  },
-  {
-    name: 'migrateAQTtoHPP',
-    type: 'function',
-    stateMutability: 'nonpayable',
-    inputs: [{ name: 'amount', type: 'uint256' }],
-    outputs: [],
-    modifiers: ['nonReentrant', 'whenNotPaused'],
-  },
-] as const;
