@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { FooterHPPLogo } from '@/assets/icons';
+import { FooterHPPLogo, LinkIcon } from '@/assets/icons';
 import { usePathname } from 'next/navigation';
 import { socialLinks } from '@/static/uiData';
 
@@ -98,7 +98,9 @@ export default function Sidebar({ navItems, communityLinks, isOpen, onClose }: S
                 isActive ? 'text-white bg-primary' : 'text-gray-200 active:text-white active:bg-primary',
               ].join(' ');
 
-              const RightIcon = (
+              const RightIcon = external ? (
+                <LinkIcon className="w-4 h-4 text-[#FFFFFF] transition-colors group-hover:text-[#EDEDED]" />
+              ) : (
                 <svg
                   className="w-4 h-4 text-[#FFFFFF] transition-colors group-hover:text-[#EDEDED]"
                   fill="none"
