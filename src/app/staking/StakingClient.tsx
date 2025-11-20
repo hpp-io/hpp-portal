@@ -83,7 +83,7 @@ export default function StakingClient() {
     if (/^\d*(\.)?\d*$/.test(value) || value === '') {
       // limit stake input to 2 decimal places
       let twoDecimalAmount = value;
-      if (activeTab === 'stake' && value.includes('.')) {
+      if ((activeTab === 'stake' || activeTab === 'unstake') && value.includes('.')) {
         const [intPart, fracPart = ''] = value.split('.');
         if (fracPart.length > 2) {
           twoDecimalAmount = `${intPart}.${fracPart.slice(0, 2)}`;
@@ -624,7 +624,7 @@ export default function StakingClient() {
               <div className="max-w-[680px] mx-auto w-full">
                 {/* Connected wallet banner */}
                 {isConnected && (
-                  <div className="my-5 rounded-lg p-4 border border-dashed border-white/50">
+                  <div className="mt-5 rounded-lg p-4 border border-dashed border-white/50">
                     <div className="flex flex-col items-center text-center min-[810px]:flex-row min-[810px]:items-center min-[810px]:justify-between min-[810px]:text-left">
                       <div className="flex flex-col items-center min-[810px]:flex-row min-[810px]:items-center min-[810px]:space-x-4 mb-4 min-[810px]:mb-0">
                         <WalletIcon className="hidden min-[810px]:block w-12 h-12 text-white" />
@@ -651,7 +651,7 @@ export default function StakingClient() {
                 )}
 
                 {/* Tabs */}
-                <div className="grid grid-cols-3 gap-2.5 bg-black w-full">
+                <div className="mt-5 grid grid-cols-3 gap-2.5 bg-black w-full">
                   <TabButton id="stake" label="Stake" />
                   <TabButton id="unstake" label="Unstake" />
                   <TabButton id="claim" label="Claim" />
