@@ -25,6 +25,7 @@ export { default as CompleteIcon } from './Complete.svg';
 export { default as PendingIcon } from './Pending.svg';
 export { default as FailedIcon } from './Failed.svg';
 export { default as TransactionsIcon } from './Transactions.svg';
+export { default as LinkIcon } from './Link.svg';
 
 // PNG
 export { default as Aergo } from './Aergo.png';
