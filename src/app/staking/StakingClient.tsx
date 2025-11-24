@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import dayjs from '@/lib/dayjs';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import Sidebar from '@/components/ui/Sidebar';
@@ -8,7 +8,7 @@ import Header from '@/components/ui/Header';
 import Footer from '@/components/ui/Footer';
 import Button from '@/components/ui/Button';
 import WalletButton from '@/components/ui/WalletButton';
-import { WalletIcon, HPPLogoIcon, HPPTickerIcon, InfoIcon } from '@/assets/icons';
+import { WalletIcon, HPPTickerIcon, InfoIcon } from '@/assets/icons';
 import { useAccount, useDisconnect, useWalletClient } from 'wagmi';
 import { formatUnits, parseUnits } from 'viem';
 import Big from 'big.js';
@@ -52,7 +52,8 @@ export default function StakingClient() {
   const ensureChain = useEnsureChain();
   const { data: walletClient } = useWalletClient();
   const { chain: hppChain, id: HPP_CHAIN_ID, rpcUrl } = useHppChain();
-  React.useEffect(() => {
+
+  useEffect(() => {
     if (!isClaimInfoOpen) return;
     const onDown = (e: MouseEvent) => {
       if (claimInfoRef.current && !claimInfoRef.current.contains(e.target as Node)) {
@@ -62,8 +63,9 @@ export default function StakingClient() {
     document.addEventListener('mousedown', onDown);
     return () => document.removeEventListener('mousedown', onDown);
   }, [isClaimInfoOpen]);
+
   // Read cooldown duration (seconds) from staking contract
-  const fetchCooldownDuration = React.useCallback(async () => {
+  const fetchCooldownDuration = useCallback(async () => {
     try {
       const result = (await publicClient.readContract({
         address: HPP_STAKING_ADDRESS,
@@ -117,18 +119,18 @@ export default function StakingClient() {
   };
 
   // Derived: total after stake (current staked + input amount)
-  const totalAfterStake = React.useMemo(() => {
+  const totalAfterStake = useMemo(() => {
     try {
       const base = new Big((stakedTotal || '0').replace(/,/g, '') || '0');
       const add = new Big((amount && amount !== '.' ? amount : '0').replace(/,/g, '') || '0');
       const sum = base.plus(add);
-      return `${formatTokenBalance(sum.toString(), 2)} HPP`;
+      return `${formatTokenBalance(sum.toString(), 3)} HPP`;
     } catch {
       return `${stakedTotal} HPP`;
     }
   }, [stakedTotal, amount]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     let cancelled = false;
     async function readBalance() {
       if (!isConnected || !address || !HPP_TOKEN_ADDRESS) {
@@ -176,7 +178,7 @@ export default function StakingClient() {
   };
 
   // Balance refresh helper
-  const fetchHppBalance = React.useCallback(async () => {
+  const fetchHppBalance = useCallback(async () => {
     if (!isConnected || !address || !HPP_TOKEN_ADDRESS) {
       setHppBalance('0');
       setIsHppBalanceLoading(false);
@@ -201,7 +203,7 @@ export default function StakingClient() {
   }, [publicClient, address, isConnected, HPP_TOKEN_ADDRESS]);
 
   // Read total staked using staking contract stakedBalance(address)
-  const fetchStakedTotal = React.useCallback(async () => {
+  const fetchStakedTotal = useCallback(async () => {
     if (!isConnected || !address || !HPP_STAKING_ADDRESS) {
       setStakedTotal('0');
       setIsStakedTotalLoading(false);
@@ -216,7 +218,7 @@ export default function StakingClient() {
         args: [address],
       })) as bigint;
       const value = formatUnits(result, DECIMALS);
-      const formatted = formatTokenBalance(value, 2);
+      const formatted = formatTokenBalance(value, 3);
       setStakedTotal(formatted);
     } catch (_e) {
       setStakedTotal('0');
@@ -226,7 +228,7 @@ export default function StakingClient() {
   }, [publicClient, address, isConnected, HPP_STAKING_ADDRESS]);
 
   // Fetch cooldown entries for claim history
-  const fetchCooldowns = React.useCallback(async () => {
+  const fetchCooldowns = useCallback(async () => {
     if (!isConnected || !address || !HPP_STAKING_ADDRESS) {
       setCooldowns([]);
       return;
@@ -278,7 +280,7 @@ export default function StakingClient() {
       )) as unknown as Array<[bigint, bigint]>;
 
       results.forEach(([amountBn, unlockTimeBn]) => {
-        const amountStr = formatTokenBalance(formatUnits(amountBn, DECIMALS), 2);
+        const amountStr = formatTokenBalance(formatUnits(amountBn, DECIMALS), 3);
         const end = Number(unlockTimeBn);
         const cooling = nowSec < end;
         // Show the initial unstake (cooldown start) time derived from unlockTime - cooldown
@@ -407,6 +409,31 @@ export default function StakingClient() {
       const clean = (amount || '0').replace(/,/g, '');
       if (!clean || Number(clean) <= 0) return;
       const amountWei = parseUnits(clean as `${number}`, DECIMALS);
+
+      // Pre-check: limit of concurrent cooldown entries
+      try {
+        const [maxEntriesBn, currentCountBn] = (await Promise.all([
+          publicClient.readContract({
+            address: HPP_STAKING_ADDRESS,
+            abi: hppStakingAbi,
+            functionName: 'getMaxGlobalCooldownEntries',
+          }),
+          publicClient.readContract({
+            address: HPP_STAKING_ADDRESS,
+            abi: hppStakingAbi,
+            functionName: 'cooldownCount',
+            args: [address],
+          }),
+        ])) as [bigint, bigint];
+        const maxEntries = Number(maxEntriesBn);
+        const currentCount = Number(currentCountBn);
+        if (Number.isFinite(maxEntries) && Number.isFinite(currentCount) && currentCount >= maxEntries) {
+          showToast('Error', 'Once your claim is completed, additional unstake requests are available', 'error');
+          return;
+        }
+      } catch {
+        // If check fails, proceed without blocking
+      }
 
       // Ensure HPP chain
       await ensureHppChain();
@@ -563,12 +590,18 @@ export default function StakingClient() {
   };
 
   // Derived withdrawable from cooldowns (updates per second without needing new block)
-  const derivedWithdrawableWei = React.useMemo(() => {
+  const derivedWithdrawableWei = useMemo(() => {
     if (!cooldowns?.length) return BigInt(0);
     return cooldowns.reduce((acc, c) => (c.unlock <= nowSecTick ? acc + (c.amountWei || BigInt(0)) : acc), BigInt(0));
   }, [cooldowns, nowSecTick]);
-  const derivedWithdrawable = React.useMemo(() => {
+  const derivedWithdrawable = useMemo(() => {
     const val = formatUnits(derivedWithdrawableWei, DECIMALS);
+    try {
+      const v = new Big(val);
+      if (v.gt(0) && v.lt(new Big('0.01'))) {
+        return '≈0.01';
+      }
+    } catch {}
     return formatTokenBalance(val, 2);
   }, [derivedWithdrawableWei]);
 
