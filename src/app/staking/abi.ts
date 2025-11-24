@@ -40,6 +40,20 @@ export const hppStakingAbi = [
   },
   {
     type: 'function',
+    name: 'getMaxGlobalCooldownEntries',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ type: 'uint256' }],
+  },
+  {
+    type: 'function',
+    name: 'cooldownCount',
+    stateMutability: 'view',
+    inputs: [{ name: 'user', type: 'address' }],
+    outputs: [{ type: 'uint256' }],
+  },
+  {
+    type: 'function',
     name: 'stakedBalance',
     stateMutability: 'view',
     inputs: [{ name: 'user', type: 'address' }],
