@@ -52,20 +52,34 @@ export default function EcosystemClient() {
             <div className="mt-12.5 min-[1200px]:mt-25 mb-25 min-[1200px]:mb-37.5">
               <h2 className="text-3xl leading-[1.5] font-[900] text-white mb-8">Featured Partners</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 justify-items-center">
-                {ecosystemData.featuredPartners.map((partner, index) => (
-                  <div
-                    key={index}
-                    className="rounded-[5px] px-5 py-7.5 bg-[#111111] w-full lg:max-w-[400px] border border-[#161616]"
-                  >
-                    <div className="flex items-center space-x-2.5 mb-2.5">
-                      <div className="w-8 h-8 bg-[#1f2937] rounded flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                        <Image src={partner.icon} alt={partner.name} width={22} height={22} />
+                {ecosystemData.featuredPartners.map((partner, index) => {
+                  const Card = (
+                    <div className="rounded-[5px] px-5 py-7.5 bg-[#111111] w-full lg:max-w-[400px] h-full flex flex-col border border-[#161616]">
+                      <div className="flex items-center space-x-2.5 mb-2.5">
+                        <div className="w-8 h-8 bg-[#1f2937] rounded flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                          <Image src={partner.icon} alt={partner.name} width={22} height={22} />
+                        </div>
+                        <h3 className="text-lg leading-[1.5] font-semibold text-white">{partner.name}</h3>
                       </div>
-                      <h3 className="text-lg leading-[1.5] font-semibold text-white">{partner.name}</h3>
+                      <p className="text-gray-300 text-base leading-[1.5]">{partner.description}</p>
                     </div>
-                    <p className="text-gray-300 text-base leading-[1.5]">{partner.description}</p>
-                  </div>
-                ))}
+                  );
+                  return partner.link ? (
+                    <a
+                      key={index}
+                      href={partner.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full lg:max-w-[400px] h-full cursor-pointer"
+                    >
+                      {Card}
+                    </a>
+                  ) : (
+                    <div key={index} className="w-full lg:max-w-[400px] h-full">
+                      {Card}
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
