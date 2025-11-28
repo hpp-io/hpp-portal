@@ -152,17 +152,34 @@ export default function HomeClient() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-8 justify-items-center">
-              {homeData.ecosystemProjects.map((project, index) => (
-                <div key={index} className="rounded-[5px] px-5 py-7.5 bg-[#111111] w-full lg:max-w-[400px]">
-                  <div className="flex items-center space-x-2.5 mb-2.5">
-                    <div className="w-8 h-8 bg-[#1f2937] rounded flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                      <Image src={project.icon} alt={project.name} width={22} height={22} />
+              {homeData.ecosystemProjects.map((project, index) => {
+                const Card = (
+                  <div className="rounded-[5px] px-5 py-7.5 bg-[#111111] w-full lg:max-w-[400px] h-full flex flex-col">
+                    <div className="flex items-center space-x-2.5 mb-2.5">
+                      <div className="w-8 h-8 bg-[#1f2937] rounded flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                        <Image src={project.icon} alt={project.name} width={22} height={22} />
+                      </div>
+                      <h5 className="text-lg leading-[1.5] font-semibold text-white">{project.name}</h5>
                     </div>
-                    <h5 className="text-lg leading-[1.5] font-semibold text-white">{project.name}</h5>
+                    <p className="text-gray-300 text-base leading-[1.5]">{project.description}</p>
                   </div>
-                  <p className="text-gray-300 text-base leading-[1.5]">{project.description}</p>
-                </div>
-              ))}
+                );
+                return project.link ? (
+                  <a
+                    key={index}
+                    href={project.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full lg:max-w-[400px] h-full cursor-pointer"
+                  >
+                    {Card}
+                  </a>
+                ) : (
+                  <div key={index} className="w-full lg:max-w-[400px] h-full">
+                    {Card}
+                  </div>
+                );
+              })}
             </div>
           </div>
 

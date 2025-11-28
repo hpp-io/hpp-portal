@@ -11,6 +11,8 @@ import {
   ArenAI,
   Noosphere,
   Conduit,
+  Goldsky,
+  Thirdweb,
   TwitterIcon,
   MediumIcon,
   TelegramIcon,
@@ -39,23 +41,27 @@ export const homeData = {
     {
       name: 'Aergo',
       description: 'Legacy hybrid infrastructure at the core of HPP, now transitioning into an AI-native foundation.',
+      link: 'https://www.aergo.io',
       icon: Aergo,
     },
     {
       name: 'AQT(Alpha Quark)',
       description: 'RWA and NFT valuation layer enabling AI-driven asset discovery, pricing, and strategy execution.',
+      link: 'https://lending.alphaquark.io',
       icon: Aqt,
     },
     {
       name: 'BOOOST',
       description:
         'Personhood verification and Sybil resistance powered by AI-based deepfake detection and biometrics.',
+      link: 'https://www.booost.live',
       icon: Booost,
     },
     {
       name: 'W3DB(VaaSBlock)',
       description:
         'Model and data verification layer with staking-based validation for AI training, inference, and trust.',
+      link: 'https://www.vaasblock.com',
       icon: W3DB,
     },
     {
@@ -79,23 +85,27 @@ export const ecosystemData = {
     {
       name: 'Aergo',
       description: 'Legacy hybrid infrastructure at the core of HPP, now transitioning into an AI-native foundation.',
+      link: 'https://www.aergo.io',
       icon: Aergo,
     },
     {
       name: 'AQT(Alpha Quark)',
       description: 'RWA and NFT valuation layer enabling AI-driven asset discovery, pricing, and strategy execution.',
+      link: 'https://lending.alphaquark.io',
       icon: Aqt,
     },
     {
       name: 'BOOOST',
       description:
         'Personhood verification and Sybil resistance powered by AI-based deepfake detection and biometrics.',
+      link: 'https://www.booost.live',
       icon: Booost,
     },
     {
       name: 'W3DB(VaaSBlock)',
       description:
         'Model and data verification layer with staking-based validation for AI training, inference, and trust.',
+      link: 'https://www.vaasblock.com',
       icon: W3DB,
     },
     {
@@ -114,29 +124,46 @@ export const ecosystemData = {
       name: 'BitGo',
       description:
         'Institutional-grade custody provider securing HPP treasury and reserves with multi-sig control, insured protection, and regulatory compliance.',
+      link: 'https://www.bitgo.com',
       icon: BitGO,
     },
     {
       name: 'Arbitrum',
       description:
         "A high-performance Layer 2 rollup that powers HPP's scalable and low-cost infrastructure, built for verifiable AI and smart contract execution.",
+      link: 'https://arbitrum.io',
       icon: ARB,
     },
     {
       name: 'EigenDA',
       description:
         'A decentralized data availability layer integrated via EigenLayer, providing HPP with scalable, secure, and cost-efficient data storage for AI.',
+      link: 'https://www.eigenda.xyz',
       icon: Eigen,
     },
     {
       name: 'Orbiter Finance',
       description: 'Cross-chain bridge for HPP enabling low-fee, fast asset transfers to major blockchains.',
+      link: 'https://orbiter.finance/trade/Arbitrum/Arbitrum?to=0x0000000000000000000000000000000000000000',
       icon: Orbiter,
     },
     {
       name: 'Conduit',
       description: 'Conduit is a Rollups-as-a-Service platform for scalable, secure custom chains.',
+      link: 'https://www.conduit.xyz',
       icon: Conduit,
+    },
+    {
+      name: 'Goldsky',
+      description: 'Goldsky delivers real-time blockchain data with ultra-low latency access for developers.',
+      link: 'https://goldsky.com',
+      icon: Goldsky,
+    },
+    {
+      name: 'Thirdweb',
+      description: 'Thirdweb is an all-in-one Web3 platform for building, deploying, and scaling blockchain apps.',
+      link: 'https://thirdweb.com/hpp',
+      icon: Thirdweb,
     },
   ],
   benefits: [
