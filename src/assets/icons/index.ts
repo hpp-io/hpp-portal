@@ -43,6 +43,8 @@ export { default as ARB } from './ARB.png';
 export { default as Eigen } from './Eigen.png';
 export { default as Orbiter } from './Orbiter.png';
 export { default as Conduit } from './Conduit.png';
+export { default as Goldsky } from './Goldsky.png';
+export { default as Thirdweb } from './Thirdweb.png';
 export { default as FooterHPPLogo } from './FooterHPPlogo.png';
 export { default as AergoMainnet } from './Aergo(Mainnet).png';
 export { default as HPPEth } from './HPP(ETH).png';
