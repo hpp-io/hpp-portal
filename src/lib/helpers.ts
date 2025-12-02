@@ -44,4 +44,48 @@ export function formatTokenBalance(raw: string, decimals: number = 3): string {
   }
 }
 
+// Human-readable remaining time like "2d 5h 3m 10s"
+export function formatRemaining(seconds: number): string {
+  const s = Math.max(0, Math.floor(seconds));
+  const d = Math.floor(s / 86400);
+  const h = Math.floor((s % 86400) / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = Math.floor(s % 60);
+  const parts: string[] = [];
+  if (d > 0) parts.push(`${d}d`);
+  if (h > 0) parts.push(`${h}h`);
+  if (m > 0) parts.push(`${m}m`);
+  if (sec > 0 || parts.length === 0) parts.push(`${sec}s`);
+  return parts.join(' ');
+}
 
+// Remaining time as both text and structured parts (useful for UI counters)
+export function remainingBreakdown(totalSeconds: number): {
+  days: number;
+  hours: string;
+  minutes: string;
+  seconds: string;
+  text: string;
+} {
+  const s = Math.max(0, Math.floor(totalSeconds));
+  const days = Math.floor(s / 86400);
+  const hours = Math.floor((s % 86400) / 3600);
+  const minutes = Math.floor((s % 3600) / 60);
+  const seconds = Math.floor(s % 60);
+  const pad2 = (n: number) => String(n).padStart(2, '0');
+  const text = [
+    days > 0 ? `${days}d` : '',
+    hours > 0 || days > 0 ? `${hours}h` : '',
+    minutes > 0 || hours > 0 || days > 0 ? `${minutes}m` : '',
+    `${seconds}s`,
+  ]
+    .filter(Boolean)
+    .join(' ');
+  return {
+    days,
+    hours: pad2(hours),
+    minutes: pad2(minutes),
+    seconds: pad2(seconds),
+    text,
+  };
+}
