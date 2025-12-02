@@ -28,7 +28,7 @@ export default function Button({
   noPointer = false,
 }: ButtonProps) {
   const baseClasses =
-    'inline-flex items-center justify-center font-medium rounded-3xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-0 gap-1 whitespace-nowrap';
+    'inline-flex items-center justify-center font-medium rounded-3xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-0 gap-1 whitespace-nowrap hover:opacity-95 active:opacity-90 disabled:hover:opacity-50';
 
   const variantClasses = {
     primary: 'bg-primary text-white focus:ring-transparent',

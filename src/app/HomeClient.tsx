@@ -117,7 +117,7 @@ export default function HomeClient() {
                     href={link.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="relative rounded-[5px] p-6 border border-transparent bg-primary w-full lg:max-w-[400px]"
+                    className="relative block rounded-[5px] p-6 border border-transparent bg-primary w-full lg:max-w-[400px] transition-transform duration-200 hover:opacity-95"
                   >
                     {CardContent}
                   </a>
@@ -125,7 +125,7 @@ export default function HomeClient() {
                   <Link
                     key={index}
                     href={link.href}
-                    className="relative rounded-[5px] p-6 border border-transparent bg-primary w-full lg:max-w-[400px]"
+                    className="relative block rounded-[5px] p-6 border border-transparent bg-primary w-full lg:max-w-[400px] transition-transform duration-200 hover:opacity-95"
                   >
                     {CardContent}
                   </Link>
@@ -154,7 +154,7 @@ export default function HomeClient() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-8 justify-items-center">
               {homeData.ecosystemProjects.map((project, index) => {
                 const Card = (
-                  <div className="rounded-[5px] px-5 py-7.5 bg-[#111111] w-full lg:max-w-[400px] h-full flex flex-col">
+                  <div className="rounded-[5px] px-5 py-7.5 bg-[#111111] w-full lg:max-w-[400px] h-full flex flex-col transition-colors duration-200 group-hover:bg-[#161616]">
                     <div className="flex items-center space-x-2.5 mb-2.5">
                       <div className="w-8 h-8 bg-[#1f2937] rounded flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                         <Image src={project.icon} alt={project.name} width={22} height={22} />
@@ -170,7 +170,7 @@ export default function HomeClient() {
                     href={project.link}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-full lg:max-w-[400px] h-full cursor-pointer"
+                    className="block w-full lg:max-w-[400px] h-full cursor-pointer group transition-transform duration-200"
                   >
                     {Card}
                   </a>
