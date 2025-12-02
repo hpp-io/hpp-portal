@@ -344,7 +344,7 @@ export default function PreRegistrationClient() {
 
               {/* Right: Stats grid */}
               <div className="min-[1000px]:col-span-2 grid grid-cols-1 min-[600px]:grid-cols-2 gap-0 divide-y min-[600px]:divide-x divide-[#161616] bg-[#121212]">
-                <div className="p-6 flex flex-col items-center justify-center border border-[#2D2D2D]">
+                <div className="p-6 flex flex-col items-center justify-center border-y border-[#2D2D2D]">
                   <div className="text-base font-normal leading-[1.2] tracking-[0.8px] text-[#bfbfbf]">
                     Total Pre-Registered Wallet
                   </div>
