@@ -61,6 +61,10 @@ export default function Sidebar({ navItems, communityLinks, isOpen, onClose }: S
       return { href: item.href, external: true };
     }
     if (!item.external) {
+      // Prefer explicit href if provided for internal routes
+      if (item.href) {
+        return { href: item.href, external: false };
+      }
       if (item.label.toLowerCase() === 'home') {
         return { href: '/', external: false };
       }
