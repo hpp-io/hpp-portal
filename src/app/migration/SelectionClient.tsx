@@ -10,22 +10,13 @@ import AQT from '@/assets/icons/AQTMS.png';
 import Sidebar from '@/components/ui/Sidebar';
 import Footer from '@/components/ui/Footer';
 import { navItems, communityLinks } from '@/config/navigation';
-import { FaqCloseIcon, FaqOpenIcon } from '@/assets/icons';
 import { migrationData } from '@/static/uiData';
 import NeedHelp from '@/components/ui/NeedHelp';
 import { CheckIcon } from '@/assets/icons';
+import FaqSection from '@/components/ui/Faq';
 
 export default function SelectionClient() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [openFaqs, setOpenFaqs] = useState<number[]>([]);
-
-  const openFaq = (id: number) => {
-    setOpenFaqs((prev) => (prev.includes(id) ? prev : [...prev, id]));
-  };
-
-  const closeFaq = (id: number) => {
-    setOpenFaqs((prev) => prev.filter((fid) => fid !== id));
-  };
 
   return (
     <div className="flex flex-col h-screen bg-black text-white overflow-x-hidden">
@@ -122,47 +113,12 @@ export default function SelectionClient() {
             </div>
 
             {/* FAQ */}
-            <div className="mt-12.5 min-[1200px]:mt-25 mb-20" data-faq-section>
-              <h2 className="text-3xl leading-[1.5] font-[900] text-white mb-5">FAQ: AERGO → HPP Migration</h2>
-              <div>
-                {migrationData.faq.map((faq) => {
-                  const isOpen = openFaqs.includes(faq.id);
-                  return (
-                    <div key={faq.id} className="bg-[#111111]">
-                      <button
-                        className="w-full px-5 py-7.5 text-left flex items-center justify-between transition-colors cursor-pointer"
-                        onClick={() => (isOpen ? closeFaq(faq.id) : openFaq(faq.id))}
-                        aria-expanded={isOpen}
-                        aria-controls={`faq-panel-${faq.id}`}
-                      >
-                        <span className="text-white text-lg font-semibold leading-[1.2]">{faq.question}</span>
-                        <span className="pointer-events-none">
-                          {isOpen ? (
-                            <FaqCloseIcon className="w-4 h-4 opacity-80 transition-opacity" />
-                          ) : (
-                            <FaqOpenIcon className="w-4 h-4 opacity-80 transition-opacity" />
-                          )}
-                        </span>
-                      </button>
-                      <div
-                        id={`faq-panel-${faq.id}`}
-                        className="grid overflow-hidden"
-                        style={{
-                          gridTemplateRows: isOpen ? '1fr' : '0fr',
-                          transition: 'grid-template-rows 300ms ease, opacity 300ms ease',
-                          opacity: isOpen ? 1 : 0,
-                        }}
-                        aria-hidden={!isOpen}
-                      >
-                        <div className="px-5 pb-5 text-base leading-[1.5] tracking-[0.8px] text-[#bfbfbf] whitespace-pre-line overflow-hidden">
-                          {faq.answer}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+            <FaqSection
+              title="FAQ: AERGO → HPP Migration"
+              items={migrationData.faq}
+              className="mt-12.5 min-[1200px]:mt-25 mb-20"
+              data-faq-section
+            />
 
             {/* Need Help Section */}
             <NeedHelp />
