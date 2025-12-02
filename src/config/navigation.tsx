@@ -25,6 +25,7 @@ export const navItems = [
   },
   {
     label: 'Staking',
+    href: '/staking/pre-registration',
     icon: <StakingIcon />,
   },
   {

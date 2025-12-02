@@ -14,7 +14,13 @@ import { formatUnits, parseUnits } from 'viem';
 import Big from 'big.js';
 import { navItems, communityLinks } from '@/config/navigation';
 import { standardArbErc20Abi, hppStakingAbi } from './abi';
-import { formatDisplayAmount, PERCENTS, computePercentAmount, formatTokenBalance } from '@/lib/helpers';
+import {
+  formatDisplayAmount,
+  PERCENTS,
+  computePercentAmount,
+  formatTokenBalance,
+  formatRemaining,
+} from '@/lib/helpers';
 import { useHppPublicClient, useHppChain } from './hppClient';
 import { useToast } from '@/hooks/useToast';
 import { useEnsureChain } from '@/lib/wallet';
@@ -564,20 +570,6 @@ export default function StakingClient() {
     updated.sort((a, b) => b.unlock - a.unlock);
     setCooldowns(updated);
   }, [nowSecTick, cooldowns, activeTab]);
-
-  const formatRemaining = (seconds: number) => {
-    const s = Math.max(0, Math.floor(seconds));
-    const d = Math.floor(s / 86400);
-    const h = Math.floor((s % 86400) / 3600);
-    const m = Math.floor((s % 3600) / 60);
-    const sec = Math.floor(s % 60);
-    const parts: string[] = [];
-    if (d > 0) parts.push(`${d}d`);
-    if (h > 0) parts.push(`${h}h`);
-    if (m > 0) parts.push(`${m}m`);
-    if (sec > 0 || parts.length === 0) parts.push(`${sec}s`);
-    return parts.join(' ');
-  };
 
   // Local date formatter (YYYY-MM-DD HH:mm) in user's timezone via dayjs
   const formatLocalDateTime = (epochSeconds: number) => dayjs.unix(epochSeconds).format('YYYY-MM-DD HH:mm');

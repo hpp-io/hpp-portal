@@ -7,28 +7,19 @@ import Button from '@/components/ui/Button';
 import Header from '@/components/ui/Header';
 import Footer from '@/components/ui/Footer';
 import { navItems, communityLinks } from '@/config/navigation';
-import { ARB, Orbiter, FaqCloseIcon, FaqOpenIcon } from '@/assets/icons';
+import { ARB, Orbiter } from '@/assets/icons';
 import { bridgeData } from '@/static/uiData';
+import FaqSection from '@/components/ui/Faq';
 import { useHppChain } from '@/app/staking/hppClient';
 
 export default function BridgeClient() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [openFaqs, setOpenFaqs] = useState<number[]>([]);
-  const faqData = bridgeData.faq;
 
   const { id: HPP_CHAIN_ID } = useHppChain();
   const arbitrumBridgeHref =
     HPP_CHAIN_ID === 190415
       ? 'https://bridge.arbitrum.io/?destinationChain=190415&sourceChain=ethereum&token=0xe33fbe7584eb79e2673abe576b7ac8c0de62565c'
       : 'https://portal.arbitrum.io/bridge?destinationChain=hpp-sepolia&sanitized=true&sourceChain=sepolia&tab=bridge&token=0xb34e0d1fee60e078d611d4218afb004b639c7b76';
-
-  const openFaq = (id: number) => {
-    setOpenFaqs((prev) => (prev.includes(id) ? prev : [...prev, id]));
-  };
-
-  const closeFaq = (id: number) => {
-    setOpenFaqs((prev) => prev.filter((fid) => fid !== id));
-  };
 
   return (
     <div className="flex flex-col h-screen bg-black text-white overflow-x-hidden">
@@ -113,47 +104,7 @@ export default function BridgeClient() {
             </p>
 
             {/* FAQ */}
-            <div className="mb-20">
-              <h2 className="text-3xl leading-[1.5] font-[900] text-white mb-5">Frequently Asked Questions</h2>
-              <div>
-                {faqData.map((faq) => {
-                  const isOpen = openFaqs.includes(faq.id);
-                  return (
-                    <div key={faq.id} className="bg-[#111111]">
-                      <button
-                        className="w-full px-5 py-7.5 text-left flex items-center justify-between transition-colors cursor-pointer"
-                        onClick={() => (isOpen ? closeFaq(faq.id) : openFaq(faq.id))}
-                        aria-expanded={isOpen}
-                        aria-controls={`faq-panel-${faq.id}`}
-                      >
-                        <span className="text-white text-lg font-semibold leading-[1.2]">{faq.question}</span>
-                        <span className="pointer-events-none">
-                          {isOpen ? (
-                            <FaqCloseIcon className="w-4 h-4 opacity-80 transition-opacity" />
-                          ) : (
-                            <FaqOpenIcon className="w-4 h-4 opacity-80 transition-opacity" />
-                          )}
-                        </span>
-                      </button>
-                      <div
-                        id={`faq-panel-${faq.id}`}
-                        className="grid overflow-hidden"
-                        style={{
-                          gridTemplateRows: isOpen ? '1fr' : '0fr',
-                          transition: 'grid-template-rows 300ms ease, opacity 300ms ease',
-                          opacity: isOpen ? 1 : 0,
-                        }}
-                        aria-hidden={!isOpen}
-                      >
-                        <div className="px-5 pb-5 text-base leading-[1.5] tracking-[0.8px] text-[#bfbfbf] whitespace-pre-line overflow-hidden">
-                          {faq.answer}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+            <FaqSection items={bridgeData.faq} className="mb-20" />
           </div>
 
           <Footer />

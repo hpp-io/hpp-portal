@@ -31,10 +31,10 @@ export default function Button({
     'inline-flex items-center justify-center font-medium rounded-3xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-0 gap-1 whitespace-nowrap hover:opacity-95 active:opacity-90 disabled:hover:opacity-50';
 
   const variantClasses = {
-    primary: 'bg-primary text-white focus:ring-transparent',
-    secondary: 'bg-gray-100 text-gray-900 focus:ring-transparent',
-    white: '!bg-white !text-black border border-gray-200 focus:ring-transparent',
-    black: 'bg-black text-white focus:ring-transparent',
+    primary: 'bg-primary text-white focus:ring-transparent hover:brightness-95',
+    secondary: 'bg-gray-100 text-gray-900 focus:ring-transparent hover:bg-gray-200',
+    white: '!bg-white !text-black border border-gray-200 focus:ring-transparent hover:bg-[#f5f5f5]',
+    black: 'bg-black text-white focus:ring-transparent hover:bg-[#0d0d0d] active:bg-[#1a1a1a]',
   } as const;
 
   const sizeClasses = {

@@ -25,16 +25,24 @@ import {
 export const homeData = {
   quickActions: [
     {
+      title: 'Pre-Registration',
+      description: 'Pre-register now to secure up to 20% APR',
+      href: '/staking/pre-registration',
+    },
+    {
       title: 'Migration',
       description: 'Swap your legacy AERGO tokens to HPP and join the new AI-native ecosystem.',
+      href: '/migration',
     },
     {
       title: 'Bridge',
       description: 'Move assets seamlessly between Ethereum and HPP Mainnet.',
+      href: '/bridge',
     },
     {
-      title: 'Staking',
-      description: 'Stake HPP to earn rewards and join the ecosystem.',
+      title: 'Start Building',
+      description: 'Access tools and SDKs to launch AI-powered contracts and agents on HPP.',
+      href: 'https://docs.hpp.io',
     },
   ],
   ecosystemProjects: [
@@ -215,7 +223,7 @@ export const bridgeData = {
   ],
 };
 
-// Migration Page Data (if needed in the future)
+// Migration Page Data
 export const migrationData = {
   faq: [
     {
@@ -260,6 +268,83 @@ export const migrationData = {
         'The official migration portal link will be published on the official HPP website and social channels. Always ensure to use the official link to avoid phishing risks.',
     },
   ],
+};
+
+// Staking Page Data
+export const stakingData = {
+  preRegistration: {
+    faq: [
+      {
+        id: 1,
+        question: 'What are the benefits of pre-registration?',
+        answer:
+          'Pre-registering gives you access to the final boosted APR, early launch notifications, and priority access when staking opens.\nSince APR increases as more users register, joining early is always beneficial.',
+      },
+      {
+        id: 2,
+        question: 'How is the APR determined?',
+        answer:
+          'APR increases based on the total number of pre-registered wallets.\n\nAPR Tiers:\n• Base APR: 10%\n• 201~400 Wallets: 12% APR\n• 401~600 Wallets: 14% APR\n• 601~800 Wallets: 16% APR\n• 801~1000 Wallets: 18% APR\n• 1,000+ Wallets: 20% APR (Max)\n\nThe final APR is fixed at the end of the pre-registration period.',
+      },
+      {
+        id: 3,
+        question: 'What do I need to pre-register?',
+        answer: 'Only your ETH wallet address. No deposit or staking is required during pre-registration.',
+      },
+      {
+        id: 4,
+        question: 'When does actual staking begin?',
+        answer:
+          'TBD. You will receive a notification once staking opens. Stake using the same wallet you pre-registered with to receive the final APR.',
+      },
+      {
+        id: 5,
+        question: 'Do I need to complete staking after pre-registering to receive the APR?',
+        answer:
+          'Yes. Pre-registration alone does not grant the APR. You must complete the actual staking process with the same wallet you pre-registered once staking opens. Only wallets that stake during the official staking period will receive the final APR.',
+      },
+      {
+        id: 6,
+        question: 'Why does inviting friends increase the APR?',
+        answer:
+          'This campaign uses a community-driven APR model. The more wallets that register, the higher the APR for everyone. “The more you bring, the more everyone earns.”',
+      },
+      {
+        id: 7,
+        question: 'Can I register multiple wallets?',
+        answer: 'Yes, but duplicate or suspicious wallets may be excluded during verification.',
+      },
+      {
+        id: 8,
+        question: 'Is my wallet information safe?',
+        answer:
+          'We only collect public wallet addresses. No private keys are ever requested, and all data is handled securely.',
+      },
+      {
+        id: 9,
+        question: 'If the APR changes after I pre-register, which APR do I get?',
+        answer:
+          'All participants receive the same final APR, determined by the total number of wallets at the end of the pre-registration period.',
+      },
+      {
+        id: 10,
+        question: 'Does pre-registration cost anything?',
+        answer: 'No. Pre-registration is completely free. You only need tokens once staking begins.',
+      },
+      {
+        id: 11,
+        question: 'When does pre-registration end?',
+        answer:
+          'The end date is shown on the campaign page. Only wallets registered before the deadline will qualify for the APR bonus.',
+      },
+      {
+        id: 12,
+        question: 'How long does the pre-registration bonus last?',
+        answer:
+          'The bonus APR will continue to be offered until the allocated 1,000,000 HPP pool is fully distributed.',
+      },
+    ],
+  },
 };
 
 // Common UI Data
