@@ -9,7 +9,7 @@ import { remainingBreakdown } from '@/lib/helpers';
 import { stakingData } from '@/static/uiData';
 import FaqSection from '@/components/ui/Faq';
 import Button from '@/components/ui/Button';
-import { CheckIcon } from '@/assets/icons';
+import { CheckIcon, XLogoIcon } from '@/assets/icons';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, ReferenceDot } from 'recharts';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 
@@ -200,8 +200,9 @@ export default function PreRegistrationClient() {
                 className="!rounded-full px-4 py-2 whitespace-nowrap mt-2 min-[810px]:mt-0 self-start min-[810px]:self-auto"
                 href="https://x.com/intent/tweet?text=Join%20HPP%20Staking%20Pre-Registration"
                 external
+                leftIcon={<XLogoIcon className="w-4 h-4" />}
               >
-                <span className="flex items-center gap-2">Invite Friends</span>
+                Invite Friends
               </Button>
             </div>
 

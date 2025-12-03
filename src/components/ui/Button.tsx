@@ -11,6 +11,7 @@ interface ButtonProps {
   disabled?: boolean;
   fullWidth?: boolean;
   icon?: React.ReactNode;
+  leftIcon?: React.ReactNode;
   noPointer?: boolean;
 }
 
@@ -25,6 +26,7 @@ export default function Button({
   disabled = false,
   fullWidth = false,
   icon,
+  leftIcon,
   noPointer = false,
 }: ButtonProps) {
   const baseClasses =
@@ -56,6 +58,7 @@ export default function Button({
         rel={external ? 'noopener noreferrer' : undefined}
         className={classes}
       >
+        {leftIcon}
         {children}
         {icon}
       </a>
@@ -64,6 +67,7 @@ export default function Button({
 
   return (
     <button className={classes} onClick={onClick} disabled={disabled}>
+      {leftIcon}
       {children}
       {icon}
     </button>
