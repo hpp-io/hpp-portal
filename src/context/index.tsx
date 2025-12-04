@@ -7,6 +7,7 @@ import { mainnet, sepolia } from '@reown/appkit/networks';
 import type { Chain } from 'viem';
 import React, { type ReactNode } from 'react';
 import { cookieToInitialState, WagmiProvider, type Config } from 'wagmi';
+import { legalLinks } from '@/config/navigation';
 
 // Set up queryClient
 const queryClient = new QueryClient();
@@ -29,6 +30,8 @@ const metadata = {
 const selectedChainEnv = (process.env.NEXT_PUBLIC_CHAIN || 'mainnet').toLowerCase();
 const appKitNetworks: [Chain] = selectedChainEnv === 'sepolia' ? [sepolia] : [mainnet];
 const appKitDefaultNetwork: Chain = selectedChainEnv === 'sepolia' ? sepolia : mainnet;
+const termsLink = legalLinks.find((l) => (l.label || '').toLowerCase().includes('terms'))?.href;
+const privacyLink = legalLinks.find((l) => (l.label || '').toLowerCase().includes('privacy'))?.href;
 
 // Create the AppKit
 createAppKit({
@@ -45,8 +48,8 @@ createAppKit({
   enableWalletGuide: true,
   allWallets: 'HIDE',
   enableWalletConnect: true,
-  termsConditionsUrl: 'https://paper.hpp.io/HPP_TermsConditions_v1.4.pdf',
-  privacyPolicyUrl: 'https://paper.hpp.io/HPP_PrivacyPolicy_v1.6.pdf',
+  termsConditionsUrl: termsLink,
+  privacyPolicyUrl: privacyLink,
   features: {
     legalCheckbox: true,
     analytics: true, // Optional - defaults to your Cloud configuration

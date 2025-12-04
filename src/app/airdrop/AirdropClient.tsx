@@ -6,7 +6,7 @@ import Header from '@/components/ui/Header';
 import Footer from '@/components/ui/Footer';
 import Button from '@/components/ui/Button';
 import { ClockIcon } from '@/assets/icons';
-import { navItems, communityLinks } from '@/config/navigation';
+import { navItems, legalLinks } from '@/config/navigation';
 
 export default function AirdropClient() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -22,7 +22,7 @@ export default function AirdropClient() {
       <div className="flex flex-1 overflow-hidden">
         <Sidebar
           navItems={navItems}
-          communityLinks={communityLinks}
+          legalLinks={legalLinks}
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
         />

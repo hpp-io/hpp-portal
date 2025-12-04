@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { communityLinks } from '@/config/navigation';
+import { legalLinks } from '@/config/navigation';
 import { TwitterIcon, MediumIcon, TelegramIcon, FooterHPPLogo } from '@/assets/icons';
 import Image from 'next/image';
 
@@ -45,7 +45,7 @@ export default function Footer() {
         </div>
 
         <div className="space-y-2 text-center">
-          {communityLinks.map((link, index) => (
+          {legalLinks.map((link, index) => (
             <a
               key={index}
               href={link.href}
