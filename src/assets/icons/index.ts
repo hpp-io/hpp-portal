@@ -30,6 +30,7 @@ export { default as HPPLogoIcon } from './HPPLogo.svg';
 export { default as HPPTickerIcon } from './HPPTicker.svg';
 export { default as InfoIcon } from './Info.svg';
 export { default as LinkIcon } from './Link.svg';
+export { default as XLogoIcon } from './XLogo.svg';
 
 // PNG
 export { default as Aergo } from './Aergo.png';

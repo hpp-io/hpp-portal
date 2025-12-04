@@ -6,5 +6,3 @@ dayjs.extend(duration);
 dayjs.extend(relativeTime);
 
 export default dayjs;
-
-

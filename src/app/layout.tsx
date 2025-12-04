@@ -17,11 +17,11 @@ export const metadata: Metadata = {
   description:
     'Welcome to the HPP Portal, where you can migrate your assets, bridge across networks, and start building on AI-native Layer 2 infrastructure.',
   openGraph: {
-    images: ['/ogImage.png'],
+    images: ['/ogImage.jpg'],
     siteName: 'HPP Portal',
   },
   twitter: {
-    images: ['/ogImage.png'],
+    images: ['/ogImage.jpg'],
     card: 'summary_large_image',
   },
 };

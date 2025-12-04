@@ -16,7 +16,7 @@ import {
   useWriteContract,
   useWaitForTransactionReceipt,
 } from 'wagmi';
-import { navItems, communityLinks } from '@/config/navigation';
+import { navItems, legalLinks } from '@/config/navigation';
 import { parseUnits, formatUnits, erc20Abi } from 'viem';
 import Big from 'big.js';
 import dayjs from 'dayjs';
@@ -761,7 +761,7 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
       <div className="flex flex-1 overflow-hidden">
         <Sidebar
           navItems={navItems}
-          communityLinks={communityLinks}
+          legalLinks={legalLinks}
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
         />

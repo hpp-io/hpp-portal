@@ -9,7 +9,7 @@ import AERGO from '@/assets/icons/AergoMS.png';
 import AQT from '@/assets/icons/AQTMS.png';
 import Sidebar from '@/components/ui/Sidebar';
 import Footer from '@/components/ui/Footer';
-import { navItems, communityLinks } from '@/config/navigation';
+import { navItems, legalLinks } from '@/config/navigation';
 import { migrationData } from '@/static/uiData';
 import NeedHelp from '@/components/ui/NeedHelp';
 import { CheckIcon } from '@/assets/icons';
@@ -28,7 +28,7 @@ export default function SelectionClient() {
       <div className="flex flex-1 overflow-hidden">
         <Sidebar
           navItems={navItems}
-          communityLinks={communityLinks}
+          legalLinks={legalLinks}
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
         />

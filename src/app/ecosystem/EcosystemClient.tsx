@@ -6,7 +6,7 @@ import Sidebar from '@/components/ui/Sidebar';
 import Button from '@/components/ui/Button';
 import Header from '@/components/ui/Header';
 import Footer from '@/components/ui/Footer';
-import { navItems, communityLinks } from '@/config/navigation';
+import { navItems, legalLinks } from '@/config/navigation';
 import { ecosystemData } from '@/static/uiData';
 import { CheckIcon } from '@/assets/icons';
 
@@ -24,7 +24,7 @@ export default function EcosystemClient() {
       <div className="flex flex-1 overflow-hidden">
         <Sidebar
           navItems={navItems}
-          communityLinks={communityLinks}
+          legalLinks={legalLinks}
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
         />

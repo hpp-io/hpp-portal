@@ -12,7 +12,7 @@ import { WalletIcon, HPPTickerIcon, InfoIcon } from '@/assets/icons';
 import { useAccount, useDisconnect, useWalletClient } from 'wagmi';
 import { formatUnits, parseUnits } from 'viem';
 import Big from 'big.js';
-import { navItems, communityLinks } from '@/config/navigation';
+import { navItems, legalLinks } from '@/config/navigation';
 import { standardArbErc20Abi, hppStakingAbi } from './abi';
 import {
   formatDisplayAmount,
@@ -622,7 +622,7 @@ export default function StakingClient() {
       <div className="flex flex-1 overflow-hidden">
         <Sidebar
           navItems={navItems}
-          communityLinks={communityLinks}
+          legalLinks={legalLinks}
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
         />

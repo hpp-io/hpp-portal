@@ -17,7 +17,7 @@ interface NavItem {
 
 interface SidebarProps {
   navItems: NavItem[];
-  communityLinks: { label: string; href: string }[];
+  legalLinks: { label: string; href: string }[];
   isOpen: boolean;
   onClose?: () => void;
 }
@@ -47,7 +47,7 @@ function SocialLinks({ spacingClass = 'space-x-4', isMobile = false }: { spacing
   );
 }
 
-export default function Sidebar({ navItems, communityLinks, isOpen, onClose }: SidebarProps) {
+export default function Sidebar({ navItems, legalLinks, isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const { id: HPP_CHAIN_ID } = useHppChain();
   const mobileHideWhenOpen = isOpen ? 'max-[1199px]:hidden' : '';
@@ -172,7 +172,7 @@ export default function Sidebar({ navItems, communityLinks, isOpen, onClose }: S
           </div>
 
           <div className="space-y-2 mb-10.5">
-            {communityLinks.map((link, index) => (
+            {legalLinks.map((link, index) => (
               <a
                 key={index}
                 href={link.href}
