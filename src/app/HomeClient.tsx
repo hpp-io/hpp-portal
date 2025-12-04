@@ -7,43 +7,62 @@ import Sidebar from '@/components/ui/Sidebar';
 import Button from '@/components/ui/Button';
 import Header from '@/components/ui/Header';
 import Footer from '@/components/ui/Footer';
-import { navItems, communityLinks } from '@/config/navigation';
+import { navItems, legalLinks } from '@/config/navigation';
 import { homeData } from '@/static/uiData';
 import { formatRemaining } from '@/lib/helpers';
 import Image from 'next/image';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import axios from 'axios';
+import dayjs from '@/lib/dayjs';
 
 export default function HomeClient() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const router = useRouter();
 
-  // Pre-registration countdown (reads NEXT_PUBLIC_PRE_REG_END; supports epoch seconds/ms or ISO)
-  // Falls back to 30 days from now if not provided
+  // Pre-registration countdown (initialize from base API)
   const [preRemainingSec, setPreRemainingSec] = useState<number | null>(null);
-  const preRegEndRaw = process.env.NEXT_PUBLIC_PRE_REG_END as string | undefined;
 
   useEffect(() => {
-    // Determine end time: env value or fallback 30 days from now
-    let endMs: number | null = null;
-    if (preRegEndRaw && preRegEndRaw.trim()) {
-      const trimmed = preRegEndRaw.trim();
-      if (/^\d+$/.test(trimmed)) {
-        // digits only → epoch seconds or ms
-        endMs = trimmed.length > 12 ? Number(trimmed) : Number(trimmed) * 1000;
-      } else {
-        const parsed = Date.parse(trimmed);
-        endMs = Number.isFinite(parsed) ? parsed : null;
-      }
-    } else {
-      endMs = Date.now() + 30 * 24 * 60 * 60 * 1000; // 30 days fallback
-    }
-    if (!endMs || !Number.isFinite(endMs)) return;
-
-    const calc = () => Math.max(0, Math.floor(endMs! / 1000 - Date.now() / 1000));
-    setPreRemainingSec(calc());
-    const id = setInterval(() => setPreRemainingSec(calc()), 1000);
-    return () => clearInterval(id);
-  }, [preRegEndRaw]);
+    let cancelled = false;
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+    const init = async () => {
+      // Fetch preRegistrationDate from base API
+      let endAt: ReturnType<typeof dayjs> | null = null;
+      try {
+        const resp = await axios.get('https://hpp-event-wallet.hpp.io/api/base', {
+          headers: { accept: 'application/json' },
+        });
+        const data: any = resp?.data ?? {};
+        const s: string | undefined = data?.data?.preRegistrationDate;
+        if (s && typeof s === 'string') {
+          let d = dayjs(s);
+          if (!d.isValid()) d = dayjs(s.replace(' ', 'T'));
+          if (!d.isValid()) d = dayjs(`${s.replace(' ', 'T')}Z`);
+          endAt = d.isValid() ? d : null;
+        }
+      } catch {}
+      if (!endAt || !endAt.isValid()) return;
+      const calc = () => Math.max(0, endAt!.diff(dayjs(), 'second'));
+      if (cancelled) return;
+      const first = calc();
+      setPreRemainingSec(first);
+      if (first === 0) return;
+      intervalId = setInterval(() => {
+        if (cancelled) return;
+        const next = calc();
+        setPreRemainingSec(next);
+        if (next === 0 && intervalId) {
+          clearInterval(intervalId);
+          intervalId = null;
+        }
+      }, 1000);
+    };
+    void init();
+    return () => {
+      cancelled = true;
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, []);
 
   // Quick Actions now rely on href provided in uiData.quickActions
 
@@ -58,7 +77,7 @@ export default function HomeClient() {
       <div className="flex flex-1 overflow-hidden">
         <Sidebar
           navItems={navItems}
-          communityLinks={communityLinks}
+          legalLinks={legalLinks}
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
         />
@@ -105,7 +124,7 @@ export default function HomeClient() {
                       }}
                       layout={{ fit: 'contain', align: [0.5, 0.5] }}
                     />
-                    <div className="mt-3 text-center min-[810px]:mt-0 min-[810px]:ml-2.5 min-[810px]:text-left flex-1">
+                    <div className="mt-3 min-[810px]:mt-0 min-[810px]:ml-2.5 text-center min-[810px]:text-left flex-1 self-stretch">
                       <div className="mb-2 flex justify-center min-[810px]:justify-start">
                         <span className="inline-flex items-center gap-2 bg-white text-black rounded-[5px] px-2.5 py-1.25 text-sm font-semibold leading-[1]">
                           <span>🔥</span>
@@ -115,7 +134,7 @@ export default function HomeClient() {
                       <div className="flex items-center gap-3 justify-center min-[810px]:justify-start">
                         <h3 className="text-3xl font-[900] leading-[1.2]">
                           HPP Staking{' '}
-                          <span className="text-[#5DF23F] whitespace-nowrap inline max-[599px]:block max-[599px]:mt-1">
+                          <span className="text-[#5DF23F] whitespace-nowrap inline max-[810px]:block max-[810px]:mt-1">
                             Pre-Registration
                           </span>
                         </h3>
@@ -123,7 +142,7 @@ export default function HomeClient() {
                       <p className="text-base text-white font-normal leading-[1.2] mt-2.5">
                         <span className="whitespace-nowrap">{pre.description} </span>
                         {preRemainingSec !== null && (
-                          <span className="text-[#5DF23F] inline max-[599px]:block max-[599px]:mt-1">
+                          <span className="text-[#5DF23F] inline max-[810px]:block max-[810px]:mt-1">
                             {formatRemaining(preRemainingSec)}
                           </span>
                         )}
