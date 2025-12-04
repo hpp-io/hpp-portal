@@ -9,7 +9,8 @@ interface ToastContextType {
     title: string,
     message: string,
     type?: 'success' | 'error' | 'loading',
-    link?: { text: string; url: string }
+    link?: { text: string; url: string },
+    actions?: ReactNode
   ) => void;
   hideToast: () => void;
   isVisible: boolean;
@@ -17,6 +18,7 @@ interface ToastContextType {
   message: string;
   type: 'success' | 'error' | 'loading';
   link?: { text: string; url: string };
+  actions?: ReactNode;
 }
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
@@ -27,17 +29,20 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const [message, setMessage] = useState('');
   const [type, setType] = useState<'success' | 'error' | 'loading'>('loading');
   const [link, setLink] = useState<{ text: string; url: string } | undefined>(undefined);
+  const [actions, setActions] = useState<ReactNode | undefined>(undefined);
 
   const showToast = (
     title: string,
     message: string,
     type: 'success' | 'error' | 'loading' = 'loading',
-    link?: { text: string; url: string }
+    link?: { text: string; url: string },
+    actions?: ReactNode
   ) => {
     setTitle(title);
     setMessage(message);
     setType(type);
     setLink(link);
+    setActions(actions);
     setIsVisible(true);
   };
 
@@ -46,7 +51,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <ToastContext.Provider value={{ showToast, hideToast, isVisible, title, message, type, link }}>
+    <ToastContext.Provider value={{ showToast, hideToast, isVisible, title, message, type, link, actions }}>
       {children}
       <Toast />
     </ToastContext.Provider>
@@ -103,7 +108,7 @@ export function useToast() {
 }
 
 function Toast() {
-  const { isVisible, title, message, type, link, hideToast } = useToast();
+  const { isVisible, title, message, type, link, actions, hideToast } = useToast();
 
   if (!isVisible) return null;
 
@@ -201,6 +206,8 @@ function Toast() {
               <span>{link.text}</span>
             </Button>
           )}
+          {/* Custom actions (e.g., Retry, View details) */}
+          {actions && <div className="mt-3 flex items-center justify-center gap-2">{actions}</div>}
         </div>
       </div>
     </div>
