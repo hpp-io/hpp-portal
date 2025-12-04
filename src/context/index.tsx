@@ -22,7 +22,7 @@ const metadata = {
   description:
     'Welcome to the HPP Portal, where you can migrate your assets, bridge across networks, and start building on AI-native Layer 2 infrastructure.',
   url: siteUrl,
-  icons: [`${siteUrl}/ogImage.png?v=1`],
+  icons: [`${siteUrl}/ogImage.jpg?v=1`],
 };
 
 // Determine AppKit networks from NEXT_PUBLIC_CHAIN
