@@ -26,7 +26,7 @@ export const homeData = {
   quickActions: [
     {
       title: 'Pre-Registration',
-      description: 'Pre-register now to secure up to 20% APR',
+      description: 'Pre-register now to secure up to 20% APR!',
       href: '/staking/pre-registration',
     },
     {
