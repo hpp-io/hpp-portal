@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Header from '@/components/ui/Header';
 import Footer from '@/components/ui/Footer';
 import Sidebar from '@/components/ui/Sidebar';
-import { navItems, communityLinks } from '@/config/navigation';
+import { navItems, legalLinks } from '@/config/navigation';
 import { remainingBreakdown } from '@/lib/helpers';
 import { stakingData } from '@/static/uiData';
 import FaqSection from '@/components/ui/Faq';
@@ -12,34 +12,64 @@ import Button from '@/components/ui/Button';
 import { CheckIcon, XLogoIcon } from '@/assets/icons';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, ReferenceDot } from 'recharts';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import axios from 'axios';
+import { useToast } from '@/hooks/useToast';
+import dayjs from '@/lib/dayjs';
 
 export default function PreRegistrationClient() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { showToast } = useToast();
 
   // Optional countdown (same env/fallback behavior as Home)
   const [remainingSec, setRemainingSec] = useState<number | null>(null);
-  const preRegEndRaw = process.env.NEXT_PUBLIC_PRE_REG_END as string | undefined;
 
   useEffect(() => {
-    let endMs: number | null = null;
-    if (preRegEndRaw && preRegEndRaw.trim()) {
-      const trimmed = preRegEndRaw.trim();
-      if (/^\d+$/.test(trimmed)) {
-        endMs = trimmed.length > 12 ? Number(trimmed) : Number(trimmed) * 1000;
-      } else {
-        const parsed = Date.parse(trimmed);
-        endMs = Number.isFinite(parsed) ? parsed : null;
+    let cancelled = false;
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+    const init = async () => {
+      let endAt: ReturnType<typeof dayjs> | null = null;
+      // Always fetch preRegistrationDate from base API
+      try {
+        const resp = await axios.get('https://hpp-event-wallet.hpp.io/api/base', {
+          headers: { accept: 'application/json' },
+        });
+        const data: any = resp?.data ?? {};
+        const s: string | undefined = data?.data?.preRegistrationDate;
+        if (s && typeof s === 'string') {
+          // Expect format "YYYY-MM-DD HH:mm"
+          let d = dayjs(s);
+          if (!d.isValid()) d = dayjs(s.replace(' ', 'T'));
+          if (!d.isValid()) d = dayjs(`${s.replace(' ', 'T')}Z`);
+          endAt = d.isValid() ? d : null;
+        }
+      } catch {
+        // ignore; keep null to skip timer
       }
-    } else {
-      endMs = Date.now() + 30 * 24 * 60 * 60 * 1000; // 30 days fallback
-    }
-    if (!endMs || !Number.isFinite(endMs)) return;
-
-    const calc = () => Math.max(0, Math.floor(endMs! / 1000 - Date.now() / 1000));
-    setRemainingSec(calc());
-    const id = setInterval(() => setRemainingSec(calc()), 1000);
-    return () => clearInterval(id);
-  }, [preRegEndRaw]);
+      if (!endAt || !endAt.isValid()) return;
+      const calc = () => Math.max(0, endAt!.diff(dayjs(), 'second'));
+      if (cancelled) return;
+      const first = calc();
+      setRemainingSec(first);
+      if (first === 0) return; // already closed -> don't start ticking
+      intervalId = setInterval(() => {
+        if (cancelled) return;
+        const next = calc();
+        setRemainingSec(next);
+        if (next === 0 && intervalId) {
+          clearInterval(intervalId);
+          intervalId = null;
+        }
+      }, 1000);
+    };
+    void init();
+    return () => {
+      cancelled = true;
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+    };
+  }, []);
 
   const breakdown = React.useMemo(() => remainingBreakdown(remainingSec ?? 0), [remainingSec]);
 
@@ -47,23 +77,117 @@ export default function PreRegistrationClient() {
   const [ethAddress, setEthAddress] = useState('');
   const [agreed, setAgreed] = useState(false);
   const isValidEth = /^0x[a-fA-F0-9]{40}$/.test(ethAddress.trim());
-  const termsLink =
-    communityLinks.find((l) => (l.label || '').toLowerCase().includes('terms'))?.href ||
-    'https://paper.hpp.io/HPP_TermsConditions_v1.4.pdf';
+  const termsLink = legalLinks.find((l) => (l.label || '').toLowerCase().includes('terms'))?.href;
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const shareIntentUrl = React.useMemo(() => {
+    const base = (process.env.NEXT_PUBLIC_SITE_URL || '').replace(/\/$/, '');
+    const pageUrl = `${base}/staking/pre-registration`;
+    const textEncoded =
+      'HPP%20Staking%20Pre-Registration%20is%20LIVE!%0A%0APre-register%20now%20and%20lock%20in%20up%20to%2020%25%20APR.%0A%F0%9F%92%B0%20Just%20drop%20your%20ETH%20wallet,%20that%27s%20it.%0ABring%20your%20buddy,%20boost%20the%20APR,%20earn%20together.%20%F0%9F%9A%80';
+    return `https://x.com/intent/tweet?text=${textEncoded}&url=${encodeURIComponent(pageUrl)}`;
+  }, []);
+
+  // Fetch pre-registration stats from API (reusable)
+  const fetchStats = React.useCallback(async () => {
+    try {
+      const resp = await axios.get('https://hpp-event-wallet.hpp.io/api/stats', {
+        headers: { accept: 'application/json' },
+      });
+      const data: any = resp?.data ?? {};
+      if (data?.success && data?.data) {
+        const d = data.data;
+        if (typeof d.totalPreRegisteredWallets === 'number') {
+          setTotalWallets(d.totalPreRegisteredWallets);
+        }
+        if (typeof d.dailyRegisteredWallets === 'number') {
+          setDailyRegistered(d.dailyRegisteredWallets);
+        }
+        if (typeof d.currentAPR === 'number') {
+          setCurrentAprApi(d.currentAPR);
+        }
+        if (typeof d.nextGoalAPR === 'number') {
+          setNextGoalAprApi(d.nextGoalAPR);
+        }
+      }
+    } catch {}
+  }, []);
+
+  const handleRegisterClick = React.useCallback(async () => {
+    if (!isValidEth || !agreed || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      const resp = await axios.post(
+        'https://hpp-event-wallet.hpp.io/api/wallets',
+        { address: ethAddress.trim() },
+        {
+          headers: {
+            accept: 'application/json',
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+      const data: any = resp?.data ?? {};
+      if (data?.success === false) {
+        const message = data?.error?.message;
+        showToast(`Registration failed.`, message, 'error');
+        return;
+      }
+      setEthAddress('');
+      // Success toast with Invite Friends action
+      showToast(
+        'You Are All Set!',
+        'Bring your buddy, Boost the APR, Earn together!',
+        'success',
+        undefined,
+        <Button
+          variant="black"
+          size="sm"
+          className="!rounded-full px-4 py-2 whitespace-nowrap"
+          href={shareIntentUrl}
+          external
+          leftIcon={<XLogoIcon className="w-4 h-4" />}
+        >
+          Invite Friends
+        </Button>
+      );
+      await fetchStats();
+    } catch (e: any) {
+      const data = e?.response?.data;
+      const message = data?.error?.message;
+      showToast(`Registration failed.`, message, 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [isValidEth, agreed, isSubmitting, ethAddress, fetchStats]);
 
   // Stats (to be wired to API)
-  const [totalWallets, setTotalWallets] = useState<number>(401);
-  const [dailyRegistered, setDailyRegistered] = useState<number>(31);
+  const [totalWallets, setTotalWallets] = useState<number>(0);
+  const [dailyRegistered, setDailyRegistered] = useState<number>(0);
+  const [currentAprApi, setCurrentAprApi] = useState<number>(0);
+  const [nextGoalAprApi, setNextGoalAprApi] = useState<number>(0);
+
+  // Initial fetch on mount
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
 
   // Chart data for Pre-Registration Status
   // Clamp cutoff to max 20, min 10
   const CUTOFF_PERCENT = React.useMemo(() => {
+    if (currentAprApi != null) {
+      const steps = [10, 12, 14, 16, 18, 20] as const;
+      const clamped = Math.max(10, Math.min(20, Math.round(currentAprApi)));
+      const nearest = steps.reduce(
+        (prev, curr) => (Math.abs(curr - clamped) < Math.abs(prev - clamped) ? curr : prev),
+        steps[0]
+      );
+      return nearest;
+    }
     const w = Math.max(0, totalWallets);
     if (w >= 1000) return 20;
-    // 0~200 -> 10, 201~400 -> 12, ..., 801~1000 -> 18
     const idx = Math.max(0, Math.min(4, Math.floor(Math.max(0, w - 1) / 200)));
     return (10 + idx * 2) as 10 | 12 | 14 | 16 | 18 | 20;
-  }, [totalWallets]);
+  }, [totalWallets, currentAprApi]);
   // Continuous chart percent for smooth movement (10 ~ 20)
   const CHART_PERCENT = React.useMemo(() => {
     const w = Math.max(0, Math.min(1000, totalWallets));
@@ -113,13 +237,20 @@ export default function PreRegistrationClient() {
 
   const nextGoalApr = React.useMemo(() => {
     const steps = [10, 12, 14, 16, 18, 20] as const;
+    if (nextGoalAprApi != null) {
+      const clamped = Math.max(10, Math.min(20, Math.round(nextGoalAprApi)));
+      const nearest = steps.reduce(
+        (prev, curr) => (Math.abs(curr - clamped) < Math.abs(prev - clamped) ? curr : prev),
+        steps[0]
+      );
+      return nearest;
+    }
     const next = steps.find((s) => s > CUTOFF_PERCENT);
     return (next ?? 20) as 10 | 12 | 14 | 16 | 18 | 20;
-  }, [CUTOFF_PERCENT]);
+  }, [CUTOFF_PERCENT, nextGoalAprApi]);
 
-  // Display cap: if > 1000, show "1,000+"
   const formattedTotalWallets = React.useMemo(() => {
-    return totalWallets > 1000 ? '1,000+' : totalWallets.toLocaleString();
+    return totalWallets >= 1000 ? '1,000+' : totalWallets.toLocaleString();
   }, [totalWallets]);
 
   return (
@@ -133,7 +264,7 @@ export default function PreRegistrationClient() {
       <div className="flex flex-1 overflow-hidden">
         <Sidebar
           navItems={navItems}
-          communityLinks={communityLinks}
+          legalLinks={legalLinks}
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
         />
@@ -169,22 +300,67 @@ export default function PreRegistrationClient() {
                 <p className="text-lg text-[#bfbfbf]">Bring your buddy, Boost the APR, Earn together!</p>
               </div>
               {remainingSec !== null && (
-                <div className="mt-5 flex items-end justify-center gap-4 text-white">
-                  <div className="text-3xl min-[810px]:text-4xl font-[800]">{breakdown.days}</div>
-                  <div className="text-3xl font-[700] text-[#999999]">:</div>
-                  <div className="text-3xl min-[810px]:text-4xl font-[800]">{breakdown.hours}</div>
-                  <div className="text-3xl font-[700] text-[#999999]">:</div>
-                  <div className="text-3xl min-[810px]:text-4xl font-[800]">{breakdown.minutes}</div>
-                  <div className="text-3xl font-[700] text-[#999999]">:</div>
-                  <div className="text-3xl min-[810px]:text-4xl font-[800]">{breakdown.seconds}</div>
-                </div>
-              )}
-              {remainingSec !== null && (
-                <div className="mt-2 flex items-center justify-center gap-14 text-xs text-white font-semibold">
-                  <span>Days</span>
-                  <span>Hours</span>
-                  <span>Mins</span>
-                  <span>Secs</span>
+                <div className="mt-5 inline-grid grid-cols-7 items-end justify-items-center text-white gap-0">
+                  <div
+                    className="col-span-1 text-3xl font-[800] tabular-nums leading-none w-[2ch] text-center"
+                    style={{
+                      fontFamily:
+                        'Pretendard, ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+                    }}
+                  >
+                    {String(breakdown.days).padStart(2, '0')}
+                  </div>
+                  <div className="col-span-1 text-3xl font-[600] text-[#999999] w-[1ch] text-center leading-none">
+                    :
+                  </div>
+                  <div
+                    className="col-span-1 text-3xl font-[800] tabular-nums leading-none w-[2ch] text-center"
+                    style={{
+                      fontFamily:
+                        'Pretendard, ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+                    }}
+                  >
+                    {breakdown.hours}
+                  </div>
+                  <div className="col-span-1 text-3xl font-[600] text-[#999999] w-[1ch] text-center leading-none">
+                    :
+                  </div>
+                  <div
+                    className="col-span-1 text-3xl font-[800] tabular-nums leading-none w-[2ch] text-center"
+                    style={{
+                      fontFamily:
+                        'Pretendard, ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+                    }}
+                  >
+                    {breakdown.minutes}
+                  </div>
+                  <div className="col-span-1 text-3xl font-[600] text-[#999999] w-[1ch] text-center leading-none">
+                    :
+                  </div>
+                  <div
+                    className="col-span-1 text-3xl font-[800] tabular-nums leading-none w-[2ch] text-center"
+                    style={{
+                      fontFamily:
+                        'Pretendard, ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+                    }}
+                  >
+                    {breakdown.seconds}
+                  </div>
+                  <div className="col-span-1 mt-2.5 text-xs font-semibold w-[2ch] leading-none text-center relative -left-[4px]">
+                    Days
+                  </div>
+                  <div className="col-span-1 mt-2.5 w-[1ch]" />
+                  <div className="col-span-1 mt-2.5 text-xs font-semibold w-[2ch] leading-none text-center relative -left-[8px]">
+                    Hours
+                  </div>
+                  <div className="col-span-1 mt-2.5 w-[1ch]" />
+                  <div className="col-span-1 mt-2.5 text-xs font-semibold w-[2ch] leading-none text-center relative -left-[4px]">
+                    Mins
+                  </div>
+                  <div className="col-span-1 mt-2.5 w-[1ch]" />
+                  <div className="col-span-1 mt-2.5 text-xs font-semibold w-[2ch] leading-none text-center relative -left-[4px]">
+                    Secs
+                  </div>
                 </div>
               )}
             </div>
@@ -198,7 +374,7 @@ export default function PreRegistrationClient() {
                 variant="primary"
                 size="sm"
                 className="!rounded-full px-4 py-2 whitespace-nowrap mt-2 min-[810px]:mt-0 self-start min-[810px]:self-auto"
-                href="https://x.com/intent/tweet?text=Join%20HPP%20Staking%20Pre-Registration"
+                href={shareIntentUrl}
                 external
                 leftIcon={<XLogoIcon className="w-4 h-4" />}
               >
@@ -238,16 +414,7 @@ export default function PreRegistrationClient() {
                         rel="noopener noreferrer"
                         className="underline text-white font-semibold"
                       >
-                        Terms
-                      </a>{' '}
-                      &{' '}
-                      <a
-                        href={termsLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="underline text-white font-semibold"
-                      >
-                        Conditions
+                        Terms & Conditions
                       </a>
                     </span>
                   </label>
@@ -256,13 +423,11 @@ export default function PreRegistrationClient() {
                   <Button
                     variant="black"
                     size="lg"
-                    disabled={!isValidEth || !agreed}
+                    disabled={!isValidEth || !agreed || isSubmitting}
                     className="!rounded-full px-6 py-3"
-                    onClick={() => {
-                      console.log('register now');
-                    }}
+                    onClick={handleRegisterClick}
                   >
-                    Register Now
+                    {isSubmitting ? 'Registering...' : 'Register Now'}
                   </Button>
                 </div>
               </div>
@@ -353,7 +518,7 @@ export default function PreRegistrationClient() {
                     {totalWallets.toLocaleString()}
                   </div>
                 </div>
-                <div className="p-6 flex flex-col items-center justify-center border border-[#2D2D2D]">
+                <div className="p-6 flex flex-col items-center justify-center border border-l-0 border-[#2D2D2D]">
                   <div className="text-base font-normal leading-[1.2] tracking-[0.8px] text-[#bfbfbf]">
                     Daily Registered Wallets
                   </div>
@@ -484,7 +649,7 @@ export default function PreRegistrationClient() {
                           </div>
                         </div>
                         {/* Right: APR label with reached indicator */}
-                        <div className="mb-5 flex items-center justify-end gap-2">
+                        <div className="mb-5 flex items-center justify-end gap-1">
                           {rightActive && (
                             <span className="inline-flex items-center justify-center w-4 h-4 rounded-full border border-[#5DF23F] text-[#5DF23F] text-[10px] leading-none">
                               ✓
