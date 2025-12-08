@@ -587,13 +587,13 @@ export default function PreRegistrationClient() {
                   className="absolute -top-11"
                   style={{ left: `${progressPercent}%`, transform: 'translateX(-50%)' }}
                 >
-                  <span className="relative inline-block px-1.75 py-1.25 rounded bg-[#5DF23F] text-black text-sm font-semibold shadow">
+                  <span className="relative inline-block px-2 py-1 rounded bg-[#5DF23F] text-black text-sm font-semibold shadow">
                     {formattedTotalWallets}
                     <span
                       className="absolute left-1/2"
                       style={{
                         transform: 'translateX(-50%)',
-                        bottom: -6,
+                        bottom: -10,
                         width: 0,
                         height: 0,
                         borderLeft: '6px solid transparent',
