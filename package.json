@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --experimental-https --turbopack",
     "clean": "rm -rf .next && rm -rf out",
+    "dev": "next dev --experimental-https --turbopack",
     "build": "yarn clean && next build",
     "start": "next start",
     "lint": "next lint"
