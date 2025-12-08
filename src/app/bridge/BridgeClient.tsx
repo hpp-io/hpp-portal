@@ -11,6 +11,7 @@ import { ARB, Orbiter } from '@/assets/icons';
 import { bridgeData } from '@/static/uiData';
 import FaqSection from '@/components/ui/Faq';
 import { useHppChain } from '@/app/staking/hppClient';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 
 export default function BridgeClient() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -43,8 +44,22 @@ export default function BridgeClient() {
           }`}
         >
           {/* Hero Section */}
-          <div className="bg-[#121212] border-b border-[#161616] py-7.5">
+          <div className="py-12.5">
             <div className="px-4 max-w-6xl mx-auto">
+              <div className="w-full flex justify-center">
+                <DotLottieReact
+                  src="/lotties/Bridge.lottie"
+                  autoplay
+                  loop
+                  className="w-[80px] h-[80px]"
+                  renderConfig={{
+                    autoResize: true,
+                    devicePixelRatio: typeof window !== 'undefined' ? window.devicePixelRatio : 2,
+                    freezeOnOffscreen: true,
+                  }}
+                  layout={{ fit: 'contain', align: [0.5, 0.5] }}
+                />
+              </div>
               <h1 className="text-[50px] leading-[1.5] font-[900] text-white text-center">Bridge</h1>
               <p className="text-xl text-[#bfbfbf] font-semibold leading-[1.5] max-w-5xl text-center">
                 HPP Bridge enables seamless and secure token transfers across multiple networks, ensuring

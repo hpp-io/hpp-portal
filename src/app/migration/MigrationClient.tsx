@@ -785,7 +785,7 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
             </Button>
           </div>
 
-          <div className="bg-[#121212] border-b border-[#161616] py-7.5">
+          <div className="py-7.5">
             <div className="px-4 max-w-6xl mx-auto">
               <h1 className="text-[50px] leading-[1.5] font-[900] text-white text-center">Migrate to HPP</h1>
               <p className="text-xl text-[#bfbfbf] font-semibold leading-[1.5] max-w-5xl text-center">
