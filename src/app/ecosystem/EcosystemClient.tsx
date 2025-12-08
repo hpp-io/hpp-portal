@@ -9,6 +9,7 @@ import Footer from '@/components/ui/Footer';
 import { navItems, legalLinks } from '@/config/navigation';
 import { ecosystemData } from '@/static/uiData';
 import { CheckIcon } from '@/assets/icons';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 
 export default function EcosystemClient() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -35,8 +36,22 @@ export default function EcosystemClient() {
           }`}
         >
           {/* Hero Section */}
-          <div className="bg-[#121212] border-b border-[#161616] py-7.5">
+          <div className="py-12.5">
             <div className="px-4 max-w-6xl mx-auto">
+              <div className="w-full flex justify-center">
+                <DotLottieReact
+                  src="/lotties/Ecosystem.lottie"
+                  autoplay
+                  loop
+                  className="w-[80px] h-[80px]"
+                  renderConfig={{
+                    autoResize: true,
+                    devicePixelRatio: typeof window !== 'undefined' ? window.devicePixelRatio : 2,
+                    freezeOnOffscreen: true,
+                  }}
+                  layout={{ fit: 'contain', align: [0.5, 0.5] }}
+                />
+              </div>
               <h1 className="text-[50px] leading-[1.5] font-[900] text-white text-center">
                 HPP <br className="hidden max-[810px]:inline" /> Ecosystem
               </h1>

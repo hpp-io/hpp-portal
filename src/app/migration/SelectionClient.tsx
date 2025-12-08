@@ -14,6 +14,7 @@ import { migrationData } from '@/static/uiData';
 import NeedHelp from '@/components/ui/NeedHelp';
 import { CheckIcon } from '@/assets/icons';
 import FaqSection from '@/components/ui/Faq';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 
 export default function SelectionClient() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -37,8 +38,22 @@ export default function SelectionClient() {
             sidebarOpen ? 'opacity-50 min-[1200px]:opacity-100' : ''
           }`}
         >
-          <div className="bg-[#121212] border-b border-[#161616] py-7.5">
+          <div className="py-12.5">
             <div className="px-4 max-w-6xl mx-auto">
+              <div className="w-full flex justify-center">
+                <DotLottieReact
+                  src="/lotties/Migration.lottie"
+                  autoplay
+                  loop
+                  className="w-[80px] h-[80px]"
+                  renderConfig={{
+                    autoResize: true,
+                    devicePixelRatio: typeof window !== 'undefined' ? window.devicePixelRatio : 2,
+                    freezeOnOffscreen: true,
+                  }}
+                  layout={{ fit: 'contain', align: [0.5, 0.5] }}
+                />
+              </div>
               <h1 className="text-[50px] leading-[1.5] font-[900] text-white text-center">
                 Choose Your Migration Path
               </h1>

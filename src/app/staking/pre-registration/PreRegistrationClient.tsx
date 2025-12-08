@@ -275,7 +275,7 @@ export default function PreRegistrationClient() {
           }`}
         >
           {/* Hero */}
-          <div className="py-25 border-b border-[#161616] bg-black">
+          <div className="py-12.5">
             <div className="px-4 max-w-6xl mx-auto text-center">
               <div className="flex justify-center mb-3">
                 <DotLottieReact
@@ -436,23 +436,25 @@ export default function PreRegistrationClient() {
 
           {/* Status Cards */}
           <div className="px-4 max-w-6xl mx-auto w-full mt-6">
-            <div className="grid grid-cols-1 min-[1000px]:grid-cols-3 gap-0 rounded-[5px] overflow-hidden">
+            <div className="grid grid-cols-1 min-[1000px]:grid-cols-4 gap-0 rounded-[5px] overflow-hidden">
               {/* Left: Chart/Status */}
-              <div className="bg-[#121212] py-4 px-6.5 border border-[#2D2D2D]">
+              <div className="bg-[#121212] py-4 px-6.5 border border-[#2D2D2D] min-[1000px]:col-span-2">
                 <div className="flex items-center gap-2 mb-3 justify-center min-[810px]:justify-start">
                   <span>🔥</span>
                   <span className="text-base font-normal leading-[1.2] tracking-[0.8px] text-[#bfbfbf]">
                     Pre-Registration Status
                   </span>
                 </div>
-                <div className="relative h-[180px] w-full">
+                <div className="relative h-[180px] min-[1000px]:h-[210px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={statusData} margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
+                    <LineChart data={statusData} margin={{ top: 10, right: 24, left: 24, bottom: 10 }}>
                       <CartesianGrid vertical stroke="#2a2a2a" strokeDasharray="3 6" horizontal={false} />
                       <XAxis
                         dataKey="percent"
                         ticks={[12, 14, 16, 18, 20]}
-                        tickFormatter={(v: number) => (CUTOFF_PERCENT >= 20 ? '' : v > CUTOFF_PERCENT ? `${v}%` : '')}
+                        tickFormatter={(v: number) =>
+                          v === 20 ? '20% Max' : CUTOFF_PERCENT >= 20 ? '' : v > CUTOFF_PERCENT ? `${v}%` : ''
+                        }
                         tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12, dy: 0 }}
                         tickMargin={10}
                         axisLine={false}
@@ -461,8 +463,24 @@ export default function PreRegistrationClient() {
                         domain={[10, 20]}
                       />
                       <YAxis hide domain={[0, 10]} />
-                      <Line type="monotone" dataKey="growth" stroke="#ffffff" strokeWidth={4} dot={false} />
-                      <Line type="monotone" dataKey="green" stroke="#5DF23F" strokeWidth={6} dot={false} />
+                      <Line
+                        type="natural"
+                        dataKey="growth"
+                        stroke="#ffffff"
+                        strokeWidth={4}
+                        dot={false}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      <Line
+                        type="natural"
+                        dataKey="green"
+                        stroke="#5DF23F"
+                        strokeWidth={6}
+                        dot={false}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
                       <ReferenceDot
                         x={CHART_PERCENT}
                         y={(statusData.find((d) => d.percent === CHART_PERCENT)?.growth as number) || 0}
@@ -475,8 +493,8 @@ export default function PreRegistrationClient() {
                   </ResponsiveContainer>
                   {(() => {
                     // Align pills with chart plot area (accounts for chart left/right margins)
-                    const leftMargin = 10; // Must match LineChart margin.left
-                    const rightMargin = 10; // Must match LineChart margin.right
+                    const leftMargin = 40; // Must match LineChart margin.left
+                    const rightMargin = 40; // Must match LineChart margin.right
                     const ratioToCalc = (p: number) => (p - 10) / (20 - 10);
                     const leftCalc = (p: number) =>
                       `calc(${leftMargin}px + ${ratioToCalc(p)} * (100% - ${leftMargin}px - ${rightMargin}px))`;
@@ -511,7 +529,7 @@ export default function PreRegistrationClient() {
               {/* Right: Stats grid */}
               <div className="min-[1000px]:col-span-2 grid grid-cols-1 min-[600px]:grid-cols-2 gap-0 divide-y min-[600px]:divide-x divide-[#161616] bg-[#121212]">
                 <div className="p-6 flex flex-col items-center justify-center border-y border-[#2D2D2D]">
-                  <div className="text-base font-normal leading-[1.2] tracking-[0.8px] text-[#bfbfbf]">
+                  <div className="text-base font-normal whitespace-nowrap leading-[1.2] tracking-[0.8px] text-[#bfbfbf]">
                     Total Pre-Registered Wallet
                   </div>
                   <div className="text-white text-3xl font-semibold leading-[24px] mt-2.5">
@@ -519,7 +537,7 @@ export default function PreRegistrationClient() {
                   </div>
                 </div>
                 <div className="p-6 flex flex-col items-center justify-center border border-l-0 border-[#2D2D2D]">
-                  <div className="text-base font-normal leading-[1.2] tracking-[0.8px] text-[#bfbfbf]">
+                  <div className="text-base font-normal whitespace-nowrap leading-[1.2] tracking-[0.8px] text-[#bfbfbf]">
                     Daily Registered Wallets
                   </div>
                   <div className="text-white text-3xl font-semibold leading-[24px] mt-2.5">
@@ -527,11 +545,13 @@ export default function PreRegistrationClient() {
                   </div>
                 </div>
                 <div className="p-6 flex flex-col items-center justify-center border-r border-[#2D2D2D]">
-                  <div className="text-base font-normal leading-[1.2] tracking-[0.8px] text-[#bfbfbf]">Current APR</div>
+                  <div className="text-base font-normal whitespace-nowrap leading-[1.2] tracking-[0.8px] text-[#bfbfbf]">
+                    Current APR
+                  </div>
                   <div className="text-white text-3xl font-semibold leading-[24px] mt-2.5">{CUTOFF_PERCENT}%</div>
                 </div>
                 <div className="p-6 flex flex-col items-center justify-center border-r border-b border-[#2D2D2D]">
-                  <div className="text-base font-normal leading-[1.2] tracking-[0.8px] text-[#bfbfbf]">
+                  <div className="text-base font-normal whitespace-nowrap leading-[1.2] tracking-[0.8px] text-[#bfbfbf]">
                     Next Goal APR
                   </div>
                   <div className="text-white text-3xl font-semibold leading-[24px] mt-2.5">{nextGoalApr}%</div>
@@ -579,6 +599,7 @@ export default function PreRegistrationClient() {
                         borderLeft: '6px solid transparent',
                         borderRight: '6px solid transparent',
                         borderTop: '6px solid #5DF23F',
+                        borderBottom: '6px solid transparent',
                       }}
                     />
                   </span>
