@@ -683,7 +683,7 @@ export default function PreRegistrationClient() {
                     return (
                       <React.Fragment key={idx}>
                         {/* Left: wallet bracket */}
-                        <div className="mb-5">
+                        <div className={idx === rows.length - 1 ? '' : 'mb-5'}>
                           <div
                             className={[
                               'inline-block font-bold text-sm px-3 py-2 rounded',
@@ -723,7 +723,12 @@ export default function PreRegistrationClient() {
                           </div>
                         </div>
                         {/* Right: APR label with reached indicator */}
-                        <div className="mb-5 hidden min-[600px]:flex items-center justify-end gap-1">
+                        <div
+                          className={[
+                            'hidden min-[600px]:flex items-center justify-end gap-1',
+                            idx === rows.length - 1 ? '' : 'mb-5',
+                          ].join(' ')}
+                        >
                           {rightActive && (
                             <span className="inline-flex items-center justify-center w-4 h-4 rounded-full border border-[#5DF23F] text-[#5DF23F] text-[10px] leading-none">
                               ✓
