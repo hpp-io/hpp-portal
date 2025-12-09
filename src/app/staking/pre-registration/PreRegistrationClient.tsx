@@ -695,7 +695,7 @@ export default function PreRegistrationClient() {
                           {/* Mobile (≤600px): one-line with check and combined APR */}
                           <div
                             className={[
-                              'mt-2 text-sm flex items-center gap-2 min-[600px]:hidden',
+                              'mt-2 text-sm flex items-center gap-1 min-[600px]:hidden',
                               leftActive ? 'text-[#5DF23F]' : 'text-white/80',
                             ].join(' ')}
                           >
