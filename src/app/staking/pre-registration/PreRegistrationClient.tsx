@@ -554,8 +554,8 @@ export default function PreRegistrationClient() {
               </div>
 
               {/* Right: Stats grid */}
-              <div className="min-[1000px]:col-span-2 grid grid-cols-1 min-[600px]:grid-cols-2 gap-0 divide-y min-[600px]:divide-x divide-[#161616] bg-[#121212]">
-                <div className="p-6 flex flex-col items-center justify-center border-y border-[#2D2D2D]">
+              <div className="min-[1000px]:col-span-2 grid grid-cols-1 min-[600px]:grid-cols-2 gap-0 bg-[#121212] border border-[#2D2D2D] divide-y min-[600px]:divide-y-0 min-[600px]:divide-x divide-[#2D2D2D]">
+                <div className="p-6 flex flex-col items-center justify-center">
                   <div className="text-base font-normal whitespace-nowrap leading-[1.2] tracking-[0.8px] text-[#bfbfbf]">
                     Total Pre-Registered Wallet
                   </div>
@@ -563,7 +563,7 @@ export default function PreRegistrationClient() {
                     {totalWallets.toLocaleString()}
                   </div>
                 </div>
-                <div className="p-6 flex flex-col items-center justify-center border border-l-0 border-[#2D2D2D]">
+                <div className="p-6 flex flex-col items-center justify-center">
                   <div className="text-base font-normal whitespace-nowrap leading-[1.2] tracking-[0.8px] text-[#bfbfbf]">
                     Daily Registered Wallets
                   </div>
@@ -571,13 +571,13 @@ export default function PreRegistrationClient() {
                     {dailyRegistered.toLocaleString()}
                   </div>
                 </div>
-                <div className="p-6 flex flex-col items-center justify-center border-r border-[#2D2D2D]">
+                <div className="p-6 flex flex-col items-center justify-center min-[600px]:border-t border-[#2D2D2D]">
                   <div className="text-base font-normal whitespace-nowrap leading-[1.2] tracking-[0.8px] text-[#bfbfbf]">
                     Current APR
                   </div>
                   <div className="text-white text-3xl font-semibold leading-[24px] mt-2.5">{CUTOFF_PERCENT}%</div>
                 </div>
-                <div className="p-6 flex flex-col items-center justify-center border-r border-b border-[#2D2D2D]">
+                <div className="p-6 flex flex-col items-center justify-center min-[600px]:border-t border-[#2D2D2D]">
                   <div className="text-base font-normal whitespace-nowrap leading-[1.2] tracking-[0.8px] text-[#bfbfbf]">
                     Next Goal APR
                   </div>
