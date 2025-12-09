@@ -50,3 +50,4 @@ export { default as AqtEth } from './Aqt(ETH).png';
 export { default as AergoToken } from './Aergo(Token).png';
 export { default as AQTToken } from './AQT(Token).png';
 export { default as HPPToken } from './HPP(Token).png';
+export { default as Blocko } from './Blocko.png';

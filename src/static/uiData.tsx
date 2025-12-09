@@ -19,6 +19,7 @@ import {
   MobileTwitterIcon,
   MobileMediumIcon,
   MobileTelegramIcon,
+  Blocko,
 } from '@/assets/icons';
 
 // Home Page Data
@@ -164,6 +165,12 @@ export const ecosystemData = {
       description: 'Thirdweb is an all-in-one Web3 platform for building, deploying, and scaling blockchain apps.',
       link: 'https://thirdweb.com/hpp',
       icon: Thirdweb,
+    },
+    {
+      name: 'Blocko',
+      description: 'BLOCKO commits engineering resources to build the AERGO and scale enterprise deployments.',
+      link: 'https://blocko.io',
+      icon: Blocko,
     },
   ],
   benefits: [
