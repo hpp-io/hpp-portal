@@ -171,6 +171,22 @@ export default function PreRegistrationClient() {
     fetchStats();
   }, [fetchStats]);
 
+  // Responsive chart side margins (match LineChart and overlay pill math)
+  const [chartSideMargin, setChartSideMargin] = useState<number>(40);
+  const [isNarrow450, setIsNarrow450] = useState<boolean>(false);
+  const [isNarrow600, setIsNarrow600] = useState<boolean>(false);
+  useEffect(() => {
+    const compute = () => {
+      const w = typeof window !== 'undefined' ? window.innerWidth : 1024;
+      setChartSideMargin(w <= 600 ? 10 : 40);
+      setIsNarrow450(w <= 450);
+      setIsNarrow600(w <= 600);
+    };
+    compute();
+    window.addEventListener('resize', compute);
+    return () => window.removeEventListener('resize', compute);
+  }, []);
+
   // Chart data for Pre-Registration Status
   // Clamp cutoff to max 20, min 10
   const CUTOFF_PERCENT = React.useMemo(() => {
@@ -447,13 +463,24 @@ export default function PreRegistrationClient() {
                 </div>
                 <div className="relative h-[180px] min-[1000px]:h-[210px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={statusData} margin={{ top: 10, right: 24, left: 24, bottom: 10 }}>
+                    <LineChart
+                      data={statusData}
+                      margin={{ top: 10, right: chartSideMargin, left: chartSideMargin, bottom: 10 }}
+                    >
                       <CartesianGrid vertical stroke="#2a2a2a" strokeDasharray="3 6" horizontal={false} />
                       <XAxis
                         dataKey="percent"
                         ticks={[12, 14, 16, 18, 20]}
                         tickFormatter={(v: number) =>
-                          v === 20 ? '20% Max' : CUTOFF_PERCENT >= 20 ? '' : v > CUTOFF_PERCENT ? `${v}%` : ''
+                          v === 20
+                            ? isNarrow450
+                              ? '20%'
+                              : '20% Max'
+                            : CUTOFF_PERCENT >= 20
+                            ? ''
+                            : v > CUTOFF_PERCENT
+                            ? `${v}%`
+                            : ''
                         }
                         tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12, dy: 0 }}
                         tickMargin={10}
@@ -493,8 +520,8 @@ export default function PreRegistrationClient() {
                   </ResponsiveContainer>
                   {(() => {
                     // Align pills with chart plot area (accounts for chart left/right margins)
-                    const leftMargin = 40; // Must match LineChart margin.left
-                    const rightMargin = 40; // Must match LineChart margin.right
+                    const leftMargin = chartSideMargin; // Must match LineChart margin.left
+                    const rightMargin = chartSideMargin; // Must match LineChart margin.right
                     const ratioToCalc = (p: number) => (p - 10) / (20 - 10);
                     const leftCalc = (p: number) =>
                       `calc(${leftMargin}px + ${ratioToCalc(p)} * (100% - ${leftMargin}px - ${rightMargin}px))`;
@@ -506,7 +533,7 @@ export default function PreRegistrationClient() {
                       <div className="absolute inset-x-0 bottom-8">
                         {pillSteps.map((p) => {
                           const isBase = p === 10;
-                          const label = isBase ? 'Base 10%' : `${p}%`;
+                          const label = isBase ? (isNarrow450 ? '10%' : 'Base 10%') : `${p}%`;
                           return (
                             <span
                               key={p}
@@ -607,12 +634,12 @@ export default function PreRegistrationClient() {
                 {/* tick labels */}
                 <div className="mt-2 relative h-5">
                   {[
-                    { p: 10, label: '10% (Base)' },
+                    { p: 10, label: isNarrow450 ? '10%' : '10% (Base)' },
                     { p: 12, label: '12%' },
                     { p: 14, label: '14%' },
                     { p: 16, label: '16%' },
                     { p: 18, label: '18%' },
-                    { p: 20, label: '20% (Max)' },
+                    { p: 20, label: isNarrow450 ? '20%' : '20% (Max)' },
                   ].map(({ p, label }) => {
                     const isGreen = p >= 10 && p <= CUTOFF_PERCENT;
                     const leftPct = ((p - 10) / (20 - 10)) * 100;
@@ -637,7 +664,7 @@ export default function PreRegistrationClient() {
                 </div>
               </div>
 
-              <div className="mt-6 grid grid-cols-2 gap-x-6">
+              <div className="mt-6 grid grid-cols-1 min-[600px]:grid-cols-2 gap-x-6">
                 {(() => {
                   const rows = [
                     { range: '0~200 Wallets', desc: 'Standard APR (10%)', apr: 'APR 10% (Base)' },
@@ -665,12 +692,38 @@ export default function PreRegistrationClient() {
                           >
                             {row.range}
                           </div>
-                          <div className={['mt-2 text-sm', leftActive ? 'text-[#5DF23F]' : 'text-white/80'].join(' ')}>
+                          {/* Mobile (≤600px): one-line with check and combined APR */}
+                          <div
+                            className={[
+                              'mt-2 text-sm flex items-center gap-2 min-[600px]:hidden',
+                              leftActive ? 'text-[#5DF23F]' : 'text-white/80',
+                            ].join(' ')}
+                          >
+                            {rightActive && (
+                              <span className="inline-flex items-center justify-center w-4 h-4 rounded-full border border-[#5DF23F] text-[#5DF23F] text-[10px] leading-none">
+                                ✓
+                              </span>
+                            )}
+                            <span>
+                              {`${row.desc} = ${
+                                isNarrow600
+                                  ? row.apr.replace('APR ', '').replace(/\s*\((Base|Max)\)\s*/g, '')
+                                  : row.apr.replace('APR ', '')
+                              }`}
+                            </span>
+                          </div>
+                          {/* Desktop (≥600px): original two-line description */}
+                          <div
+                            className={[
+                              'mt-2 text-sm hidden min-[600px]:block',
+                              leftActive ? 'text-[#5DF23F]' : 'text-white/80',
+                            ].join(' ')}
+                          >
                             {row.desc}
                           </div>
                         </div>
                         {/* Right: APR label with reached indicator */}
-                        <div className="mb-5 flex items-center justify-end gap-1">
+                        <div className="mb-5 hidden min-[600px]:flex items-center justify-end gap-1">
                           {rightActive && (
                             <span className="inline-flex items-center justify-center w-4 h-4 rounded-full border border-[#5DF23F] text-[#5DF23F] text-[10px] leading-none">
                               ✓
