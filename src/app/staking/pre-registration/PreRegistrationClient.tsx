@@ -452,9 +452,9 @@ export default function PreRegistrationClient() {
 
           {/* Status Cards */}
           <div className="px-4 max-w-6xl mx-auto w-full mt-6">
-            <div className="grid grid-cols-1 min-[1000px]:grid-cols-4 gap-0 rounded-[5px] overflow-hidden">
+            <div className="border border-[#2D2D2D] grid grid-cols-1 min-[1000px]:grid-cols-4 gap-0 rounded-[5px] overflow-hidden">
               {/* Left: Chart/Status */}
-              <div className="bg-[#121212] py-4 px-6.5 border border-[#2D2D2D] min-[1000px]:col-span-2">
+              <div className="bg-[#121212] py-4 px-6.5 min-[1000px]:col-span-2">
                 <div className="flex items-center gap-2 mb-3 justify-center min-[810px]:justify-start">
                   <span>🔥</span>
                   <span className="text-base font-normal leading-[1.2] tracking-[0.8px] text-[#bfbfbf]">
@@ -554,7 +554,7 @@ export default function PreRegistrationClient() {
               </div>
 
               {/* Right: Stats grid */}
-              <div className="min-[1000px]:col-span-2 grid grid-cols-1 min-[600px]:grid-cols-2 gap-0 bg-[#121212] border border-[#2D2D2D] divide-y min-[600px]:divide-y-0 min-[600px]:divide-x divide-[#2D2D2D]">
+              <div className="min-[1000px]:col-span-2 grid grid-cols-1 min-[600px]:grid-cols-2 gap-0 bg-[#121212] border-t min-[1000px]:border-t-0 min-[1000px]:border-l border-[#2D2D2D] divide-y divide-[#2D2D2D] min-[600px]:divide-y-0">
                 <div className="p-6 flex flex-col items-center justify-center">
                   <div className="text-base font-normal whitespace-nowrap leading-[1.2] tracking-[0.8px] text-[#bfbfbf]">
                     Total Pre-Registered Wallet
@@ -563,7 +563,7 @@ export default function PreRegistrationClient() {
                     {totalWallets.toLocaleString()}
                   </div>
                 </div>
-                <div className="p-6 flex flex-col items-center justify-center">
+                <div className="p-6 flex flex-col items-center justify-center min-[600px]:border-l border-[#2D2D2D]">
                   <div className="text-base font-normal whitespace-nowrap leading-[1.2] tracking-[0.8px] text-[#bfbfbf]">
                     Daily Registered Wallets
                   </div>
@@ -577,7 +577,7 @@ export default function PreRegistrationClient() {
                   </div>
                   <div className="text-white text-3xl font-semibold leading-[24px] mt-2.5">{CUTOFF_PERCENT}%</div>
                 </div>
-                <div className="p-6 flex flex-col items-center justify-center min-[600px]:border-t border-[#2D2D2D]">
+                <div className="p-6 flex flex-col items-center justify-center min-[600px]:border-l min-[600px]:border-t border-[#2D2D2D]">
                   <div className="text-base font-normal whitespace-nowrap leading-[1.2] tracking-[0.8px] text-[#bfbfbf]">
                     Next Goal APR
                   </div>
