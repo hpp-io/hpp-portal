@@ -5,14 +5,18 @@ import Big from 'big.js';
 // Format input for display: add locale commas to integer part, preserve decimals
 export function formatDisplayAmount(input: string): string {
   if (input === '') return '';
-  if (isNaN(Number(input))) return '0';
-  if (input.includes('.')) {
-    const parts = input.split('.');
-    const integerPart = parts[0];
-    const decimalPart = parts[1] || '';
-    return Number(integerPart).toLocaleString() + (decimalPart ? '.' + decimalPart : '.');
+  // Allow digits with optional single decimal point
+  if (!/^\d*(\.\d*)?$/.test(input)) return '0';
+  const [integerPart = '', decimalPart] = input.split('.');
+  // Normalize leading zeros on integer part (e.g., "099" -> "99", "000" -> "0")
+  const normalizedInt = integerPart === '' ? '' : integerPart.replace(/^0+(?=\d)/, '') || '0';
+  // Insert commas without numeric conversion
+  const intWithCommas = normalizedInt.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  // If user typed trailing '.', preserve it; otherwise append fractional part as-is
+  if (decimalPart !== undefined) {
+    return decimalPart === '' ? `${intWithCommas}.` : `${intWithCommas}.${decimalPart}`;
   }
-  return Number(input).toLocaleString();
+  return intWithCommas;
 }
 
 // Common percent steps used in UI
