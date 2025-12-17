@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useLayoutEffect, useRef } from 'react';
 import dayjs from '@/lib/dayjs';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import Sidebar from '@/components/ui/Sidebar';
@@ -8,31 +8,26 @@ import Header from '@/components/ui/Header';
 import Footer from '@/components/ui/Footer';
 import Button from '@/components/ui/Button';
 import WalletButton from '@/components/ui/WalletButton';
-import { WalletIcon, HPPTickerIcon, InfoIcon } from '@/assets/icons';
-import { useAccount, useDisconnect, useWalletClient } from 'wagmi';
+import { HPPTickerIcon, StakeIcon, UnstakeIcon, ClaimIcon } from '@/assets/icons';
+import { useAccount, useWalletClient } from 'wagmi';
 import { formatUnits, parseUnits } from 'viem';
 import Big from 'big.js';
 import { navItems, legalLinks } from '@/config/navigation';
 import { standardArbErc20Abi, hppStakingAbi } from './abi';
-import {
-  formatDisplayAmount,
-  PERCENTS,
-  computePercentAmount,
-  formatTokenBalance,
-  formatRemaining,
-} from '@/lib/helpers';
+import { formatDisplayAmount, PERCENTS, computePercentAmount, formatTokenBalance } from '@/lib/helpers';
 import { useHppPublicClient, useHppChain } from './hppClient';
 import { useToast } from '@/hooks/useToast';
 import { useEnsureChain } from '@/lib/wallet';
 
 type StakingTab = 'stake' | 'unstake' | 'claim';
+type TopTab = 'overview' | 'staking' | 'dashboard';
 
 export default function StakingClient() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [topTab, setTopTab] = useState<TopTab>('staking');
   const [activeTab, setActiveTab] = useState<StakingTab>('stake');
   const [amount, setAmount] = useState<string>('');
   const { address, isConnected } = useAccount();
-  const { disconnect } = useDisconnect();
   const [hppBalance, setHppBalance] = useState<string>('0');
   const [isHppBalanceLoading, setIsHppBalanceLoading] = useState<boolean>(false);
   const [inputError, setInputError] = useState<string>('');
@@ -43,9 +38,6 @@ export default function StakingClient() {
   >([]);
   const [isCooldownsLoading, setIsCooldownsLoading] = useState<boolean>(false);
   const [cooldownsInitialized, setCooldownsInitialized] = useState<boolean>(false);
-  const [isClaimInfoOpen, setIsClaimInfoOpen] = useState<boolean>(false);
-  const [claimInfoPos, setClaimInfoPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const claimInfoRef = React.useRef<HTMLDivElement | null>(null);
   const [nowSecTick, setNowSecTick] = useState<number>(Math.floor(Date.now() / 1000));
   const HPP_TOKEN_ADDRESS = process.env.NEXT_PUBLIC_HPP_TOKEN_CONTRACT as `0x${string}`;
   const HPP_STAKING_ADDRESS = process.env.NEXT_PUBLIC_HPP_STAKING_CONTRACT as `0x${string}`;
@@ -59,16 +51,32 @@ export default function StakingClient() {
   const { data: walletClient } = useWalletClient();
   const { chain: hppChain, id: HPP_CHAIN_ID, rpcUrl } = useHppChain();
 
-  useEffect(() => {
-    if (!isClaimInfoOpen) return;
-    const onDown = (e: MouseEvent) => {
-      if (claimInfoRef.current && !claimInfoRef.current.contains(e.target as Node)) {
-        setIsClaimInfoOpen(false);
+  // Measure underline widths to match current input text width
+  const stakeMeasureRef = useRef<HTMLSpanElement | null>(null);
+  const unstakeMeasureRef = useRef<HTMLSpanElement | null>(null);
+  const [stakeUnderlineW, setStakeUnderlineW] = useState(0);
+  const [unstakeUnderlineW, setUnstakeUnderlineW] = useState(0);
+  useLayoutEffect(() => {
+    const measure = () => {
+      if (typeof window === 'undefined') return;
+      if (activeTab === 'stake') {
+        const el = stakeMeasureRef.current;
+        if (el) setStakeUnderlineW(el.offsetWidth || 0);
+      } else if (activeTab === 'unstake') {
+        const el = unstakeMeasureRef.current;
+        if (el) setUnstakeUnderlineW(el.offsetWidth || 0);
       }
     };
-    document.addEventListener('mousedown', onDown);
-    return () => document.removeEventListener('mousedown', onDown);
-  }, [isClaimInfoOpen]);
+    // measure on mount and whenever dependencies change
+    measure();
+    const onResize = () => {
+      measure();
+    };
+    window.addEventListener('resize', onResize);
+    return () => {
+      window.removeEventListener('resize', onResize);
+    };
+  }, [activeTab, amount]);
 
   // Read cooldown duration (seconds) from staking contract
   const fetchCooldownDuration = useCallback(async () => {
@@ -336,7 +344,12 @@ export default function StakingClient() {
       const amountWei = parseUnits(clean as `${number}`, DECIMALS);
 
       // Make sure wallet is on HPP network
-      await ensureHppChain();
+      try {
+        await ensureHppChain();
+      } catch {
+        showToast('Switch network', 'Please switch to HPP Network in your wallet and try again.', 'error');
+        return;
+      }
       if (!walletClient) {
         showToast('Error', 'Wallet not ready. Please reconnect and try again.', 'error');
         return;
@@ -442,7 +455,12 @@ export default function StakingClient() {
       }
 
       // Ensure HPP chain
-      await ensureHppChain();
+      try {
+        await ensureHppChain();
+      } catch {
+        showToast('Switch network', 'Please switch to HPP Network in your wallet and try again.', 'error');
+        return;
+      }
       if (!walletClient) {
         showToast('Error', 'Wallet not ready. Please reconnect and try again.', 'error');
         return;
@@ -483,7 +501,12 @@ export default function StakingClient() {
     try {
       if (!address || !isConnected) return;
       // Ensure HPP chain
-      await ensureHppChain();
+      try {
+        await ensureHppChain();
+      } catch {
+        showToast('Switch network', 'Please switch to HPP Network in your wallet and try again.', 'error');
+        return;
+      }
       if (!walletClient) {
         showToast('Error', 'Wallet not ready. Please reconnect and try again.', 'error');
         return;
@@ -571,6 +594,16 @@ export default function StakingClient() {
     setCooldowns(updated);
   }, [nowSecTick, cooldowns, activeTab]);
 
+  // Reset UI-derived data on disconnect so the screen reflects disconnected state immediately
+  React.useEffect(() => {
+    if (!isConnected) {
+      setCooldowns([]);
+      setCooldownsInitialized(false);
+      setStakedTotal('0');
+      setAmount('');
+      setInputError('');
+    }
+  }, [isConnected]);
   // Local date formatter (YYYY-MM-DD HH:mm) in user's timezone via dayjs
   const formatLocalDateTime = (epochSeconds: number) => dayjs.unix(epochSeconds).format('YYYY-MM-DD HH:mm');
 
@@ -597,19 +630,25 @@ export default function StakingClient() {
     return formatTokenBalance(val, 2);
   }, [derivedWithdrawableWei]);
 
-  const TabButton = ({ id, label }: { id: StakingTab; label: string }) => (
-    <button
-      onClick={() => setActiveTab(id)}
-      className={[
-        'w-full px-5 py-3 rounded-[5px] text-base font-semibold transition-colors',
-        activeTab === id ? '!bg-white !text-black' : 'bg-[#121212] text-white hover:bg-[#1a1a1a]',
-        'cursor-pointer',
-      ].join(' ')}
-      aria-pressed={activeTab === id}
-    >
-      {label}
-    </button>
-  );
+  // APR and Reward display (UI-level; can be wired to API)
+  const DEFAULT_APR_ENV = Number(process.env.NEXT_PUBLIC_STAKING_APR ?? process.env.NEXT_PUBLIC_DEFAULT_APR ?? NaN);
+  const expectedAprPercent = useMemo(() => {
+    const v = Number.isFinite(DEFAULT_APR_ENV) && DEFAULT_APR_ENV! > 0 ? DEFAULT_APR_ENV! : 13.3;
+    return Math.max(0, Math.min(100, v));
+  }, [DEFAULT_APR_ENV]);
+  const expectedAprDisplay = useMemo(() => `≈${expectedAprPercent.toFixed(1)}%`, [expectedAprPercent]);
+  const expectedAnnualReward = useMemo(() => {
+    try {
+      const amt = new Big((amount || '0').replace(/,/g, '') || '0');
+      const reward = amt.times(expectedAprPercent).div(100);
+      const decimals = reward.gte(1000) ? 0 : 2;
+      return `≈${formatTokenBalance(reward.toString(), decimals)} HPP`;
+    } catch {
+      return '≈0 HPP';
+    }
+  }, [amount, expectedAprPercent]);
+
+  // Tabs are rendered inline in JSX (no separate components) for simplicity
 
   return (
     <div className="flex flex-col h-screen bg-black text-white overflow-x-hidden">
@@ -635,242 +674,345 @@ export default function StakingClient() {
           {/* Wrap content to push footer to bottom on mobile */}
           <div className="min-h-[calc(100vh-66px)] min-[1200px]:min-h-[calc(100vh-85px)] flex flex-col">
             {/* Hero Section */}
-            <div className="bg-[#121212] border-b border-[#161616] py-7.5">
-              <div className="px-4 max-w-6xl mx-auto">
-                <h1 className="text-[50px] leading-[1.5] font-[900] text-white text-center">HPP Staking</h1>
-                <p className="text-xl text-[#bfbfbf] font-semibold leading-[1.5] max-w-5xl text-center">
-                  Stake your HPP to earn rewards and participate in HPP ecosystem
-                </p>
+            <div className="py-12.5">
+              <div className="px-4 max-w-6xl mx-auto text-center">
+                <div className="flex justify-center mb-3">
+                  <DotLottieReact
+                    src="/lotties/Staking.lottie"
+                    autoplay
+                    loop
+                    className="w-20 h-20"
+                    renderConfig={{
+                      autoResize: true,
+                      devicePixelRatio: typeof window !== 'undefined' ? window.devicePixelRatio : 2,
+                      freezeOnOffscreen: true,
+                    }}
+                    layout={{ fit: 'contain', align: [0.5, 0.5] }}
+                  />
+                </div>
+                <div className="text-white font-[900] leading-[1.2]">
+                  <div className="text-4xl min-[810px]:text-5xl">HPP Staking</div>
+                </div>
+                <div className="mt-4">
+                  <p className="text-lg text-[#bfbfbf]">
+                    Stake your HPP to earn rewards and participate in HPP ecosystem
+                  </p>
+                </div>
               </div>
             </div>
 
             {/* Content */}
             <div className="px-4 max-w-6xl mx-auto w-full">
-              <div className="max-w-[680px] mx-auto w-full">
-                {/* Connected wallet banner */}
-                {isConnected && (
-                  <div className="mt-5 rounded-lg p-4 border border-dashed border-white/50">
-                    <div className="flex flex-col items-center text-center min-[810px]:flex-row min-[810px]:items-center min-[810px]:justify-between min-[810px]:text-left">
-                      <div className="flex flex-col items-center min-[810px]:flex-row min-[810px]:items-center min-[810px]:space-x-4 mb-4 min-[810px]:mb-0">
-                        <WalletIcon className="hidden min-[810px]:block w-12 h-12 text-white" />
-                        <div className="flex flex-col items-center min-[810px]:items-start">
-                          <div className="flex items-center gap-2.5 mb-2">
-                            <WalletIcon className="w-5.5 h-5.5 text-white min-[810px]:hidden" />
-                            <span className="text-white font-semibold text-xl tracking-[0.8px] leading-[1.5em]">
-                              Wallet Connected
-                            </span>
-                          </div>
-                          <div
-                            className="text-base text-white font-normal tracking-[0.8px] leading-[1.5em] max-w-full text-center min-[810px]:text-left"
-                            style={{ wordBreak: 'break-all', overflowWrap: 'break-word', whiteSpace: 'normal' }}
-                          >
-                            {address}
-                          </div>
+              <div className="my-7.5 flex items-center gap-2.5">
+                {(['overview', 'staking', 'dashboard'] as TopTab[]).map((id) => {
+                  const isActive = topTab === id;
+                  const label = id === 'overview' ? 'Overview' : id === 'staking' ? 'Staking' : 'My Dashboard';
+                  return (
+                    <Button
+                      key={id}
+                      size="sm"
+                      variant={isActive ? 'primary' : 'black'}
+                      className={[
+                        '!rounded-full px-4 py-2 text-sm font-semibold',
+                        !isActive ? '!bg-[#121212]' : '',
+                      ].join(' ')}
+                      aria-pressed={isActive}
+                      onClick={() => setTopTab(id)}
+                    >
+                      {label}
+                    </Button>
+                  );
+                })}
+              </div>
+              {topTab === 'staking' ? (
+                <div className="mx-auto w-full">
+                  {/* Panel */}
+                  <div className="mt-5 w-full mb-25">
+                    <div className="rounded-[8px] px-5 py-7.5 bg-[#4b4ab0]">
+                      {/* Sub-tabs */}
+                      <div className="w-full mb-5">
+                        <div className="flex items-center gap-2">
+                          {(['stake', 'unstake', 'claim'] as StakingTab[]).map((id) => {
+                            const isActive = activeTab === id;
+                            const label = id === 'stake' ? 'Stake' : id === 'unstake' ? 'Unstake' : 'Claim';
+                            const iconClass = [
+                              'w-4.5 h-4.5',
+                              'fill-current [&_*]:fill-current',
+                              isActive ? 'text-black' : 'text-white',
+                            ].join(' ');
+                            const leftIcon =
+                              id === 'stake' ? (
+                                <StakeIcon className={iconClass} />
+                              ) : id === 'unstake' ? (
+                                <UnstakeIcon className={iconClass} />
+                              ) : (
+                                <ClaimIcon className={`${iconClass} relative top-[2px]`} />
+                              );
+                            return (
+                              <Button
+                                key={id}
+                                size="sm"
+                                variant={isActive ? 'white' : 'black'}
+                                className={[
+                                  '!rounded-full px-4 py-2 text-base font-normal',
+                                  !isActive ? 'hover:!bg-[#1a1a1a] !text-white' : '!text-black',
+                                ].join(' ')}
+                                leftIcon={leftIcon}
+                                aria-pressed={isActive}
+                                onClick={() => setActiveTab(id)}
+                              >
+                                {label}
+                              </Button>
+                            );
+                          })}
                         </div>
                       </div>
-                      <Button variant="white" size="md" onClick={() => disconnect?.()} className="cursor-pointer">
-                        Disconnect
-                      </Button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Tabs */}
-                <div className="mt-5 grid grid-cols-3 gap-2.5 bg-black w-full">
-                  <TabButton id="stake" label="Stake" />
-                  <TabButton id="unstake" label="Unstake" />
-                  <TabButton id="claim" label="Claim" />
-                </div>
-
-                {/* Panel */}
-                <div
-                  className={`mt-2.5 w-full mb-25 ${
-                    isConnected && activeTab === 'claim' ? '' : 'rounded-[5px] p-6 min-[1200px]:p-8 bg-primary'
-                  }`}
-                >
-                  {!isConnected ? (
-                    <div className="text-center">
-                      <p className="text-white text-base leading-[1.2] tracking-[0.8px] mb-5">
-                        No wallet has been connected.
-                      </p>
-                      <WalletButton size="lg" />
-                    </div>
-                  ) : (
-                    <div>
                       {activeTab === 'stake' && (
                         <>
-                          <div className="flex items-center justify-between mb-3">
-                            <h3 className="text-white text-base leading-[1.2] tracking-[0.8px] font-normal">
-                              Staking Available:
+                          <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-white text-base font-semibold leading-[1.2] tracking-[0.8px]">
+                              Amount
                             </h3>
-                            <div className="text-white text-base leading-[1.2] tracking-[0.8px] font-normal">
-                              {`${hppBalance} HPP`}
-                              {/* {isHppBalanceLoading ? 'Loading...' : `${hppBalance} HPP`} */}
+                            <div className="text-white text-base font-semibold leading-[1.2] tracking-[0.8px]">
+                              Balance: {isConnected ? `${hppBalance} HPP` : '- HPP'}
                             </div>
                           </div>
 
-                          <div className="rounded-[5px] bg-white flex items-center justify-between px-4 py-3">
-                            <input
-                              type="text"
-                              inputMode="decimal"
-                              pattern="\\d*\\.?\\d*"
-                              min="0"
-                              className={`bg-transparent outline-none ${
-                                inputError ? 'text-[#FF1312] bg-[#FF1312]/10' : 'text-black'
-                              } text-base leading-[1.2] tracking-[0.8px] font-normal w-full ${
-                                inputError ? 'outline-red-500' : ''
-                              }`}
-                              value={formatDisplayAmount(amount)}
-                              placeholder="0.0"
-                              onChange={(e) => handleAmountChange(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
-                              }}
-                              onWheel={(e) => {
-                                (e.target as HTMLInputElement).blur();
-                              }}
-                            />
-                            <span className="ml-3 text-black text-sm font-semibold cursor-default select-none">
-                              HPP
+                          <div className="flex items-center gap-3">
+                            <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-white text-black">
+                              <HPPTickerIcon className="w-8 h-8" />
                             </span>
-                          </div>
-
-                          <div className="grid grid-cols-4 gap-3 mt-3">
-                            {PERCENTS.map((p) => (
-                              <button
-                                key={p}
-                                onClick={() => setPercent(p)}
-                                className="bg-white text-black rounded-[5px] py-2 font-semibold cursor-pointer transition-opacity duration-200 hover:opacity-90"
+                            <div className="flex-1 relative">
+                              <input
+                                type="text"
+                                inputMode="decimal"
+                                pattern="\\d*\\.?\\d*"
+                                min="0"
+                                className={`w-full bg-transparent outline-none ${
+                                  inputError ? 'text-[#FF1312]' : 'text-white'
+                                } text-[40px] font-semibold leading-[1.2] tracking-[0.8px] placeholder:text-white/60`}
+                                value={formatDisplayAmount(amount)}
+                                placeholder="0.00"
+                                onChange={(e) => handleAmountChange(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                                }}
+                                onWheel={(e) => {
+                                  (e.target as HTMLInputElement).blur();
+                                }}
+                              />
+                              <span
+                                ref={stakeMeasureRef}
+                                className="absolute top-0 left-0 invisible pointer-events-none whitespace-pre text-[40px] font-semibold leading-[1.2] tracking-[0.8px]"
                               >
-                                {Math.round(p * 100)}%
-                              </button>
-                            ))}
+                                {formatDisplayAmount(amount || '0.00')}
+                              </span>
+                              {/* <div
+                                className={`${inputError ? 'bg-[#FF1312]' : 'bg-white'} h-[4px] mt-1`}
+                                style={{ width: `${stakeUnderlineW}px` }}
+                              /> */}
+                            </div>
                           </div>
 
-                          <div className="mt-4 space-y-2">
+                          <div className="flex items-center gap-2.5 mt-5">
+                            {PERCENTS.map((p) => {
+                              const label = p === 1 ? 'Max' : `${Math.round(p * 100)}%`;
+                              return (
+                                <button
+                                  key={p}
+                                  onClick={() => setPercent(p)}
+                                  className="bg-white text-black rounded-full px-5 py-2 text-base font-normal leading-[1] cursor-pointer transition-opacity duration-200 hover:opacity-90 focus:outline-none focus:ring-0 focus-visible:outline-none focus:shadow-none"
+                                >
+                                  {label}
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                          <div className="mt-5">
                             <div className="flex items-center justify-between text-base text-white leading-[1.2] tracking-[0.8px] font-normal">
-                              <span>Total:</span>
-                              <span>{inputError ? `${stakedTotal} HPP` : totalAfterStake}</span>
+                              <span>Total Staked Amount</span>
+                              <span>{isConnected ? `${stakedTotal} HPP` : '-'}</span>
                             </div>
-                            <div className="text-base text-[#5DF23F] leading-[1.2] tracking-[0.8px] font-normal mt-2.5">
-                              HPP will be available to withdraw {formatCooldownDuration(cooldownSeconds)} after
-                              unstaking.
+                            <div className="mt-3 grid grid-cols-1 min-[800px]:grid-cols-2 gap-2.5 justify-items-stretch">
+                              <div className="w-full rounded-[5px] bg-white/10 p-5 text-center">
+                                <div className="text-white text-base leading-[1.2] tracking-[0.8px] font-normal">
+                                  Expected APR
+                                </div>
+                                <div className="text-white text-xl leading-[1.2] tracking-[0.8px] font-semibold mt-1">
+                                  {expectedAprDisplay}
+                                </div>
+                              </div>
+                              <div className="w-full rounded-[5px] bg-white/10 p-5 text-center">
+                                <div className="text-white text-base leading-[1.2] tracking-[0.8px] font-normal">
+                                  Expected Annual Reward
+                                </div>
+                                <div className="text-white text-xl leading-[1.2] tracking-[0.8px] font-semibold mt-1">
+                                  {expectedAnnualReward}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="mt-5">
+                              <div className="text-[#5DF23F] font-semibold">Caution</div>
+                              <ul className="text-base text-white leading-[1.5] tracking-[0.8px]">
+                                <li>
+                                  • HPP will be available to withdraw {formatCooldownDuration(cooldownSeconds)} after
+                                  unstaking.
+                                </li>
+                                <li>
+                                  • Your APR and rewards may vary depending on overall participation and ecosystem
+                                  activity.
+                                </li>
+                              </ul>
                             </div>
                           </div>
 
                           <div className="mt-5">
-                            <Button
-                              variant="black"
-                              size="lg"
-                              disabled={
-                                isSubmitting ||
-                                isHppBalanceLoading ||
-                                !!inputError ||
-                                !amount ||
-                                amount === '.' ||
-                                Number(amount) <= 0
-                              }
-                              fullWidth
-                              className={`${
-                                isSubmitting ||
-                                isHppBalanceLoading ||
-                                !!inputError ||
-                                !amount ||
-                                amount === '.' ||
-                                Number(amount) <= 0
-                                  ? '!bg-[#9E9E9E] !text-white'
-                                  : ''
-                              } !rounded-[5px] disabled:!opacity-100 disabled:!text-white`}
-                              onClick={onStake}
-                            >
-                              {isSubmitting ? 'Processing...' : inputError ? inputError : 'Stake'}
-                            </Button>
+                            {!isConnected ? (
+                              <div className="w-full flex justify-center">
+                                <WalletButton color="black" size="lg" />
+                              </div>
+                            ) : (
+                              <Button
+                                variant="black"
+                                size="lg"
+                                disabled={
+                                  isSubmitting ||
+                                  isHppBalanceLoading ||
+                                  !!inputError ||
+                                  !amount ||
+                                  amount === '.' ||
+                                  Number(amount) <= 0
+                                }
+                                fullWidth
+                                className={`${
+                                  isSubmitting ||
+                                  isHppBalanceLoading ||
+                                  !!inputError ||
+                                  !amount ||
+                                  amount === '.' ||
+                                  Number(amount) <= 0
+                                    ? '!bg-[#9E9E9E] !text-white'
+                                    : ''
+                                } !rounded-[5px] disabled:!opacity-100 disabled:!text-white`}
+                                onClick={onStake}
+                              >
+                                {isSubmitting ? 'Processing...' : inputError ? inputError : 'Stake'}
+                              </Button>
+                            )}
                           </div>
                         </>
                       )}
 
                       {activeTab === 'unstake' && (
                         <>
-                          <div className="flex items-center justify-between mb-3">
-                            <h3 className="text-white text-base leading-[1.2] tracking-[0.8px] font-normal">
-                              Unstaking Available:
+                          <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-white text-base font-semibold leading-[1.2] tracking-[0.8px]">
+                              Amount
                             </h3>
-                            <div className="text-white text-base leading-[1.2] tracking-[0.8px] font-normal">
-                              {`${stakedTotal} HPP`}
-                              {/* {isStakedTotalLoading ? 'Loading...' : `${stakedTotal} HPP`} */}
+                            <div className="text-white text-base font-semibold leading-[1.2] tracking-[0.8px]">
+                              Balance: {isConnected ? `${stakedTotal} HPP` : '- HPP'}
                             </div>
                           </div>
 
-                          <div className="rounded-[5px] bg-white flex items-center justify-between px-4 py-3">
-                            <input
-                              type="text"
-                              inputMode="decimal"
-                              pattern="\\d*\\.?\\d*"
-                              min="0"
-                              className={`bg-transparent outline-none ${
-                                inputError ? 'text-[#FF1312] bg-[#FF1312]/10' : 'text-black'
-                              } text-base leading-[1.2] tracking-[0.8px] font-normal w-full`}
-                              value={formatDisplayAmount(amount)}
-                              placeholder="0.0"
-                              onChange={(e) => handleAmountChange(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
-                              }}
-                              onWheel={(e) => {
-                                (e.target as HTMLInputElement).blur();
-                              }}
-                            />
-                            <span className="ml-3 text-black text-sm font-semibold cursor-default select-none">
-                              HPP
+                          <div className="flex items-center gap-3">
+                            <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-white text-black">
+                              <HPPTickerIcon className="w-8 h-8" />
                             </span>
-                          </div>
-
-                          <div className="grid grid-cols-4 gap-3 mt-3">
-                            {PERCENTS.map((p) => (
-                              <button
-                                key={p}
-                                onClick={() => setUnstakePercent(p)}
-                                className="bg-white text-black rounded-[5px] py-2 font-semibold cursor-pointer transition-opacity duration-200 hover:opacity-90"
+                            <div className="flex-1 relative">
+                              <input
+                                type="text"
+                                inputMode="decimal"
+                                pattern="\\d*\\.?\\d*"
+                                min="0"
+                                className={`w-full bg-transparent outline-none ${
+                                  inputError ? 'text-[#FF1312]' : 'text-white'
+                                } text-[40px] font-semibold leading-[1.2] tracking-[0.8px] placeholder:text-white/60`}
+                                value={formatDisplayAmount(amount)}
+                                placeholder="0.00"
+                                onChange={(e) => handleAmountChange(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                                }}
+                                onWheel={(e) => {
+                                  (e.target as HTMLInputElement).blur();
+                                }}
+                              />
+                              <span
+                                ref={unstakeMeasureRef}
+                                className="absolute top-0 left-0 invisible pointer-events-none whitespace-pre text-[40px] font-semibold leading-[1.2] tracking-[0.8px]"
                               >
-                                {Math.round(p * 100)}%
-                              </button>
-                            ))}
-                          </div>
-
-                          <div className="mt-5">
-                            <div className="text-base text-[#5DF23F] leading-[1.2] tracking-[0.8px] font-normal mt-2.5">
-                              HPP will be available to withdraw {formatCooldownDuration(cooldownSeconds)} after
-                              unstaking.
+                                {formatDisplayAmount(amount || '0.00')}
+                              </span>
+                              {/* <div
+                                className={`${inputError ? 'bg-[#FF1312]' : 'bg-white'} h-[4px] mt-1`}
+                                style={{ width: `${unstakeUnderlineW}px` }}
+                              /> */}
                             </div>
                           </div>
 
+                          <div className="flex items-center gap-2.5 mt-5">
+                            {PERCENTS.map((p) => {
+                              const label = p === 1 ? 'Max' : `${Math.round(p * 100)}%`;
+                              return (
+                                <button
+                                  key={p}
+                                  onClick={() => setUnstakePercent(p)}
+                                  className="bg-white text-black rounded-full px-5 py-2 text-base font-normal leading-[1] cursor-pointer transition-opacity duration-200 hover:opacity-90 focus:outline-none focus:ring-0 focus-visible:outline-none focus:shadow-none"
+                                >
+                                  {label}
+                                </button>
+                              );
+                            })}
+                          </div>
+
                           <div className="mt-5">
-                            <Button
-                              variant="black"
-                              size="lg"
-                              disabled={
-                                isSubmitting ||
-                                isStakedTotalLoading ||
-                                !!inputError ||
-                                !amount ||
-                                amount === '.' ||
-                                Number((amount || '0').replace(/,/g, '')) <= 0
-                              }
-                              fullWidth
-                              className={`${
-                                isSubmitting ||
-                                isStakedTotalLoading ||
-                                !!inputError ||
-                                !amount ||
-                                amount === '.' ||
-                                Number((amount || '0').replace(/,/g, '')) <= 0
-                                  ? '!bg-[#9E9E9E] !text-white'
-                                  : ''
-                              } !rounded-[5px] disabled:!opacity-100 disabled:!text-white`}
-                              onClick={onUnstake}
-                            >
-                              {isSubmitting ? 'Processing...' : 'Unstake'}
-                            </Button>
+                            <div className="text-[#5DF23F] font-semibold">Caution</div>
+                            <ul className="text-base text-white leading-[1.5] tracking-[0.8px]">
+                              <li>
+                                • HPP will be available to withdraw {formatCooldownDuration(cooldownSeconds)} after
+                                unstaking.
+                              </li>
+                              <li>
+                                • Your APR and rewards may vary depending on overall participation and ecosystem
+                                activity.
+                              </li>
+                            </ul>
+                          </div>
+
+                          <div className="mt-5">
+                            {!isConnected ? (
+                              <div className="w-full">
+                                <WalletButton size="lg" />
+                              </div>
+                            ) : (
+                              <Button
+                                variant="black"
+                                size="lg"
+                                disabled={
+                                  isSubmitting ||
+                                  isStakedTotalLoading ||
+                                  !!inputError ||
+                                  !amount ||
+                                  amount === '.' ||
+                                  Number((amount || '0').replace(/,/g, '')) <= 0
+                                }
+                                fullWidth
+                                className={`${
+                                  isSubmitting ||
+                                  isStakedTotalLoading ||
+                                  !!inputError ||
+                                  !amount ||
+                                  amount === '.' ||
+                                  Number((amount || '0').replace(/,/g, '')) <= 0
+                                    ? '!bg-[#9E9E9E] !text-white'
+                                    : ''
+                                } !rounded-[5px] disabled:!opacity-100 disabled:!text-white`}
+                                onClick={onUnstake}
+                              >
+                                {isSubmitting ? 'Processing...' : 'Unstake'}
+                              </Button>
+                            )}
                           </div>
                         </>
                       )}
@@ -878,38 +1020,41 @@ export default function StakingClient() {
                       {activeTab === 'claim' && (
                         <>
                           {/* Claim Available Card */}
-                          <div className="rounded-[5px] p-6 min-[1200px]:p-8 bg-primary">
-                            <div className="flex items-center gap-2.5">
-                              <h3 className="text-white text-base font-normal leading-[1.2] tracking-[0.8px]">
-                                Claim Available
-                              </h3>
-                              <button
-                                type="button"
-                                aria-label="Claim info"
-                                onClick={(e) => {
-                                  const margin = 12;
-                                  const width = 320; // approximate popover width
-                                  const height = 180; // approximate popover height
-                                  const maxLeft = Math.max(0, window.innerWidth - width - margin);
-                                  const maxTop = Math.max(0, window.innerHeight - height - margin);
-                                  const x = Math.min(e.clientX + margin, maxLeft);
-                                  const y = Math.min(e.clientY + margin, maxTop);
-                                  setClaimInfoPos({ x, y });
-                                  setIsClaimInfoOpen(true);
-                                }}
-                                className="cursor-pointer"
-                              >
-                                <InfoIcon className="w-5.5 h-5.5" />
-                              </button>
-                            </div>
-                            <div className="flex items-center justify-center gap-2.5 mt-4 mb-4">
-                              <HPPTickerIcon className="w-5.5 h-5.5" />
-                              <span className="text-white text-[25px] font-semibold leading-[1.2] tracking-[0.8px]">
-                                {derivedWithdrawable}
-                              </span>
-                            </div>
+                          <div className="flex rounded-[5px] items-center gap-2.5">
+                            <h3 className="text-white text-base font-normal leading-[1.2] tracking-[0.8px]">
+                              Claim Available
+                            </h3>
+                          </div>
+                          <div className="flex items-center justify-center gap-2.5 mt-4 mb-4">
+                            <HPPTickerIcon className="w-8 h-8" />
+                            <span className="text-white text-[40px] font-semibold leading-[1.2] tracking-[0.8px]">
+                              {isConnected ? derivedWithdrawable : '-'}
+                            </span>
+                          </div>
 
-                            <div className="mt-4">
+                          <div className="mt-5">
+                            <div className="text-[#5DF23F] font-semibold">Caution</div>
+                            <ul className="text-base text-white leading-[1.5] tracking-[0.8px]">
+                              <li>
+                                • HPP will be available to withdraw {formatCooldownDuration(cooldownSeconds)} after
+                                unstaking.
+                              </li>
+                              <li>
+                                • When the cooldown is over, your tokens will be accumulated to ‘Claim Available.’
+                              </li>
+                              <li>
+                                • Your APR and rewards may vary depending on overall participation and ecosystem
+                                activity.
+                              </li>
+                            </ul>
+                          </div>
+
+                          <div className="mt-5">
+                            {!isConnected ? (
+                              <div className="w-full">
+                                <WalletButton color="black" size="lg" />
+                              </div>
+                            ) : (
                               <Button
                                 variant="black"
                                 size="lg"
@@ -922,116 +1067,94 @@ export default function StakingClient() {
                               >
                                 {isSubmitting ? 'Processing...' : 'Claim'}
                               </Button>
-                            </div>
+                            )}
                           </div>
 
                           {/* Transactions - Card 2 */}
-                          <div className="mt-2.5 rounded-[5px] p-6 min-[1200px]:p-8 bg-primary">
-                            <div className="space-y-2.5">
-                              {(isCooldownsLoading || !cooldownsInitialized) && (
-                                <div className="flex flex-col items-center justify-center py-8 bg-[rgba(18,18,18,0.1)] rounded-[5px]">
-                                  <div className="mb-4">
-                                    <DotLottieReact
-                                      src="/lotties/Loading.lottie"
-                                      autoplay
-                                      loop
-                                      style={{ width: 48, height: 48 }}
-                                    />
-                                  </div>
-                                  <p className="text-base text-[#bfbfbf] tracking-[0.8px] leading-[1.5] text-center font-normal animate-pulse">
-                                    Fetching cooldown entries...
-                                  </p>
+                          <div className="mt-5 rounded-[5px] bg-[#121212] py-3 px-5">
+                            {(isCooldownsLoading || !cooldownsInitialized) && (
+                              <div className="flex flex-col items-center justify-center py-8">
+                                <div className="mb-4">
+                                  <DotLottieReact
+                                    src="/lotties/Loading.lottie"
+                                    autoplay
+                                    loop
+                                    style={{ width: 48, height: 48 }}
+                                  />
                                 </div>
-                              )}
-                              {!isCooldownsLoading && cooldownsInitialized && cooldowns.length === 0 && (
-                                <div className="flex flex-col items-center justify-center py-8 bg-[rgba(18,18,18,0.1)] rounded-[5px]">
-                                  <p className="text-base text-[#bfbfbf] tracking-[0.8px] leading-[1.5] text-center font-normal">
-                                    No claim history.
-                                  </p>
-                                </div>
-                              )}
-                              {!isCooldownsLoading &&
-                                cooldownsInitialized &&
-                                cooldowns.map((tx, idx) => (
-                                  <div key={idx} className="rounded-[5px] bg-[#3f43aa]/60 px-4 py-3">
-                                    <div className="flex flex-col gap-2.5">
+                                <p className="text-base text-[#bfbfbf] tracking-[0.8px] leading-[1.5] text-center font-normal animate-pulse">
+                                  Fetching cooldown entries...
+                                </p>
+                              </div>
+                            )}
+                            {!isCooldownsLoading && cooldownsInitialized && cooldowns.length === 0 && (
+                              <div className="flex flex-col items-center justify-center py-8">
+                                <p className="text-base text-[#bfbfbf] tracking-[0.8px] leading-[1.5] text-center font-normal">
+                                  No claim history.
+                                </p>
+                              </div>
+                            )}
+                            {!isCooldownsLoading && cooldownsInitialized && cooldowns.length > 0 && (
+                              <div className="divide-y divide-[#2D2D2D]">
+                                {cooldowns.map((tx, idx) => {
+                                  const remaining = Math.max(0, tx.unlock - nowSecTick);
+                                  const d = Math.floor(remaining / 86400);
+                                  const h = Math.floor((remaining % 86400) / 3600);
+                                  const m = Math.floor((remaining % 3600) / 60);
+                                  const s = Math.floor(remaining % 60);
+                                  const dd = String(d).padStart(2, '0');
+                                  const hh = String(h).padStart(2, '0');
+                                  const mm = String(m).padStart(2, '0');
+                                  const ss = String(s).padStart(2, '0');
+                                  const countdown = `${dd}:${hh}:${mm}:${ss}`;
+                                  return (
+                                    <div key={idx} className="py-4">
                                       <div className="flex items-center justify-between">
                                         <div className="text-white text-base leading-[1.2] tracking-[0.8px] font-normal">
                                           {tx.date}
                                         </div>
-                                        <div className="text-white text-base leading-[1.2] tracking-[0.8px] font-normal">
+                                        <div className="text-white text-base leading-[1.2] tracking-[0.8px] font-normal whitespace-nowrap">
                                           {tx.amount}
                                         </div>
                                       </div>
                                       <div
                                         className={
                                           tx.cooling
-                                            ? 'text-[#25FF21] text-base leading-[1.2] tracking-[0.8px] font-normal'
-                                            : 'text-white text-base leading-[1.2] tracking-[0.8px] font-normal'
+                                            ? 'mt-2.5 text-[#25FF21] text-base leading-[1.2] tracking-[0.8px] font-normal'
+                                            : 'mt-2.5 text-white text-base leading-[1.2] tracking-[0.8px] font-normal'
                                         }
                                       >
-                                        {tx.cooling
-                                          ? `You will be able to claim in ${formatRemaining(tx.unlock - nowSecTick)}`
-                                          : 'You are able to claim.'}
+                                        {tx.cooling ? (
+                                          <>
+                                            You will be able to claim in{' '}
+                                            <span className="tabular-nums tracking-[0.1em]">{countdown}</span>
+                                          </>
+                                        ) : (
+                                          'You are able to claim.'
+                                        )}
                                       </div>
                                     </div>
-                                  </div>
-                                ))}
-                            </div>
+                                  );
+                                })}
+                              </div>
+                            )}
                           </div>
                         </>
                       )}
                     </div>
-                  )}
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="rounded-[5px] p-6 min-[1200px]:p-8 bg-[#121212] text-[#bfbfbf]">
+                  <p className="text-base">This section is coming soon.</p>
+                </div>
+              )}
             </div>
           </div>
 
           <Footer />
         </main>
       </div>
-      {/* Claim Info Popover */}
-      {isClaimInfoOpen && (
-        <>
-          <div
-            className="fixed inset-0 z-[90] bg-black/50"
-            onClick={() => setIsClaimInfoOpen(false)}
-            aria-hidden="true"
-          />
-          <div
-            className="fixed z-[100]"
-            style={{ top: claimInfoPos.y, left: claimInfoPos.x }}
-            role="dialog"
-            aria-modal="true"
-          >
-            <div
-              ref={claimInfoRef}
-              className="relative w-[360px] max-w-[90vw] rounded-[5px] bg-primary text-white py-7.5 px-5 shadow-xl"
-            >
-              <div className="flex items-center justify-between mb-5">
-                <h2 className="text-lg font-semibold leading-[1.5] tracking-[0]">Claim</h2>
-                <button
-                  type="button"
-                  aria-label="Close"
-                  className="text-white cursor-pointer"
-                  onClick={() => setIsClaimInfoOpen(false)}
-                >
-                  <svg className="w-5.5 h-5.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              <p className="text-base leading-[1.5] tracking-[0] mb-5">
-                After unstaking, you can claim your tokens after a {formatCooldownDuration(cooldownSeconds)} cooldown.
-              </p>
-              <p className="text-base leading-[1.5] tracking-[0]">
-                When the cooldown is over, your tokens will be accumulated to ‘Claim Available.’
-              </p>
-            </div>
-          </div>
-        </>
-      )}
     </div>
   );
 }
