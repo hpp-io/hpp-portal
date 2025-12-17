@@ -807,10 +807,6 @@ export default function StakingClient() {
                               >
                                 {formatDisplayAmount(amount || '0.00')}
                               </span>
-                              {/* <div
-                                className={`${inputError ? 'bg-[#FF1312]' : 'bg-white'} h-[4px] mt-1`}
-                                style={{ width: `${stakeUnderlineW}px` }}
-                              /> */}
                             </div>
                           </div>
 
@@ -944,10 +940,6 @@ export default function StakingClient() {
                               >
                                 {formatDisplayAmount(amount || '0.00')}
                               </span>
-                              {/* <div
-                                className={`${inputError ? 'bg-[#FF1312]' : 'bg-white'} h-[4px] mt-1`}
-                                style={{ width: `${unstakeUnderlineW}px` }}
-                              /> */}
                             </div>
                           </div>
 
@@ -1069,79 +1061,82 @@ export default function StakingClient() {
                               </Button>
                             )}
                           </div>
-
-                          {/* Transactions - Card 2 */}
-                          <div className="mt-5 rounded-[5px] bg-[#121212] py-3 px-5">
-                            {(isCooldownsLoading || !cooldownsInitialized) && (
-                              <div className="flex flex-col items-center justify-center py-8">
-                                <div className="mb-4">
-                                  <DotLottieReact
-                                    src="/lotties/Loading.lottie"
-                                    autoplay
-                                    loop
-                                    style={{ width: 48, height: 48 }}
-                                  />
-                                </div>
-                                <p className="text-base text-[#bfbfbf] tracking-[0.8px] leading-[1.5] text-center font-normal animate-pulse">
-                                  Fetching cooldown entries...
-                                </p>
-                              </div>
-                            )}
-                            {!isCooldownsLoading && cooldownsInitialized && cooldowns.length === 0 && (
-                              <div className="flex flex-col items-center justify-center py-8">
-                                <p className="text-base text-[#bfbfbf] tracking-[0.8px] leading-[1.5] text-center font-normal">
-                                  No claim history.
-                                </p>
-                              </div>
-                            )}
-                            {!isCooldownsLoading && cooldownsInitialized && cooldowns.length > 0 && (
-                              <div className="divide-y divide-[#2D2D2D]">
-                                {cooldowns.map((tx, idx) => {
-                                  const remaining = Math.max(0, tx.unlock - nowSecTick);
-                                  const d = Math.floor(remaining / 86400);
-                                  const h = Math.floor((remaining % 86400) / 3600);
-                                  const m = Math.floor((remaining % 3600) / 60);
-                                  const s = Math.floor(remaining % 60);
-                                  const dd = String(d).padStart(2, '0');
-                                  const hh = String(h).padStart(2, '0');
-                                  const mm = String(m).padStart(2, '0');
-                                  const ss = String(s).padStart(2, '0');
-                                  const countdown = `${dd}:${hh}:${mm}:${ss}`;
-                                  return (
-                                    <div key={idx} className="py-4">
-                                      <div className="flex items-center justify-between">
-                                        <div className="text-white text-base leading-[1.2] tracking-[0.8px] font-normal">
-                                          {tx.date}
-                                        </div>
-                                        <div className="text-white text-base leading-[1.2] tracking-[0.8px] font-normal whitespace-nowrap">
-                                          {tx.amount}
-                                        </div>
-                                      </div>
-                                      <div
-                                        className={
-                                          tx.cooling
-                                            ? 'mt-2.5 text-[#25FF21] text-base leading-[1.2] tracking-[0.8px] font-normal'
-                                            : 'mt-2.5 text-white text-base leading-[1.2] tracking-[0.8px] font-normal'
-                                        }
-                                      >
-                                        {tx.cooling ? (
-                                          <>
-                                            You will be able to claim in{' '}
-                                            <span className="tabular-nums tracking-[0.1em]">{countdown}</span>
-                                          </>
-                                        ) : (
-                                          'You are able to claim.'
-                                        )}
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </div>
                         </>
                       )}
                     </div>
+                    {/* Transactions - Card 2 */}
+                    {activeTab === 'claim' && (
+                      <>
+                        <div className="mt-5 rounded-[5px] bg-[#121212] py-3 px-5">
+                          {(isCooldownsLoading || !cooldownsInitialized) && (
+                            <div className="flex flex-col items-center justify-center py-8">
+                              <div className="mb-4">
+                                <DotLottieReact
+                                  src="/lotties/Loading.lottie"
+                                  autoplay
+                                  loop
+                                  style={{ width: 48, height: 48 }}
+                                />
+                              </div>
+                              <p className="text-base text-[#bfbfbf] tracking-[0.8px] leading-[1.5] text-center font-normal animate-pulse">
+                                Fetching cooldown entries...
+                              </p>
+                            </div>
+                          )}
+                          {!isCooldownsLoading && cooldownsInitialized && cooldowns.length === 0 && (
+                            <div className="flex flex-col items-center justify-center py-8">
+                              <p className="text-base text-[#bfbfbf] tracking-[0.8px] leading-[1.5] text-center font-normal">
+                                No claim history.
+                              </p>
+                            </div>
+                          )}
+                          {!isCooldownsLoading && cooldownsInitialized && cooldowns.length > 0 && (
+                            <div className="divide-y divide-[#2D2D2D]">
+                              {cooldowns.map((tx, idx) => {
+                                const remaining = Math.max(0, tx.unlock - nowSecTick);
+                                const d = Math.floor(remaining / 86400);
+                                const h = Math.floor((remaining % 86400) / 3600);
+                                const m = Math.floor((remaining % 3600) / 60);
+                                const s = Math.floor(remaining % 60);
+                                const dd = String(d).padStart(2, '0');
+                                const hh = String(h).padStart(2, '0');
+                                const mm = String(m).padStart(2, '0');
+                                const ss = String(s).padStart(2, '0');
+                                const countdown = `${dd}:${hh}:${mm}:${ss}`;
+                                return (
+                                  <div key={idx} className="py-4">
+                                    <div className="flex items-center justify-between">
+                                      <div className="text-white text-base leading-[1.2] tracking-[0.8px] font-normal">
+                                        {tx.date}
+                                      </div>
+                                      <div className="text-white text-base leading-[1.2] tracking-[0.8px] font-normal whitespace-nowrap">
+                                        {tx.amount}
+                                      </div>
+                                    </div>
+                                    <div
+                                      className={
+                                        tx.cooling
+                                          ? 'mt-2.5 text-[#25FF21] text-base leading-[1.2] tracking-[0.8px] font-normal'
+                                          : 'mt-2.5 text-white text-base leading-[1.2] tracking-[0.8px] font-normal'
+                                      }
+                                    >
+                                      {tx.cooling ? (
+                                        <>
+                                          You will be able to claim in{' '}
+                                          <span className="tabular-nums tracking-[0.1em]">{countdown}</span>
+                                        </>
+                                      ) : (
+                                        'You are able to claim.'
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               ) : (
