@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { MobileMenuIcon, BackIcon, HPPPortalIcon } from '@/assets/icons';
-// import WalletButton from '@/components/ui/WalletButton';
+import WalletButton from '@/components/ui/WalletButton';
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -45,9 +45,9 @@ export default function Header({ onMenuClick, isSidebarOpen = false, onBackClick
           <Link href="/" aria-label="Go to home" className="cursor-pointer">
             <HPPPortalIcon className="w-auto h-10" />
           </Link>
-          {/* <div className="flex items-center">
+          <div className="flex items-center">
             <WalletButton />
-          </div> */}
+          </div>
         </div>
       </div>
     </>
