@@ -23,6 +23,51 @@ export function FaqSection({
   const toggle = (id: number) =>
     setOpenIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
+  // Render plain-text answers with clickable links and preserved line breaks
+  const renderAnswer = (text: string) => {
+    const nodes: React.ReactNode[] = [];
+    const lines = (text || '').split('\n');
+    const makeLinked = (line: string, lineIdx: number) => {
+      const parts: React.ReactNode[] = [];
+      const urlRe = /(https?:\/\/[^\s]+)/g;
+      let last = 0;
+      let m: RegExpExecArray | null;
+      while ((m = urlRe.exec(line)) !== null) {
+        if (m.index > last) parts.push(line.slice(last, m.index));
+        const raw = m[0];
+        // Trim trailing punctuation commonly placed after URLs in text
+        let url = raw;
+        let trailing = '';
+        while (/[).,;:\]\!]+$/.test(url)) {
+          trailing = url.slice(-1) + trailing;
+          url = url.slice(0, -1);
+        }
+        parts.push(
+          <a
+            key={`url-${lineIdx}-${m.index}`}
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline text-[#1998FF] break-words"
+          >
+            {url}
+          </a>
+        );
+        if (trailing) {
+          parts.push(trailing);
+        }
+        last = urlRe.lastIndex;
+      }
+      if (last < line.length) parts.push(line.slice(last));
+      return parts;
+    };
+    lines.forEach((line, i) => {
+      nodes.push(<React.Fragment key={`line-${i}`}>{makeLinked(line, i)}</React.Fragment>);
+      if (i < lines.length - 1) nodes.push(<br key={`br-${i}`} />);
+    });
+    return nodes;
+  };
+
   return (
     <div className={className}>
       <h2 className="text-3xl leading-[1.5] font-[900] text-white mb-5">{title}</h2>
@@ -56,8 +101,8 @@ export function FaqSection({
                 }}
                 aria-hidden={!isOpen}
               >
-                <div className="px-5 pb-5 text-base leading-[1.5] tracking-[0.8px] text-[#bfbfbf] whitespace-pre-line overflow-hidden">
-                  {faq.answer}
+                <div className="px-5 pb-5 text-base leading-[1.5] tracking-[0.8px] text-[#bfbfbf] overflow-hidden">
+                  {renderAnswer(faq.answer)}
                 </div>
               </div>
             </div>
