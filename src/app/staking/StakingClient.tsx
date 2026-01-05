@@ -10,7 +10,7 @@ import Footer from '@/components/ui/Footer';
 import Button from '@/components/ui/Button';
 import WalletButton from '@/components/ui/WalletButton';
 import { HPPTickerIcon, StakeIcon, UnstakeIcon, ClaimIcon } from '@/assets/icons';
-import { useAccount, useWalletClient, useChainId, useDisconnect } from 'wagmi';
+import { useAccount, useWalletClient, useChainId } from 'wagmi';
 import { getWalletClient } from '@wagmi/core';
 import { formatUnits, parseUnits } from 'viem';
 import Big from 'big.js';
