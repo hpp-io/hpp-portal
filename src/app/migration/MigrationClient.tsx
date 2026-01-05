@@ -786,7 +786,7 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
           </div>
 
           <div className="py-7.5">
-            <div className="px-4 max-w-6xl mx-auto">
+            <div className="px-5 max-w-6xl mx-auto">
               <h1 className="text-[50px] leading-[1.5] font-[900] text-white text-center">Migrate to HPP</h1>
               <p className="text-xl text-[#bfbfbf] font-semibold leading-[1.5] max-w-5xl text-center">
                 Move your {token} tokens to the HPP Mainnet using the official migration paths.

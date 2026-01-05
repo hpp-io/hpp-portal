@@ -298,7 +298,7 @@ export default function PreRegistrationClient() {
         >
           {/* Hero */}
           <div className="py-12.5">
-            <div className="px-4 max-w-6xl mx-auto text-center">
+            <div className="px-5 max-w-6xl mx-auto text-center">
               <div className="flex justify-center mb-3">
                 <DotLottieReact
                   src="/lotties/Staking.lottie"
@@ -389,7 +389,7 @@ export default function PreRegistrationClient() {
           </div>
 
           {/* Pre-Registration Block */}
-          <div className="px-4 max-w-6xl mx-auto w-full mt-6">
+          <div className="px-5 max-w-6xl mx-auto w-full mt-6">
             <div className="flex flex-col min-[810px]:flex-row items-start min-[810px]:items-center justify-between mb-3">
               <h2 className="text-3xl font-black">Pre-Registration</h2>
               <Button
@@ -457,7 +457,7 @@ export default function PreRegistrationClient() {
           </div>
 
           {/* Status Cards */}
-          <div className="px-4 max-w-6xl mx-auto w-full mt-6">
+          <div className="px-5 max-w-6xl mx-auto w-full mt-6">
             <div className="border border-[#2D2D2D] grid grid-cols-1 min-[1000px]:grid-cols-4 gap-0 rounded-[5px] overflow-hidden">
               {/* Left: Chart/Status */}
               <div className="bg-[#121212] py-4 px-6.5 min-[1000px]:col-span-2">
@@ -594,9 +594,9 @@ export default function PreRegistrationClient() {
           </div>
 
           {/* APR Goal */}
-          <div className="px-4 max-w-6xl mx-auto w-full mt-5">
+          <div className="px-5 max-w-6xl mx-auto w-full mt-5">
             {/* APR Journey (Pre-Registration uses Phase 1 images only) */}
-            <div className="px-4 max-w-6xl mx-auto w-full mt-7.5">
+            <div className="max-w-6xl mx-auto w-full mt-7.5">
               <div className="rounded-[5px] bg-[#121212] overflow-hidden">
                 <div className="px-5 pt-5 pb-0">
                   <div className="flex items-center justify-between mb-2">

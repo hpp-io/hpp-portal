@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Image from 'next/image';
 import Header from '@/components/ui/Header';
-import RightArrow from '@/assets/icons/RightArrow.svg';
+import { RightArrowIcon } from '@/assets/icons';
 import Button from '@/components/ui/Button';
 import AERGO from '@/assets/icons/AergoMS.png';
 import AQT from '@/assets/icons/AQTMS.png';
@@ -39,7 +39,7 @@ export default function SelectionClient() {
           }`}
         >
           <div className="py-12.5">
-            <div className="px-4 max-w-6xl mx-auto">
+            <div className="px-5 max-w-6xl mx-auto">
               <div className="w-full flex justify-center">
                 <DotLottieReact
                   src="/lotties/Migration.lottie"
@@ -62,7 +62,7 @@ export default function SelectionClient() {
               </p>
             </div>
           </div>
-          <div className="px-4 max-w-6xl mx-auto mt-12.5 min-[1200px]:mt-25">
+          <div className="px-5 max-w-6xl mx-auto mt-20">
             <div className="grid grid-cols-1 min-[810px]:grid-cols-2 gap-5">
               <div className="rounded-[5px] px-5 py-7.5 bg-primary w-full lg:max-w-[520px] flex flex-col">
                 <div className="flex flex-col items-start flex-1">
@@ -89,7 +89,7 @@ export default function SelectionClient() {
                     href="/migration/AERGO"
                     variant="white"
                     size="lg"
-                    icon={<RightArrow className="w-4 h-4 fill-current" />}
+                    icon={<RightArrowIcon className="w-4 h-4 fill-current" />}
                     className="cursor-pointer"
                   >
                     Start AERGO Migration
@@ -118,7 +118,7 @@ export default function SelectionClient() {
                     href="/migration/AQT"
                     variant="white"
                     size="lg"
-                    icon={<RightArrow className="w-4 h-4 fill-current" />}
+                    icon={<RightArrowIcon className="w-4 h-4 fill-current" />}
                     className="cursor-pointer"
                   >
                     Start AQT Migration

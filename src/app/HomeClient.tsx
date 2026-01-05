@@ -89,7 +89,7 @@ export default function HomeClient() {
         >
           {/* Hero Section */}
           <div className="py-12.5">
-            <div className="px-4 max-w-6xl mx-auto">
+            <div className="px-5 max-w-6xl mx-auto">
               <h1 className="text-[50px] min-[1200px]:text-[70px] leading-[1.5] font-[900] text-white text-center">
                 Welcome to <span className="inline max-[599px]:block">HPP Portal</span>
               </h1>
@@ -101,7 +101,7 @@ export default function HomeClient() {
           </div>
 
           {/* Quick Actions */}
-          <div className="px-4 max-w-6xl mx-auto mt-12.5 min-[1200px]:mt-25">
+          <div className="px-5 max-w-6xl mx-auto mt-20">
             <h2 className="text-3xl leading-[1.5] font-[900] text-white mb-5">Quick Actions</h2>
             {/* Pre-Registration banner (1-col full width) */}
             {(() => {
@@ -250,7 +250,7 @@ export default function HomeClient() {
           </div>
 
           {/* Ecosystem Highlights */}
-          <div className="px-4 max-w-6xl mx-auto mt-25">
+          <div className="px-5 max-w-6xl mx-auto mt-25">
             <h2 className="text-3xl leading-[1.5] font-[900] text-white">Ecosystem Highlights</h2>
             <p className="text-xl leading-[1.5] font-semibold text-[#bfbfbf] max-w-4xl">
               Explore leading dApps, AI agents, and on-chain services driving innovation on the HPP Mainnet.
