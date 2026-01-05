@@ -54,7 +54,7 @@ export default function Dropdown({ value, onChange, options, className = '' }: D
         </span>
       </button>
       {open && (
-        <div className="absolute right-0 mt-2 rounded-[5px] bg-white shadow-lg ring-1 ring-black/10 p-2.5 z-10">
+        <div className="absolute right-0 mt-2 rounded-[5px] bg-white shadow-lg ring-1 ring-black/10 p-2.5 z-50">
           <ul role="listbox" aria-label="Select TVL period" className="space-y-1">
             {options.map((opt) => {
               const isActive = opt.key === value;
@@ -70,7 +70,7 @@ export default function Dropdown({ value, onChange, options, className = '' }: D
                     }}
                     className={[
                       'cursor-pointer w-full text-center px-4 py-2 rounded-[5px] text-sm font-semibold whitespace-nowrap',
-                      isActive ? 'bg-black text-white' : 'bg-black/20 text-black hover:bg-black/30',
+                      isActive ? 'bg-black text-white' : 'text-black hover:bg-black/20',
                     ].join(' ')}
                   >
                     {opt.label}

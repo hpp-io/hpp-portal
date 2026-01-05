@@ -72,10 +72,15 @@ export function FaqSection({
     <div className={className}>
       <h2 className="text-3xl leading-[1.5] font-[900] text-white mb-5">{title}</h2>
       <div>
-        {items.map((faq) => {
+        {items.map((faq, idx) => {
+          const isFirst = idx === 0;
+          const isLast = idx === items.length - 1;
           const isOpen = openIds.includes(faq.id);
           return (
-            <div key={faq.id} className="bg-[#111111]">
+            <div
+              key={faq.id}
+              className={`bg-[#111111] ${isFirst ? 'rounded-t-[5px]' : ''} ${isLast ? 'rounded-b-[5px]' : ''}`}
+            >
               <button
                 className="w-full px-5 py-7.5 text-left flex items-center justify-between transition-colors cursor-pointer"
                 onClick={() => toggle(faq.id)}
@@ -101,7 +106,7 @@ export function FaqSection({
                 }}
                 aria-hidden={!isOpen}
               >
-                <div className="px-5 pb-5 text-base leading-[1.5] tracking-[0.8px] text-[#bfbfbf] overflow-hidden">
+                <div className="px-5 text-base leading-[1.5] tracking-[0.8px] text-[#bfbfbf] overflow-hidden">
                   {renderAnswer(faq.answer)}
                 </div>
               </div>

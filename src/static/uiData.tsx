@@ -369,7 +369,7 @@ export const stakingData = {
       {
         id: 3,
         question: 'What are the steps of Staking?',
-        answer: 'You can find the official guide here: (TBD)',
+        answer: 'You can find the official guide here',
       },
       {
         id: 4,
