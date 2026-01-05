@@ -69,7 +69,7 @@ export default function BridgeClient() {
           </div>
 
           {/* Content */}
-          <div className="px-5 max-w-6xl mx-auto mt-20">
+          <div className="px-5 max-w-6xl mx-auto mt-20 ">
             {/* Bridge Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {/* Arbitrum Official Bridge */}

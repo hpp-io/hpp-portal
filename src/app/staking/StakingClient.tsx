@@ -1243,7 +1243,7 @@ export default function StakingClient() {
             </div>
 
             {/* Content */}
-            <div className="px-5 max-w-6xl mx-auto w-full">
+            <div className="mt-20 px-5 max-w-6xl mx-auto w-full">
               <div className="flex items-center gap-2.5">
                 {(['overview', 'staking', 'dashboard'] as TopTab[]).map((id) => {
                   const isActive = topTab === id;

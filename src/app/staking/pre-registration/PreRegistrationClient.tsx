@@ -389,7 +389,7 @@ export default function PreRegistrationClient() {
           </div>
 
           {/* Pre-Registration Block */}
-          <div className="px-5 max-w-6xl mx-auto w-full mt-6">
+          <div className="mt-20 px-5 max-w-6xl mx-auto w-full">
             <div className="flex flex-col min-[810px]:flex-row items-start min-[810px]:items-center justify-between mb-3">
               <h2 className="text-3xl font-black">Pre-Registration</h2>
               <Button
