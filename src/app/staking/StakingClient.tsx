@@ -1243,7 +1243,7 @@ export default function StakingClient() {
             {/* Hero Section */}
             <div className="py-12.5">
               <div className="px-5 max-w-6xl mx-auto text-center">
-                <div className="flex justify-center mb-3">
+                <div className="flex justify-center">
                   <DotLottieReact
                     src="/lotties/Staking.lottie"
                     autoplay
@@ -1257,14 +1257,10 @@ export default function StakingClient() {
                     layout={{ fit: 'contain', align: [0.5, 0.5] }}
                   />
                 </div>
-                <div className="text-white font-[900] leading-[1.2]">
-                  <div className="text-4xl min-[810px]:text-5xl">HPP Staking</div>
-                </div>
-                <div className="mt-4">
-                  <p className="text-lg text-[#bfbfbf] font-semibold leading-[1.5]">
-                    Stake your HPP to earn rewards and participate in HPP ecosystem
-                  </p>
-                </div>
+                <div className="text-[50px] leading-[1.5] font-[900] text-white text-center">HPP Staking</div>
+                <p className="text-xl text-[#bfbfbf] font-semibold leading-[1.5] max-w-5xl text-center">
+                  Stake your HPP to earn rewards and participate in HPP ecosystem
+                </p>
               </div>
             </div>
 

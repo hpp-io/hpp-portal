@@ -125,7 +125,7 @@ export default function HomeClient() {
                       }}
                       layout={{ fit: 'contain', align: [0.5, 0.5] }}
                     />
-                    <div className="mt-3 min-[600px]:mt-0 min-[600px]:ml-2.5 text-left flex-1 self-stretch">
+                    <div className="mt-3 min-[600px]:mt-0 min-[600px]:ml-2.5 text-left flex-1 self-center">
                       <div className="mb-2 flex justify-start">
                         <span className="inline-flex items-center gap-2 bg-white text-black rounded-[5px] px-2.5 py-1.25 text-sm font-semibold leading-[1]">
                           <span>🔥</span>
