@@ -963,6 +963,15 @@ export default function StakingClient() {
     }
   }, [activeTab, fetchHppBalance, fetchStakedTotal, fetchCooldowns, fetchCooldownDuration, dispatch]);
 
+  // Fetch cooldowns when Dashboard tab is active (for Unclaimed Reward display)
+  React.useEffect(() => {
+    if (topTab === 'dashboard' && isConnected && address) {
+      fetchCooldownDuration().finally(() => {
+        fetchCooldowns();
+      });
+    }
+  }, [topTab, isConnected, address, fetchCooldownDuration, fetchCooldowns]);
+
   // Fetch cooldown duration on initial mount so stake/unstake messages have the correct value
   React.useEffect(() => {
     fetchCooldownDuration();
