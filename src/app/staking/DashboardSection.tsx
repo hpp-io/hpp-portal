@@ -304,6 +304,20 @@ export default function DashboardSection() {
                 Connect your wallet to view activity.
               </p>
             </div>
+          ) : activitiesLoading && (!activities || activities.length === 0 || !activities.some((a) => a.isLocal)) ? (
+            <div className="flex flex-col items-center justify-center py-8">
+              <div className="mb-4">
+                <DotLottieReact
+                  src="/lotties/Loading.lottie"
+                  autoplay
+                  loop
+                  style={{ width: 48, height: 48 }}
+                />
+              </div>
+              <p className="text-base text-[#bfbfbf] tracking-[0.8px] leading-[1.5] text-center font-normal animate-pulse">
+                Fetching activities...
+              </p>
+            </div>
           ) : activities && activities.length > 0 ? (
             <>
               <div className="divide-y divide-[#2D2D2D] pt-3.5">
