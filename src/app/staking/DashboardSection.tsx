@@ -89,7 +89,9 @@ export default function DashboardSection() {
       // Convert to Wei (18 decimals) for API request
       const stakedAmountWei = finalStakedAmount.times(new Big(10).pow(18));
       const resp = await axios.get(
-        `${process.env.NEXT_PUBLIC_HPP_STAKING_API_URL}/apr/wallet/${address}?stakedAmount=${stakedAmountWei.toFixed(0)}`,
+        `${process.env.NEXT_PUBLIC_HPP_STAKING_API_URL}/apr/wallet/${address}?stakedAmount=${stakedAmountWei.toFixed(
+          0
+        )}`,
         {
           headers: { accept: 'application/json' },
         }
@@ -307,12 +309,7 @@ export default function DashboardSection() {
           ) : activitiesLoading && (!activities || activities.length === 0 || !activities.some((a) => a.isLocal)) ? (
             <div className="flex flex-col items-center justify-center py-8">
               <div className="mb-4">
-                <DotLottieReact
-                  src="/lotties/Loading.lottie"
-                  autoplay
-                  loop
-                  style={{ width: 48, height: 48 }}
-                />
+                <DotLottieReact src="/lotties/Loading.lottie" autoplay loop style={{ width: 48, height: 48 }} />
               </div>
               <p className="text-base text-[#bfbfbf] tracking-[0.8px] leading-[1.5] text-center font-normal animate-pulse">
                 Fetching activities...
