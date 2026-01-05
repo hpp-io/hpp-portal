@@ -440,9 +440,9 @@ export default function StakingClient() {
     if (statsInitialized && !chartAnimKey) {
       const first = overviewTvl?.[0]?.date || 'init';
       const last = overviewTvl?.[overviewTvl.length - 1]?.date || 'init';
-      setChartAnimKey(`tvl-init-${first}-${last}`);
+      dispatch(setChartAnimKey(`tvl-init-${first}-${last}`));
     }
-  }, [statsInitialized, overviewTvl, chartAnimKey]);
+  }, [statsInitialized, overviewTvl, chartAnimKey, dispatch]);
   // Prefetch lottie spinner to avoid first-render delay
   useEffect(() => {
     try {
