@@ -69,7 +69,6 @@ import {
   setIsChartReady,
   setChartAnimKey,
 } from '@/store/slices';
-// import type { Activity } from '@/store/slices/activitiesSlice';
 
 type StakingTab = 'stake' | 'unstake' | 'claim';
 type TopTab = 'overview' | 'staking' | 'dashboard';
