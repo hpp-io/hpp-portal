@@ -106,7 +106,11 @@ export function FaqSection({
                 }}
                 aria-hidden={!isOpen}
               >
-                <div className="px-5 text-base leading-[1.5] tracking-[0.8px] text-[#bfbfbf] overflow-hidden">
+                <div
+                  className={`px-5 text-base leading-[1.5] tracking-[0.8px] text-[#bfbfbf] overflow-hidden ${
+                    isLast && isOpen ? 'pb-7.5' : ''
+                  }`}
+                >
                   {renderAnswer(faq.answer)}
                 </div>
               </div>
