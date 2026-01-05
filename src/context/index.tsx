@@ -40,7 +40,7 @@ createAppKit({
   networks: appKitNetworks,
   defaultNetwork: appKitDefaultNetwork,
   metadata: metadata,
-  themeMode: 'light',
+  themeMode: 'dark',
   allowUnsupportedChain: true,
   featuredWalletIds: ['c57ca95b47569778a828d19178114f4db188b89b763c899ba0be274e97267d96'],
   includeWalletIds: ['c57ca95b47569778a828d19178114f4db188b89b763c899ba0be274e97267d96'],

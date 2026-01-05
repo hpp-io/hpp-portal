@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { MobileMenuIcon, BackIcon, HPPPortalIcon } from '@/assets/icons';
-// import WalletButton from '@/components/ui/WalletButton';
+import WalletButton from '@/components/ui/WalletButton';
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -23,16 +23,17 @@ export default function Header({ onMenuClick, isSidebarOpen = false, onBackClick
             </Link>
           </div>
           <div></div>
-          <div className="flex justify-end">
+          <div className="flex justify-end items-center gap-5">
+            <WalletButton />
             <button
               onClick={isSidebarOpen ? onBackClick : onMenuClick}
               className="cursor-pointer"
               aria-label={isSidebarOpen ? 'Close menu' : 'Open menu'}
             >
               {isSidebarOpen ? (
-                <BackIcon className="w-7.5 h-7.5 text-gray-300" />
+                <BackIcon className="w-7.5 h-7.5 text-white" />
               ) : (
-                <MobileMenuIcon className="w-7.5 h-7.5 text-gray-300" />
+                <MobileMenuIcon className="w-7.5 h-7.5 text-white" />
               )}
             </button>
           </div>
@@ -45,9 +46,9 @@ export default function Header({ onMenuClick, isSidebarOpen = false, onBackClick
           <Link href="/" aria-label="Go to home" className="cursor-pointer">
             <HPPPortalIcon className="w-auto h-10" />
           </Link>
-          {/* <div className="flex items-center">
+          <div className="flex items-center">
             <WalletButton />
-          </div> */}
+          </div>
         </div>
       </div>
     </>

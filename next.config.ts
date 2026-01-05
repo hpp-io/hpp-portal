@@ -46,6 +46,13 @@ const nextConfig: NextConfig = {
     fileLoaderRule.exclude = /\.svg$/i;
 
     config.externals.push('pino-pretty', 'lokijs', 'encoding');
+
+    // Ignore React Native modules that are not needed in web
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      '@react-native-async-storage/async-storage': false,
+    };
+
     return config;
   },
 };

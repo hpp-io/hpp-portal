@@ -352,6 +352,86 @@ export const stakingData = {
       },
     ],
   },
+  staking: {
+    faq: [
+      {
+        id: 1,
+        question: 'What is HPP Staking?',
+        answer:
+          'HPP Staking allows users to deposit their HPP(Mainnet) tokens to support network security and governance participation. In return, users receive staking rewards based on their contribution.',
+      },
+      {
+        id: 2,
+        question: 'Which token do I need to stake?',
+        answer:
+          'Only HPP(Mainnet) is eligible for staking. If you have HPP(Ethereum) or legacy assets (AERGO / AQT), you must complete Migration Step 2 before staking.\n\nYou can find the migration guide here: https://portal-dev.hpp.io/migration/',
+      },
+      {
+        id: 3,
+        question: 'What are the steps of Staking?',
+        answer: 'You can find the official guide here',
+      },
+      {
+        id: 4,
+        question: 'How are staking rewards calculated?',
+        answer:
+          'Rewards are determined by multiple factors:\n• Your staked amount\n• Your staking duration\n• Total value staked (overall TVL)\n• Bonus Credit\n• Participation in seasonal missions (if applicable)\n\nThe final APR may vary depending on these combined factors.',
+      },
+      {
+        id: 5,
+        question: 'What is the Bonus Credit?',
+        answer:
+          'Bonus Credit is a multiplier applied to your APR based on your participation in specific activities such as Whale Boost (stake amount tiers), Hold & Earn missions (staking period), and DAO participation missions (Proposal, Forum Voting, On-Chain Voting).\n\nHigher participation results in higher Bonus Credit, which increases your final APR. Bonus Credit does not replace Base APR — it multiplies it.',
+      },
+      {
+        id: 6,
+        question: 'What is a Season?',
+        answer:
+          'A Season is a defined reward cycle in HPP Staking, typically lasting approximately 3 months.\n\nEach Season may introduce event-specific APR boosts, new Bonus Credit opportunities, time-limited missions, and seasonal staking policies or APR adjustments.\n\nWhen a Season ends, its rewards and missions conclude. A new Season may begin with updated policies and bonus structures.',
+      },
+      {
+        id: 7,
+        question: 'How is the final APR calculated?',
+        answer:
+          '(Base APR + Bonus APR) × Bonus Credit\n\n• Base APR: The default APR for all stakers.\n• Bonus APR: Additional APR earned from Pre-Registration or special events.\n• Bonus Credit: A multiplier earned through missions (e.g., ×101%, ×103%, ×107%).\n\nAPR may change depending on user participation and network policy.',
+      },
+      {
+        id: 8,
+        question: 'How are the rewards distributed?',
+        answer:
+          'The exact rewards depend on network policy and the amount of total staked tokens. They are not guaranteed or fixed.\n\nRewards are distributed per epoch based on the staking policy. Distribution may be automatic or require manual claiming depending on the final configuration.',
+      },
+      {
+        id: 9,
+        question: 'Can I unstake anytime? Or is there a lock-up period?',
+        answer:
+          'Yes — you can unstake anytime you want. There is no penalty for early unstaking, but there is a 7-day cooldown period before the claim becomes available.\n\nRewards are calculated daily but only distributed at the end of each Season. Even if you unstake mid-Season, you will receive the rewards accumulated up to that day — they are simply paid out when the Season ends.',
+      },
+      {
+        id: 10,
+        question: 'How are daily rewards calculated?',
+        answer:
+          'HPP uses a Daily Snapshot model. Every day, the system records your Effective Stake (your principal × Bonus Credits), and rewards are accumulated based on the proportion of your Effective Stake within the total staking pool.\n\nDaily Reward = (Your Effective Stake / Total Effective Stake of the day) × (Annual Reward / 365)\n\n• You earn rewards for every day you are staked\n• Rewards are claimed only at the end of the Season, not immediately\n• Unstaking early does not reduce already accumulated rewards',
+      },
+      {
+        id: 11,
+        question: 'Is staking safe?',
+        answer:
+          'HPP Staking is operated through officially audited smart contracts by Certik (https://skynet.certik.com/ko/projects/aergo). However, all on-chain operations follow the self-custody principle — users are responsible for their own transactions and security practices.',
+      },
+      {
+        id: 12,
+        question: 'Will my staking APR change over time?',
+        answer: 'Yes. APR can change depending on stake participation and policy updates.',
+      },
+      {
+        id: 13,
+        question: 'Where can I get support?',
+        answer:
+          'You can receive support through the official HPP Telegram, or Website Support Center. For security reasons, always use official channels to avoid phishing attempts.',
+      },
+    ],
+  },
 };
 
 // Common UI Data

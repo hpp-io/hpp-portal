@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import AppkitProvider from '@/context';
 import { ToastProvider } from '@/hooks/useToast';
+import { ReduxProvider } from '@/store/ReduxProvider';
 import localFont from 'next/font/local';
 
 const pretendard = localFont({
@@ -34,9 +35,11 @@ export default function RootLayout({
   return (
     <html lang="en" className={pretendard.variable}>
       <body className="antialiased">
-        <AppkitProvider cookies={null}>
-          <ToastProvider>{children}</ToastProvider>
-        </AppkitProvider>
+        <ReduxProvider>
+          <AppkitProvider cookies={null}>
+            <ToastProvider>{children}</ToastProvider>
+          </AppkitProvider>
+        </ReduxProvider>
       </body>
     </html>
   );

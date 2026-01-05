@@ -47,6 +47,21 @@ body {
   border-radius: 4px;
 }
 
+/* Pending animation for Activity Log - smooth pulse effect */
+@keyframes pending-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.pending-text {
+  animation: pending-pulse 1.5s ease-in-out infinite;
+}
+
 .overflow-y-auto::-webkit-scrollbar-thumb:hover {
   background: #3a3a3a;
 }
@@ -104,4 +119,38 @@ body {
 
 .animate-spin-reverse {
   animation: spin-reverse 1s linear infinite;
+}
+
+input.hpp-checkbox {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  box-sizing: border-box;
+  border: 1px solid #2d2d2d;
+  border-radius: 3px;
+  background-color: #2d2d2d; /* unchecked background */
+  display: inline-block;
+  position: relative;
+  vertical-align: middle;
+}
+input.hpp-checkbox:checked {
+  background-color: #ffffff; /* fill when checked */
+  border-color: #ffffff;
+}
+input.hpp-checkbox::after {
+  content: '';
+  position: absolute;
+  left: 4px; /* horizontal alignment */
+  top: 1px; /* vertical alignment */
+  width: 6px; /* tick width */
+  height: 10px; /* tick height */
+  border: solid #2d2d2d; /* check mark color */
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+  opacity: 0;
+  transition: opacity 120ms ease-in-out;
+}
+input.hpp-checkbox:checked::after {
+  opacity: 1;
 }

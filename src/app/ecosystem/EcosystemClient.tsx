@@ -37,7 +37,7 @@ export default function EcosystemClient() {
         >
           {/* Hero Section */}
           <div className="py-12.5">
-            <div className="px-4 max-w-6xl mx-auto">
+            <div className="px-5 max-w-6xl mx-auto">
               <div className="w-full flex justify-center">
                 <DotLottieReact
                   src="/lotties/Ecosystem.lottie"
@@ -62,7 +62,7 @@ export default function EcosystemClient() {
             </div>
           </div>
 
-          <div className="px-4 max-w-6xl mx-auto">
+          <div className="px-5 max-w-6xl mx-auto">
             {/* Featured Partners */}
             <div className="mt-12.5 min-[1200px]:mt-25 mb-25 min-[1200px]:mb-37.5">
               <h2 className="text-3xl leading-[1.5] font-[900] text-white mb-8">Featured Partners</h2>

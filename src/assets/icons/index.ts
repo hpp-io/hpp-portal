@@ -31,6 +31,12 @@ export { default as HPPTickerIcon } from './HPPTicker.svg';
 export { default as InfoIcon } from './Info.svg';
 export { default as LinkIcon } from './Link.svg';
 export { default as XLogoIcon } from './XLogo.svg';
+export { default as StakeIcon } from './Stake.svg';
+export { default as UnstakeIcon } from './Unstake.svg';
+export { default as ClaimIcon } from './Claim.svg';
+export { default as Wallet2Icon } from './Wallet2.svg';
+export { default as MobileWalletConnectIcon } from './MobileWalletConnect.svg';
+export { default as RightArrowIcon } from './RightArrow.svg';
 
 // PNG
 export { default as Aergo } from './Aergo.png';
@@ -56,3 +62,8 @@ export { default as AergoToken } from './Aergo(Token).png';
 export { default as AQTToken } from './AQT(Token).png';
 export { default as HPPToken } from './HPP(Token).png';
 export { default as Blocko } from './Blocko.png';
+export { default as APR_Mobile1 } from './APR_Mobile_Phase 1.png';
+export { default as APR_Mobile2 } from './APR_Mobile_Phase 2.png';
+export { default as APR_Web1 } from './APR_Web_Phase 1.png';
+export { default as APR_Web2 } from './APR_Web_Phase 2.png';
+export { default as HPP_Ticker } from './HPP_ticker_white.png';

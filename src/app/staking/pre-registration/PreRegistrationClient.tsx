@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
+import Image from 'next/image';
 import Header from '@/components/ui/Header';
 import Footer from '@/components/ui/Footer';
 import Sidebar from '@/components/ui/Sidebar';
@@ -9,7 +10,7 @@ import { remainingBreakdown } from '@/lib/helpers';
 import { stakingData } from '@/static/uiData';
 import FaqSection from '@/components/ui/Faq';
 import Button from '@/components/ui/Button';
-import { CheckIcon, XLogoIcon } from '@/assets/icons';
+import { CheckIcon, XLogoIcon, APR_Web1, APR_Mobile1 } from '@/assets/icons';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, ReferenceDot } from 'recharts';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import axios from 'axios';
@@ -166,6 +167,11 @@ export default function PreRegistrationClient() {
   const [currentAprApi, setCurrentAprApi] = useState<number>(0);
   const [nextGoalAprApi, setNextGoalAprApi] = useState<number>(0);
 
+  // APR Journey tabs for Pre-Registration page
+  const [aprTab, setAprTab] = useState<'pre' | 'whale' | 'hold' | 'dao'>('pre');
+  const aprImageDesktop = useMemo(() => APR_Web1, []);
+  const aprImageMobile = useMemo(() => APR_Mobile1, []);
+
   // Initial fetch on mount
   useEffect(() => {
     fetchStats();
@@ -292,7 +298,7 @@ export default function PreRegistrationClient() {
         >
           {/* Hero */}
           <div className="py-12.5">
-            <div className="px-4 max-w-6xl mx-auto text-center">
+            <div className="px-5 max-w-6xl mx-auto text-center">
               <div className="flex justify-center mb-3">
                 <DotLottieReact
                   src="/lotties/Staking.lottie"
@@ -383,7 +389,7 @@ export default function PreRegistrationClient() {
           </div>
 
           {/* Pre-Registration Block */}
-          <div className="px-4 max-w-6xl mx-auto w-full mt-6">
+          <div className="mt-20 px-5 max-w-6xl mx-auto w-full">
             <div className="flex flex-col min-[810px]:flex-row items-start min-[810px]:items-center justify-between mb-3">
               <h2 className="text-3xl font-black">Pre-Registration</h2>
               <Button
@@ -451,7 +457,7 @@ export default function PreRegistrationClient() {
           </div>
 
           {/* Status Cards */}
-          <div className="px-4 max-w-6xl mx-auto w-full mt-6">
+          <div className="px-5 max-w-6xl mx-auto w-full mt-6">
             <div className="border border-[#2D2D2D] grid grid-cols-1 min-[1000px]:grid-cols-4 gap-0 rounded-[5px] overflow-hidden">
               {/* Left: Chart/Status */}
               <div className="bg-[#121212] py-4 px-6.5 min-[1000px]:col-span-2">
@@ -588,165 +594,258 @@ export default function PreRegistrationClient() {
           </div>
 
           {/* APR Goal */}
-          <div className="px-4 max-w-6xl mx-auto w-full mt-5">
-            <div className="rounded-[5px] bg-[#121212] px-5 py-7.5">
-              <h3 className="text-white text-xl font-semibold mb-12.5">APR Goal</h3>
-              {/* Progress track */}
-              <div className="relative">
-                {/* Track with dashed ticks */}
-                <div className="h-5 rounded-full bg-black/50 relative overflow-hidden">
-                  {([12, 14, 16, 18, 20] as const).map((p) => {
-                    const leftPct = ((p - 10) / (20 - 10)) * 100;
-                    // Past ticks: solid black on top of the green fill; Future ticks: faint white
-                    const tickColor = p <= CUTOFF_PERCENT ? '#0b0b0b' : 'rgba(255,255,255,0.24)';
-                    return (
-                      <div
-                        key={p}
-                        className="absolute top-0 bottom-0 border-l border-dashed z-10"
-                        style={{ left: `${leftPct}%`, borderColor: tickColor }}
-                      />
-                    );
-                  })}
-                  <div className="h-full bg-[#5DF23F] rounded-l-full" style={{ width: `${progressPercent}%` }} />
-                </div>
-                {/* pointer bubble at current */}
-                <div
-                  className="absolute -top-11"
-                  style={{ left: `${progressPercent}%`, transform: 'translateX(-50%)' }}
-                >
-                  <span className="relative inline-block px-2 py-1 rounded bg-[#5DF23F] text-black text-sm font-semibold shadow">
-                    {formattedTotalWallets}
-                    <span
-                      className="absolute left-1/2"
-                      style={{
-                        transform: 'translateX(-50%)',
-                        bottom: -10,
-                        width: 0,
-                        height: 0,
-                        borderLeft: '6px solid transparent',
-                        borderRight: '6px solid transparent',
-                        borderTop: '6px solid #5DF23F',
-                        borderBottom: '6px solid transparent',
-                      }}
-                    />
-                  </span>
-                </div>
-                {/* tick labels */}
-                <div className="mt-2 relative h-5">
-                  {[
-                    { p: 10, label: isNarrow450 ? '10%' : '10% (Base)' },
-                    { p: 12, label: '12%' },
-                    { p: 14, label: '14%' },
-                    { p: 16, label: '16%' },
-                    { p: 18, label: '18%' },
-                    { p: 20, label: isNarrow450 ? '20%' : '20% (Max)' },
-                  ].map(({ p, label }) => {
-                    const isGreen = p >= 10 && p <= CUTOFF_PERCENT;
-                    const leftPct = ((p - 10) / (20 - 10)) * 100;
-                    return (
-                      <span
-                        key={p}
-                        className={[
-                          'absolute whitespace-nowrap font-semibold text-xs min-[810px]:text-sm',
-                          isGreen ? 'text-[#5DF23F]' : 'text-white',
-                          p === 10
-                            ? 'translate-x-0 text-left'
-                            : p === 20
-                            ? '-translate-x-full text-right'
-                            : '-translate-x-1/2 text-center',
-                        ].join(' ')}
-                        style={{ left: p === 10 ? '0%' : p === 20 ? '100%' : `${leftPct}%` }}
-                      >
-                        {label}
+          <div className="px-5 max-w-6xl mx-auto w-full mt-5">
+            {/* APR Journey (Pre-Registration uses Phase 1 images only) */}
+            <div className="max-w-6xl mx-auto w-full mt-7.5">
+              <div className="rounded-[5px] bg-[#121212] overflow-hidden">
+                <div className="px-5 pt-5 pb-0">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[#BFBFBF] text-base font-semibold leading-[1.2] tracking-[0.8px]">
+                        APR Journey
                       </span>
-                    );
-                  })}
+                    </div>
+                  </div>
                 </div>
-              </div>
-
-              <div className="mt-6 grid grid-cols-1 min-[600px]:grid-cols-2 gap-x-6">
-                {(() => {
-                  const rows = [
-                    { range: '0~200 Wallets', desc: 'Standard APR (10%)', apr: 'APR 10% (Base)' },
-                    { range: '201~400 Wallets', desc: 'Standard APR (10%) + Bonus APR (2%)', apr: 'APR 12%' },
-                    { range: '401~600 Wallets', desc: 'Standard APR (10%) + Bonus APR (4%)', apr: 'APR 14%' },
-                    { range: '601~800 Wallets', desc: 'Standard APR (10%) + Bonus APR (6%)', apr: 'APR 16%' },
-                    { range: '801~1000 Wallets', desc: 'Standard APR (10%) + Bonus APR (8%)', apr: 'APR 18%' },
-                    { range: '1,000+ Wallets', desc: 'Standard APR (10%) + Bonus APR (10%)', apr: 'APR 20% (Max)' },
-                  ];
-                  const currentRangeIdx = totalWallets >= 1000 ? 5 : Math.floor(Math.max(0, totalWallets - 1) / 200);
-                  const steps = [10, 12, 14, 16, 18, 20] as const;
-                  const aprReachedIdx = Math.max(0, steps.indexOf(CUTOFF_PERCENT));
-                  return rows.map((row, idx) => {
-                    const leftActive = idx <= currentRangeIdx;
-                    const rightActive = idx <= aprReachedIdx;
-                    return (
-                      <React.Fragment key={idx}>
-                        {/* Left: wallet bracket */}
-                        <div className={idx === rows.length - 1 ? '' : 'mb-5'}>
-                          <div
-                            className={[
-                              'inline-block font-bold text-sm px-3 py-2 rounded',
-                              leftActive ? 'bg-[#5DF23F] text-black' : 'bg-white text-black',
-                            ].join(' ')}
-                          >
-                            {row.range}
-                          </div>
-                          {/* Mobile (≤600px): one-line with check and combined APR */}
-                          <div
-                            className={[
-                              'mt-2 text-sm flex items-center gap-1 min-[600px]:hidden',
-                              leftActive ? 'text-[#5DF23F]' : 'text-white/80',
-                            ].join(' ')}
-                          >
-                            {rightActive && (
-                              <span className="inline-flex items-center justify-center w-4 h-4 rounded-full border border-[#5DF23F] text-[#5DF23F] text-[10px] leading-none">
-                                ✓
-                              </span>
-                            )}
-                            <span>
-                              {`${row.desc} = ${
-                                isNarrow600
-                                  ? row.apr.replace('APR ', '').replace(/\s*\((Base|Max)\)\s*/g, '')
-                                  : row.apr.replace('APR ', '')
-                              }`}
-                            </span>
-                          </div>
-                          {/* Desktop (≥600px): original two-line description */}
-                          <div
-                            className={[
-                              'mt-2 text-sm hidden min-[600px]:block',
-                              leftActive ? 'text-[#5DF23F]' : 'text-white/80',
-                            ].join(' ')}
-                          >
-                            {row.desc}
-                          </div>
-                        </div>
-                        {/* Right: APR label with reached indicator */}
-                        <div
+                <div className="w-full p-5">
+                  <div className="hidden min-[810px]:block">
+                    <Image
+                      src={aprImageDesktop}
+                      alt="APR Journey"
+                      placeholder="empty"
+                      loading="lazy"
+                      sizes="100vw"
+                      style={{ width: '100%', height: 'auto' }}
+                      priority={false}
+                    />
+                  </div>
+                  <div className="block min-[810px]:hidden">
+                    <Image
+                      src={aprImageMobile}
+                      alt="APR Journey"
+                      placeholder="empty"
+                      loading="lazy"
+                      sizes="100vw"
+                      style={{ width: '100%', height: 'auto' }}
+                      priority={false}
+                    />
+                  </div>
+                </div>
+                {/* Tabs */}
+                <div className="mt-7.5 px-5 pb-5">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    {(
+                      [
+                        { id: 'pre', label: '🔥 Pre-Registration' },
+                        { id: 'whale', label: '🐳 Whale Boost' },
+                        { id: 'hold', label: '💰 Hold & Earn' },
+                        { id: 'dao', label: '📝 DAO Participation' },
+                      ] as Array<{ id: 'pre' | 'whale' | 'hold' | 'dao'; label: string }>
+                    ).map((t) => {
+                      const isActive = aprTab === t.id;
+                      return (
+                        <Button
+                          key={t.id}
+                          size="sm"
+                          variant={isActive ? 'white' : 'black'}
                           className={[
-                            'hidden min-[600px]:flex items-center justify-end gap-1',
-                            idx === rows.length - 1 ? '' : 'mb-5',
+                            '!rounded-full px-5 py-3.5 text-base font-semibold leading-[1]',
+                            !isActive ? '!bg-[#1c1c1c] !text-[#9c9c9c]' : '!text-black',
                           ].join(' ')}
+                          onClick={() => setAprTab(t.id)}
+                          aria-pressed={isActive}
                         >
-                          {rightActive && (
-                            <span className="inline-flex items-center justify-center w-4 h-4 rounded-full border border-[#5DF23F] text-[#5DF23F] text-[10px] leading-none">
-                              ✓
-                            </span>
-                          )}
-                          <span
-                            className={[
-                              'inline-block text-sm font-semibold text-right',
-                              rightActive ? 'text-[#5DF23F]' : 'text-white',
-                            ].join(' ')}
-                          >
-                            {row.apr}
+                          {t.label}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                </div>
+                {/* Content */}
+                {aprTab === 'pre' ? (
+                  <div className="px-5 pb-7.5">
+                    <div className="text-white text-base leading-[20px] tracking-[0] font-semibold mb-15">
+                      <span className="mr-1">🔥</span>
+                      <span>Pre-Registration is live. Bring your buddy, Boost the APR, Earn together!</span>
+                    </div>
+                    {/* APR Goal */}
+                    <div className="mt-6">
+                      {/* Progress track */}
+                      <div className="relative">
+                        {/* Track with dashed ticks */}
+                        <div className="h-5 rounded-full bg-black/50 relative overflow-hidden">
+                          {([12, 14, 16, 18, 20] as const).map((p) => {
+                            const leftPct = ((p - 10) / (20 - 10)) * 100;
+                            // Past ticks: solid black on top of the green fill; Future ticks: faint white
+                            const tickColor = p <= CUTOFF_PERCENT ? '#0b0b0b' : 'rgba(255,255,255,0.24)';
+                            return (
+                              <div
+                                key={p}
+                                className="absolute top-0 bottom-0 border-l border-dashed z-10"
+                                style={{ left: `${leftPct}%`, borderColor: tickColor }}
+                              />
+                            );
+                          })}
+                          <div
+                            className="h-full bg-[#5DF23F] rounded-l-full"
+                            style={{ width: `${progressPercent}%` }}
+                          />
+                        </div>
+                        {/* pointer bubble at current */}
+                        <div
+                          className="absolute -top-11"
+                          style={{ left: `${progressPercent}%`, transform: 'translateX(-50%)' }}
+                        >
+                          <span className="relative inline-block px-2 py-1 rounded bg-[#5DF23F] text-black text-sm font-semibold shadow">
+                            {totalWallets >= 1000 ? '1,000+' : totalWallets.toLocaleString()}
+                            <span
+                              className="absolute left-1/2"
+                              style={{
+                                transform: 'translateX(-50%)',
+                                bottom: -10,
+                                width: 0,
+                                height: 0,
+                                borderLeft: '6px solid transparent',
+                                borderRight: '6px solid transparent',
+                                borderTop: '6px solid #5DF23F',
+                                borderBottom: '6px solid transparent',
+                              }}
+                            />
                           </span>
                         </div>
-                      </React.Fragment>
-                    );
-                  });
-                })()}
+                        {/* tick labels */}
+                        <div className="mt-2 relative h-5">
+                          {[
+                            { p: 10, label: isNarrow450 ? '10%' : '10% (Base)' },
+                            { p: 12, label: '12%' },
+                            { p: 14, label: '14%' },
+                            { p: 16, label: '16%' },
+                            { p: 18, label: '18%' },
+                            { p: 20, label: isNarrow450 ? '20%' : '20% (Max)' },
+                          ].map(({ p, label }) => {
+                            const isGreen = p >= 10 && p <= CUTOFF_PERCENT;
+                            const leftPct = ((p - 10) / (20 - 10)) * 100;
+                            return (
+                              <span
+                                key={p}
+                                className={[
+                                  'absolute whitespace-nowrap font-semibold text-xs min-[810px]:text-sm',
+                                  isGreen ? 'text-[#5DF23F]' : 'text-white',
+                                  p === 10
+                                    ? 'translate-x-0 text-left'
+                                    : p === 20
+                                    ? '-translate-x-full text-right'
+                                    : '-translate-x-1/2 text-center',
+                                ].join(' ')}
+                                style={{ left: p === 10 ? '0%' : p === 20 ? '100%' : `${leftPct}%` }}
+                              >
+                                {label}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      {/* Rows */}
+                      <div className="mt-6 grid grid-cols-1 min-[600px]:grid-cols-2 gap-x-6">
+                        {(() => {
+                          const rows = [
+                            { range: '0~200 Wallets', desc: 'Standard APR (10%)', apr: 'APR 10% (Base)' },
+                            { range: '201~400 Wallets', desc: 'Standard APR (10%) + Bonus APR (2%)', apr: 'APR 12%' },
+                            { range: '401~600 Wallets', desc: 'Standard APR (10%) + Bonus APR (4%)', apr: 'APR 14%' },
+                            { range: '601~800 Wallets', desc: 'Standard APR (10%) + Bonus APR (6%)', apr: 'APR 16%' },
+                            { range: '801~1000 Wallets', desc: 'Standard APR (10%) + Bonus APR (8%)', apr: 'APR 18%' },
+                            {
+                              range: '1,000+ Wallets',
+                              desc: 'Standard APR (10%) + Bonus APR (10%)',
+                              apr: 'APR 20% (Max)',
+                            },
+                          ];
+                          const currentRangeIdx =
+                            totalWallets >= 1000 ? 5 : Math.floor(Math.max(0, totalWallets - 1) / 200);
+                          const steps = [10, 12, 14, 16, 18, 20] as const;
+                          const aprReachedIdx = Math.max(0, steps.indexOf(CUTOFF_PERCENT));
+                          return rows.map((row, idx) => {
+                            const leftActive = idx <= currentRangeIdx;
+                            const rightActive = idx <= aprReachedIdx;
+                            return (
+                              <React.Fragment key={idx}>
+                                {/* Left: wallet bracket */}
+                                <div className={idx === rows.length - 1 ? '' : 'mb-5'}>
+                                  <div
+                                    className={[
+                                      'inline-block font-bold text-sm px-3 py-2 rounded',
+                                      leftActive ? 'bg-[#5DF23F] text-black' : 'bg-white text-black',
+                                    ].join(' ')}
+                                  >
+                                    {row.range}
+                                  </div>
+                                  {/* Mobile (≤600px): one-line with check and combined APR */}
+                                  <div
+                                    className={[
+                                      'mt-2 text-sm flex items-center gap-1 min-[600px]:hidden',
+                                      leftActive ? 'text-[#5DF23F]' : 'text-white/80',
+                                    ].join(' ')}
+                                  >
+                                    {rightActive && (
+                                      <span className="inline-flex items-center justify-center w-4 h-4 rounded-full border border-[#5DF23F] text-[#5DF23F] text-[10px] leading-none">
+                                        ✓
+                                      </span>
+                                    )}
+                                    <span>
+                                      {`${row.desc} = ${
+                                        isNarrow600
+                                          ? row.apr.replace('APR ', '').replace(/\s*\((Base|Max)\)\s*/g, '')
+                                          : row.apr.replace('APR ', '')
+                                      }`}
+                                    </span>
+                                  </div>
+                                  {/* Desktop (≥600px): original two-line description */}
+                                  <div
+                                    className={[
+                                      'mt-2 text-sm hidden min-[600px]:block',
+                                      leftActive ? 'text-[#5DF23F]' : 'text-white/80',
+                                    ].join(' ')}
+                                  >
+                                    {row.desc}
+                                  </div>
+                                </div>
+                                {/* Right: APR label with reached indicator */}
+                                <div
+                                  className={[
+                                    'hidden min-[600px]:flex items-center justify-end gap-1',
+                                    idx === rows.length - 1 ? '' : 'mb-5',
+                                  ].join(' ')}
+                                >
+                                  {rightActive && (
+                                    <span className="inline-flex items-center justify-center w-4 h-4 rounded-full border border-[#5DF23F] text-[#5DF23F] text-[10px] leading-none">
+                                      ✓
+                                    </span>
+                                  )}
+                                  <span
+                                    className={[
+                                      'inline-block text-sm font-semibold text-right',
+                                      rightActive ? 'text-[#5DF23F]' : 'text-white',
+                                    ].join(' ')}
+                                  >
+                                    {row.apr}
+                                  </span>
+                                </div>
+                              </React.Fragment>
+                            );
+                          });
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="px-5 pb-7.5">
+                    <div className="rounded-[5px] bg-[#1c1c1c] px-5 py-7.5">
+                      <div className="text-[#9c9c9c] text-base leading-[20px] tracking-[0] font-semibold">
+                        Coming Soon
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

@@ -63,7 +63,28 @@ export function useEnsureChain() {
             return;
           }
         } catch (addErr) {
-          // If adding/switching via transport failed, rethrow original error
+          // If adding/switching via transport failed, continue to injected fallback
+        }
+      }
+
+      // Injected provider fallback (MetaMask, etc.)
+      const injected = typeof window !== 'undefined' ? (window as any).ethereum : undefined;
+      const injectedRequest: undefined | ((args: { method: string; params?: any[] }) => Promise<any>) =
+        injected?.request?.bind(injected);
+      if (injectedRequest) {
+        try {
+          await injectedRequest({ method: 'wallet_addEthereumChain', params: [params] });
+        } catch {
+          // ignore add error (already added)
+        }
+        try {
+          await injectedRequest({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: hexId }],
+          });
+          return;
+        } catch {
+          // fall through
         }
       }
 

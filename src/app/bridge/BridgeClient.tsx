@@ -45,7 +45,7 @@ export default function BridgeClient() {
         >
           {/* Hero Section */}
           <div className="py-12.5">
-            <div className="px-4 max-w-6xl mx-auto">
+            <div className="px-5 max-w-6xl mx-auto">
               <div className="w-full flex justify-center">
                 <DotLottieReact
                   src="/lotties/Bridge.lottie"
@@ -69,7 +69,7 @@ export default function BridgeClient() {
           </div>
 
           {/* Content */}
-          <div className="px-4 max-w-6xl mx-auto mt-12.5 min-[1200px]:mt-25">
+          <div className="px-5 max-w-6xl mx-auto mt-20 ">
             {/* Bridge Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {/* Arbitrum Official Bridge */}
@@ -113,7 +113,7 @@ export default function BridgeClient() {
             </div>
 
             {/* Disclaimer */}
-            <p className="text-[#bfbfbf] text-base leading-[1.5] tracking-[0.8px] mt-10 min-[1200px]:mt-5 mb-25 min-[1200px]:mb-50">
+            <p className="text-[#bfbfbf] text-base leading-[1.5] tracking-[0.8px] mt-5 mb-25">
               These are independent third-party services that HPP links to for your convenience. HPP is not responsible
               for their operations, security, or any potential loss incurred when using them.
             </p>

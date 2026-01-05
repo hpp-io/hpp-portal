@@ -460,7 +460,7 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
   // Get appropriate icon for transaction type and status
   const getTransactionIcon = (type: Transaction['type'], status: Transaction['status']) => {
     if (status === 'Pending') {
-      return <PendingIcon className="w-8.5 h-8.5 text-white" />;
+      return <PendingIcon className="w-8.5 h-8.5 text-white animate-spin [animation-duration:1.25s]" />;
     } else if (status === 'Completed') {
       return <CompleteIcon className="w-8.5 h-8.5 text-black" />;
     } else {
@@ -786,7 +786,7 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
           </div>
 
           <div className="py-7.5">
-            <div className="px-4 max-w-6xl mx-auto">
+            <div className="px-5 max-w-6xl mx-auto">
               <h1 className="text-[50px] leading-[1.5] font-[900] text-white text-center">Migrate to HPP</h1>
               <p className="text-xl text-[#bfbfbf] font-semibold leading-[1.5] max-w-5xl text-center">
                 Move your {token} tokens to the HPP Mainnet using the official migration paths.
@@ -979,7 +979,7 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                       </div>
                     ) : (
                       <div className="text-center mt-5">
-                        <WalletButton size="lg" />
+                        <WalletButton color="black" size="lg" />
                       </div>
                     )}
                   </div>
@@ -1185,7 +1185,7 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                         {(showAllHistory ? transactionHistory : transactionHistory.slice(0, 5)).map((tx) => (
                           <div
                             key={tx.id}
-                            className="flex items-start min-[810px]:items-start items-center p-5 bg-[rgba(18,18,18,0.1)] hover:bg-[rgba(18,18,18,0.2)] rounded-[5px] mb-2 last:mb-0 cursor-pointer gap-3 min-[810px]:gap-5 transition-colors duration-200"
+                            className="flex items-start min-[810px]:items-start items-center p-5 bg-white/10 hover:bg-white/20 rounded-[5px] mb-2 last:mb-0 cursor-pointer gap-3 min-[810px]:gap-5 transition-colors duration-200"
                             style={{ cursor: 'pointer' }}
                             onClick={() => {
                               const etherscanUrl = createEtherscanLink(tx.hash, tx.network);
@@ -1257,7 +1257,7 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                         ))}
                       </div>
                     ) : (
-                      <div className="flex flex-col items-center justify-center py-8 bg-[rgba(18,18,18,0.1)] rounded-[5px]">
+                      <div className="flex flex-col items-center justify-center py-8 bg-white/10 rounded-[5px]">
                         {isLoadingHistory ? (
                           <div className="mb-4">
                             <DotLottieReact
