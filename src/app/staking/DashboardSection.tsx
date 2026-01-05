@@ -89,7 +89,7 @@ export default function DashboardSection() {
       // Convert to Wei (18 decimals) for API request
       const stakedAmountWei = finalStakedAmount.times(new Big(10).pow(18));
       const resp = await axios.get(
-        `https://hpp-stake-stats-dev.hpp.io/api/apr/wallet/${address}?stakedAmount=${stakedAmountWei.toFixed(0)}`,
+        `${process.env.NEXT_PUBLIC_HPP_STAKING_API_URL}/apr/wallet/${address}?stakedAmount=${stakedAmountWei.toFixed(0)}`,
         {
           headers: { accept: 'application/json' },
         }

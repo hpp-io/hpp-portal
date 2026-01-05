@@ -105,7 +105,12 @@ export default function StakingClient() {
       try {
         dispatch(setAprLoading(true));
         const tierNum = Math.max(1, Math.min(6, Number(String(calcWhaleTier).replace(/\D/g, '')) || 1));
-        const resp = await axios.get('https://hpp-stake-stats-dev.hpp.io/api/apr/calculate', {
+        const apiBaseUrl = process.env.NEXT_PUBLIC_HPP_STAKING_API_URL;
+        if (!apiBaseUrl) {
+          console.error('NEXT_PUBLIC_HPP_STAKING_API_URL is not set');
+          return;
+        }
+        const resp = await axios.get(`${apiBaseUrl}/apr/calculate`, {
           params: { tier: tierNum, preRegistered: calcPreRegYes === 'yes' },
           headers: { accept: 'application/json' },
         });
@@ -228,7 +233,13 @@ export default function StakingClient() {
     }
     try {
       dispatch(setWalletAprLoading(true));
-      const resp = await axios.get(`https://hpp-stake-stats-dev.hpp.io/api/apr/wallet/${address}`, {
+      const apiBaseUrl = process.env.NEXT_PUBLIC_HPP_STAKING_API_URL;
+      if (!apiBaseUrl) {
+        console.error('NEXT_PUBLIC_HPP_STAKING_API_URL is not set');
+        dispatch(setWalletAprLoading(false));
+        return;
+      }
+      const resp = await axios.get(`${apiBaseUrl}/apr/wallet/${address}`, {
         headers: { accept: 'application/json' },
       });
       const data: any = resp?.data ?? {};
@@ -1069,12 +1080,19 @@ export default function StakingClient() {
         // Convert to Wei (18 decimals) for API request
         const stakedAmountWei = finalStakedAmount.times(new Big(10).pow(18));
         // Use toFixed(0) to avoid scientific notation
-        const resp = await axios.get(
-          `https://hpp-stake-stats-dev.hpp.io/api/apr/wallet/${address}?stakedAmount=${stakedAmountWei.toFixed(0)}`,
-          {
-            headers: { accept: 'application/json' },
+        const apiBaseUrl = process.env.NEXT_PUBLIC_HPP_STAKING_API_URL;
+        if (!apiBaseUrl) {
+          console.error('NEXT_PUBLIC_HPP_STAKING_API_URL is not set');
+          if (!cancelled) {
+            dispatch(setStakingFinalAPR(finalAPR));
+            dispatch(setStakingExpectedReward('≈0 HPP'));
+            dispatch(setStakingExpectedRewardLoading(false));
           }
-        );
+          return;
+        }
+        const resp = await axios.get(`${apiBaseUrl}/apr/wallet/${address}?stakedAmount=${stakedAmountWei.toFixed(0)}`, {
+          headers: { accept: 'application/json' },
+        });
         const data: any = resp?.data ?? {};
         const d = data?.data ?? {};
         if (!cancelled && data?.success && d) {

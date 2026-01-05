@@ -31,7 +31,8 @@ export default function PreRegistrationClient() {
       let endAt: ReturnType<typeof dayjs> | null = null;
       // Always fetch preRegistrationDate from base API
       try {
-        const resp = await axios.get('https://hpp-event-wallet.hpp.io/api/base', {
+        const apiBaseUrl = process.env.NEXT_PUBLIC_HPP_PRE_REGISTRATION_API_URL;
+        const resp = await axios.get(`${apiBaseUrl}/base`, {
           headers: { accept: 'application/json' },
         });
         const data: any = resp?.data ?? {};
@@ -91,7 +92,8 @@ export default function PreRegistrationClient() {
   // Fetch pre-registration stats from API (reusable)
   const fetchStats = React.useCallback(async () => {
     try {
-      const resp = await axios.get('https://hpp-event-wallet.hpp.io/api/stats', {
+      const apiBaseUrl = process.env.NEXT_PUBLIC_HPP_PRE_REGISTRATION_API_URL || 'https://hpp-event-wallet.hpp.io/api';
+      const resp = await axios.get(`${apiBaseUrl}/stats`, {
         headers: { accept: 'application/json' },
       });
       const data: any = resp?.data ?? {};
@@ -117,8 +119,9 @@ export default function PreRegistrationClient() {
     if (!isValidEth || !agreed || isSubmitting) return;
     setIsSubmitting(true);
     try {
+      const apiBaseUrl = process.env.NEXT_PUBLIC_HPP_PRE_REGISTRATION_API_URL || 'https://hpp-event-wallet.hpp.io/api';
       const resp = await axios.post(
-        'https://hpp-event-wallet.hpp.io/api/wallets',
+        `${apiBaseUrl}/wallets`,
         { address: ethAddress.trim() },
         {
           headers: {
@@ -270,10 +273,6 @@ export default function PreRegistrationClient() {
     const next = steps.find((s) => s > CUTOFF_PERCENT);
     return (next ?? 20) as 10 | 12 | 14 | 16 | 18 | 20;
   }, [CUTOFF_PERCENT, nextGoalAprApi]);
-
-  const formattedTotalWallets = React.useMemo(() => {
-    return totalWallets >= 1000 ? '1,000+' : totalWallets.toLocaleString();
-  }, [totalWallets]);
 
   return (
     <div className="flex flex-col h-screen bg-black text-white overflow-x-hidden">

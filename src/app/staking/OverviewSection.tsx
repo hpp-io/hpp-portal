@@ -140,7 +140,13 @@ export default function OverviewSection() {
     try {
       dispatch(setIsStatsLoading(true));
       const apiPeriod = period === 'ALL' ? 'All' : period;
-      const resp = await axios.get('https://hpp-stake-stats-dev.hpp.io/api/stats', {
+      const apiBaseUrl = process.env.NEXT_PUBLIC_HPP_STAKING_API_URL;
+      if (!apiBaseUrl) {
+        console.error('NEXT_PUBLIC_HPP_STAKING_API_URL is not set');
+        dispatch(setIsStatsLoading(false));
+        return;
+      }
+      const resp = await axios.get(`${apiBaseUrl}/stats`, {
         headers: { accept: 'application/json' },
         params: { period: apiPeriod },
       });

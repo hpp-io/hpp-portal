@@ -29,7 +29,8 @@ export default function HomeClient() {
       // Fetch preRegistrationDate from base API
       let endAt: ReturnType<typeof dayjs> | null = null;
       try {
-        const resp = await axios.get('https://hpp-event-wallet.hpp.io/api/base', {
+        const apiBaseUrl = process.env.NEXT_PUBLIC_HPP_PRE_REGISTRATION_API_URL;
+        const resp = await axios.get(`${apiBaseUrl}/base`, {
           headers: { accept: 'application/json' },
         });
         const data: any = resp?.data ?? {};
