@@ -4,7 +4,6 @@ import { wagmiAdapter, projectId } from '@/config/walletConfig';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createAppKit } from '@reown/appkit/react';
 import { mainnet, sepolia } from '@reown/appkit/networks';
-import type { Chain } from 'viem';
 import React, { type ReactNode } from 'react';
 import { cookieToInitialState, WagmiProvider, type Config } from 'wagmi';
 import { legalLinks } from '@/config/navigation';
@@ -28,8 +27,11 @@ const metadata = {
 
 // Determine AppKit networks from NEXT_PUBLIC_CHAIN
 const selectedChainEnv = (process.env.NEXT_PUBLIC_CHAIN || 'mainnet').toLowerCase();
-const appKitNetworks: [Chain] = selectedChainEnv === 'sepolia' ? [sepolia] : [mainnet];
-const appKitDefaultNetwork: Chain = selectedChainEnv === 'sepolia' ? sepolia : mainnet;
+const appKitNetworks = (selectedChainEnv === 'sepolia' ? [sepolia] : [mainnet]) as [
+  typeof sepolia | typeof mainnet,
+  ...(typeof sepolia | typeof mainnet)[]
+];
+const appKitDefaultNetwork = (selectedChainEnv === 'sepolia' ? sepolia : mainnet) as typeof sepolia | typeof mainnet;
 const termsLink = legalLinks.find((l) => (l.label || '').toLowerCase().includes('terms'))?.href;
 const privacyLink = legalLinks.find((l) => (l.label || '').toLowerCase().includes('privacy'))?.href;
 
