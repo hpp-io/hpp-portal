@@ -2,24 +2,18 @@
 
 import React from 'react';
 import { createPublicClient, http } from 'viem';
+import { hpp, hppSepolia } from 'viem/chains';
 
 export function useHppChain() {
   return React.useMemo(() => {
     const id = Number(process.env.NEXT_PUBLIC_HPP_CHAIN_ID || '181228');
-    const name = id === 190415 ? 'HPP Mainnet' : 'HPP Sepolia';
-    const rpcUrl =
-      (process.env.NEXT_PUBLIC_HPP_RPC_URL as string) ||
-      (id === 190415 ? 'https://mainnet.hpp.io' : 'https://sepolia.hpp.io');
+    const chain = id === 190415 ? hpp : hppSepolia;
+    const rpcUrl = (process.env.NEXT_PUBLIC_HPP_RPC_URL as string) || chain.rpcUrls.default.http[0] || '';
     return {
-      chain: {
-        id,
-        name,
-        nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-        rpcUrls: { default: { http: [rpcUrl] } },
-      } as const,
+      chain,
       rpcUrl,
-      id,
-      name,
+      id: chain.id,
+      name: chain.name,
     };
   }, []);
 }
