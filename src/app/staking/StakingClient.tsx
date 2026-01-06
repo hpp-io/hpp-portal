@@ -410,10 +410,16 @@ export default function StakingClient() {
     }
   }, [isConnected, address, HPP_STAKING_ADDRESS, dispatch]);
 
-  // Fetch activities on mount and when dependencies change
+  // Fetch activities on mount and when wallet connection changes
   useEffect(() => {
-    fetchActivities();
-  }, [fetchActivities]);
+    if (isConnected && address && HPP_STAKING_ADDRESS) {
+      fetchActivities();
+    } else if (!isConnected) {
+      // Clear activities when disconnected
+      dispatch(setActivities([]));
+      dispatch(setActivitiesLoading(false));
+    }
+  }, [isConnected, address, HPP_STAKING_ADDRESS, fetchActivities, dispatch]);
 
   // Poll for activities when there are local pending activities
   useEffect(() => {
