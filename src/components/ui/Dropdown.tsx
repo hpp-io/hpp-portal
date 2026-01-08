@@ -12,14 +12,15 @@ interface DropdownProps {
   onChange: React.Dispatch<React.SetStateAction<string>>;
   options: Option[];
   className?: string;
+  disabled?: boolean;
 }
 
-export default function Dropdown({ value, onChange, options, className = '' }: DropdownProps) {
+export default function Dropdown({ value, onChange, options, className = '', disabled = false }: DropdownProps) {
   const [open, setOpen] = React.useState(false);
   const rootRef = React.useRef<HTMLDivElement | null>(null);
 
   React.useEffect(() => {
-    if (!open) return;
+    if (!open || disabled) return;
     const onDown = (e: MouseEvent) => {
       if (!rootRef.current) return;
       if (!rootRef.current.contains(e.target as Node)) {
@@ -28,7 +29,7 @@ export default function Dropdown({ value, onChange, options, className = '' }: D
     };
     document.addEventListener('mousedown', onDown);
     return () => document.removeEventListener('mousedown', onDown);
-  }, [open]);
+  }, [open, disabled]);
 
   const active = options.find((o) => o.key === value);
 
@@ -36,11 +37,18 @@ export default function Dropdown({ value, onChange, options, className = '' }: D
     <div className={['relative', className].join(' ')} ref={rootRef}>
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="cursor-pointer text-xs px-3 py-1 rounded-[5px] bg-white text-black font-semibold shadow-sm hover:opacity-90 transition whitespace-nowrap"
+        onClick={() => !disabled && setOpen((v) => !v)}
+        disabled={disabled}
+        className={[
+          'text-xs px-3 py-1 rounded-[5px] font-semibold shadow-sm transition whitespace-nowrap',
+          disabled
+            ? 'bg-[#4a4a4a] text-black cursor-not-allowed'
+            : 'bg-white text-black cursor-pointer hover:opacity-90',
+        ].join(' ')}
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label="Select period"
+        aria-disabled={disabled}
       >
         {active?.label ?? ''}
         <span

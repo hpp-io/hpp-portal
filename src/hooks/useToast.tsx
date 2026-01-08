@@ -7,16 +7,16 @@ import Button from '@/components/ui/Button';
 interface ToastContextType {
   showToast: (
     title: string,
-    message: string,
-    type?: 'success' | 'error' | 'loading',
+    message: string | ReactNode,
+    type?: 'success' | 'error' | 'loading' | 'custom',
     link?: { text: string; url: string },
     actions?: ReactNode
   ) => void;
   hideToast: () => void;
   isVisible: boolean;
   title: string;
-  message: string;
-  type: 'success' | 'error' | 'loading';
+  message: string | ReactNode;
+  type: 'success' | 'error' | 'loading' | 'custom';
   link?: { text: string; url: string };
   actions?: ReactNode;
 }
@@ -26,15 +26,15 @@ const ToastContext = createContext<ToastContextType | undefined>(undefined);
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [isVisible, setIsVisible] = useState(false);
   const [title, setTitle] = useState('');
-  const [message, setMessage] = useState('');
-  const [type, setType] = useState<'success' | 'error' | 'loading'>('loading');
+  const [message, setMessage] = useState<string | ReactNode>('');
+  const [type, setType] = useState<'success' | 'error' | 'loading' | 'custom'>('loading');
   const [link, setLink] = useState<{ text: string; url: string } | undefined>(undefined);
   const [actions, setActions] = useState<ReactNode | undefined>(undefined);
 
   const showToast = (
     title: string,
-    message: string,
-    type: 'success' | 'error' | 'loading' = 'loading',
+    message: string | ReactNode,
+    type: 'success' | 'error' | 'loading' | 'custom' = 'loading',
     link?: { text: string; url: string },
     actions?: ReactNode
   ) => {
@@ -128,6 +128,13 @@ function Toast() {
           message: 'text-white font-normal text-[20px] leading-[1.5em]',
           icon: <DotLottieReact src="/lotties/Loading.lottie" autoplay loop className="w-35 h-35" />,
         };
+      case 'custom':
+        return {
+          container: 'bg-primary',
+          title: 'text-white text-[20px] font-semibold leading-[1.5em]',
+          message: 'text-white text-base leading-[1.5] tracking-[0]',
+          icon: null,
+        };
       default:
         return {
           container: 'bg-primary',
@@ -140,6 +147,44 @@ function Toast() {
 
   const styles = getToastStyles();
 
+  // Custom type: render custom content
+  if (type === 'custom') {
+    return (
+      <div
+        className="fixed inset-0 flex items-center justify-center z-50 backdrop-blur-sm"
+        style={{
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        }}
+        onClick={hideToast}
+      >
+        <div
+          className={`rounded-[5px] p-6 max-w-lg w-full mx-4 relative ${styles.container}`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Close button */}
+          <button
+            onClick={hideToast}
+            className="absolute top-4 right-4 text-white cursor-pointer hover:opacity-70 transition-opacity"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+
+          {/* Title */}
+          <h3 className={`${styles.title} mb-6 pr-8`}>{title}</h3>
+
+          {/* Custom content */}
+          <div className="text-left">
+            {typeof message === 'string' ? <p className={styles.message}>{message}</p> : message}
+            {actions && <div className="mt-4">{actions}</div>}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Default toast styles
   return (
     <div
       className="fixed inset-0 flex items-center justify-center z-50"
@@ -180,7 +225,7 @@ function Toast() {
 
         <div className="text-center">
           {/* Icon */}
-          <div className="flex justify-center mb-4">{styles.icon}</div>
+          {styles.icon && <div className="flex justify-center mb-4">{styles.icon}</div>}
 
           {/* Title */}
           <h3 className={`text-xl font-medium mb-2 ${styles.title}`}>{title}</h3>
@@ -191,7 +236,7 @@ function Toast() {
               type === 'error' ? 'max-h-48' : 'max-h-32'
             }`}
           >
-            <p className="break-words whitespace-pre-line pr-2">{message}</p>
+            {typeof message === 'string' ? <p className="break-words whitespace-pre-line pr-2">{message}</p> : message}
           </div>
 
           {/* Link for success type */}

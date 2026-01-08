@@ -8,6 +8,7 @@ import FaqSection from '@/components/ui/Faq';
 import { stakingData } from '@/static/uiData';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { HPPTickerIcon, APR_Web2, APR_Mobile2 } from '@/assets/icons';
+import AprJourneyInfo from '@/components/ui/AprJourneyInfo';
 import { ResponsiveContainer, XAxis, YAxis, CartesianGrid, ReferenceDot, AreaChart, Area, Tooltip } from 'recharts';
 import AprCalculator from './AprCalculator';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
@@ -265,13 +266,7 @@ export default function OverviewSection() {
               <div className="w-full h-full flex items-center justify-center text-[#bfbfbf] text-sm">No TVL data.</div>
             )}
           </div>
-          <div className="grid grid-cols-1 min-[900px]:grid-cols-4 border-t border-[#2D2D2D] divide-y divide-[#2D2D2D] min-[900px]:divide-y-0">
-            <div className="p-7.5 flex flex-col items-center justify-center text-center">
-              <div className="text-[#bfbfbf] text-base leading-[1.5] tracking-[0.8px]">Total Stakers</div>
-              <div className="text-white text-3xl font-semibold leading-[24px] mt-2.5">
-                {totalStakers.toLocaleString()}
-              </div>
-            </div>
+          <div className="grid grid-cols-1 min-[900px]:grid-cols-3 border-t border-[#2D2D2D] divide-y divide-[#2D2D2D] min-[900px]:divide-y-0">
             <div className="p-7.5 min-[900px]:border-l border-[#2D2D2D] flex flex-col items-center justify-center text-center">
               <div className="text-[#bfbfbf] text-base leading-[1.5] tracking-[0.8px]">Total Staked Amount</div>
               <div className="flex items-center gap-1.5 justify-center mt-2.5">
@@ -298,6 +293,7 @@ export default function OverviewSection() {
                   APR Journey
                 </span>
               </div>
+              <AprJourneyInfo />
             </div>
           </div>
           <div className="p-5 w-full">
@@ -580,7 +576,7 @@ export default function OverviewSection() {
           )}
         </div>
         {/* APR Calculator */}
-        <AprCalculator />
+        <AprCalculator showPreRegistrationNote={true} />
 
         {/* FAQ */}
         <FaqSection items={stakingData.staking.faq} className="mt-37.5 max-w-6xl mx-auto w-full" />

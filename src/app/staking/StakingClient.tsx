@@ -282,12 +282,17 @@ export default function StakingClient() {
       dispatch(setActivitiesLoading(false));
       return;
     }
+    const lambdaBase = process.env.NEXT_PUBLIC_HPP_BLOCKSCOUT_PROXY_URL;
+    if (!lambdaBase) {
+      console.error('NEXT_PUBLIC_HPP_BLOCKSCOUT_PROXY_URL is not defined');
+      dispatch(setActivitiesLoading(false));
+      return;
+    }
     try {
       dispatch(setActivitiesLoading(true));
       // Blockscout API v2 via Lambda proxy: addresses/{staking}/transactions and filter by caller wallet (fetch all pages)
       const isMainnet = HPP_CHAIN_ID === 190415;
       const network = isMainnet ? 'mainnet' : 'sepolia';
-      const lambdaBase = process.env.NEXT_PUBLIC_HPP_BLOCKSCOUT_PROXY_URL;
       const baseUrl = `${lambdaBase}/blockscout/${network}/api/v2/addresses/${HPP_STAKING_ADDRESS}/transactions`;
       let items: any[] = [];
       try {
@@ -408,7 +413,7 @@ export default function StakingClient() {
     } finally {
       dispatch(setActivitiesLoading(false));
     }
-  }, [isConnected, address, HPP_STAKING_ADDRESS, dispatch]);
+  }, [isConnected, address, HPP_STAKING_ADDRESS, HPP_CHAIN_ID, dispatch]);
 
   // Fetch activities on mount and when wallet connection changes
   useEffect(() => {
@@ -420,6 +425,13 @@ export default function StakingClient() {
       dispatch(setActivitiesLoading(false));
     }
   }, [isConnected, address, HPP_STAKING_ADDRESS, fetchActivities, dispatch]);
+
+  // Fetch activities when Dashboard tab is active
+  React.useEffect(() => {
+    if (topTab === 'dashboard' && isConnected && address && HPP_STAKING_ADDRESS) {
+      fetchActivities();
+    }
+  }, [topTab, isConnected, address, HPP_STAKING_ADDRESS, fetchActivities]);
 
   // Poll for activities when there are local pending activities
   useEffect(() => {
@@ -1171,7 +1183,7 @@ export default function StakingClient() {
 
   const expectedAprDisplay = useMemo(() => `≈${formatApr(expectedAprPercent)}%`, [expectedAprPercent, formatApr]);
   const totalStakedAmountWithInput = useMemo(() => {
-    if (!isConnected) return '-';
+    if (!isConnected) return '- HPP';
     try {
       const baseStaked = new Big((stakedTotal || '0').replace(/,/g, '') || '0');
       // Don't add amount if there's an input error

@@ -14,7 +14,28 @@ const WHALE_TIERS = [
   { key: 'T6', label: 'Tier 6' },
 ];
 
-export default function AprCalculator() {
+interface AprCalculatorOptions {
+  whaleBoost?: boolean; // true = enabled, false = disabled
+  holdAndEarn?: boolean;
+  daoParticipation?: boolean;
+}
+
+interface AprCalculatorProps {
+  options?: Partial<AprCalculatorOptions>;
+  showPreRegistrationNote?: boolean; // Show pre-registration bonus APR note
+}
+
+const DEFAULT_OPTIONS: AprCalculatorOptions = {
+  whaleBoost: true,
+  holdAndEarn: false,
+  daoParticipation: false,
+};
+
+export default function AprCalculator({ options = {}, showPreRegistrationNote = false }: AprCalculatorProps = {}) {
+  const opts = { ...DEFAULT_OPTIONS, ...options };
+  const isWhaleBoostEnabled = opts.whaleBoost ?? true;
+  const isHoldAndEarnEnabled = opts.holdAndEarn ?? false;
+  const isDaoParticipationEnabled = opts.daoParticipation ?? false;
   const dispatch = useAppDispatch();
   // Redux state
   const preRegYes = useAppSelector((state) => state.apr.calcPreRegYes);
@@ -161,21 +182,50 @@ export default function AprCalculator() {
 
             {/* Whale Boost */}
             <div className="flex items-center justify-between w-full gap-3">
-              <span className="text-white text-base leading-[1.5] tracking-[0.8px]">🐳 Whale Boost</span>
+              <span
+                className={`text-base ${
+                  isWhaleBoostEnabled
+                    ? 'text-white leading-[1.5] tracking-[0.8px]'
+                    : 'text-[#2d2d2d] leading-[1] tracking-[0]'
+                }`}
+              >
+                <span className={isWhaleBoostEnabled ? '' : 'opacity-50'}>🐳</span> Whale Boost
+              </span>
               <div className="relative z-50">
-                <Dropdown value={whaleTier} onChange={handleWhaleTierChange} options={WHALE_TIERS} />
+                <Dropdown
+                  value={whaleTier}
+                  onChange={handleWhaleTierChange}
+                  options={WHALE_TIERS}
+                  disabled={!isWhaleBoostEnabled}
+                />
               </div>
             </div>
 
-            {/* Hold & Earn - Coming Soon */}
+            {/* Hold & Earn */}
             <div className="flex items-center justify-between w-full gap-3">
-              <span className="text-[#2d2d2d] text-base leading-[1] tracking-[0]">💰 Hold & Earn</span>
+              <span
+                className={`text-base ${
+                  isHoldAndEarnEnabled
+                    ? 'text-white leading-[1.5] tracking-[0.8px]'
+                    : 'text-[#2d2d2d] leading-[1] tracking-[0]'
+                }`}
+              >
+                <span className={isHoldAndEarnEnabled ? '' : 'opacity-50'}>💰</span> Hold & Earn
+              </span>
               <span className="text-[#2d2d2d] text-base leading-[1] tracking-[0]">Coming Soon</span>
             </div>
 
-            {/* DAO Participation - Coming Soon */}
+            {/* DAO Participation */}
             <div className="flex items-center justify-between w-full gap-3">
-              <span className="text-[#2d2d2d] text-base leading-[1] tracking-[0]">📝 DAO Participation</span>
+              <span
+                className={`text-base ${
+                  isDaoParticipationEnabled
+                    ? 'text-white leading-[1.5] tracking-[0.8px]'
+                    : 'text-[#2d2d2d] leading-[1] tracking-[0]'
+                }`}
+              >
+                <span className={isDaoParticipationEnabled ? '' : 'opacity-50'}>📝</span> DAO Participation
+              </span>
               <span className="text-[#2d2d2d] text-base leading-[1] tracking-[0]">Coming Soon</span>
             </div>
           </div>
@@ -187,10 +237,12 @@ export default function AprCalculator() {
           <ul className="text-base text-white leading-[1.5] tracking-[0.8px] list-disc pl-5">
             <li>Bonus Credit can increase your APR.</li>
             <li>Your final APR is calculated as (Base APR + Bonus APR) × (Bonus Credit).</li>
-            <li>
-              The pre-registration bonus APR will continue to be offered until the allocated 1,000,000 HPP pool is fully
-              distributed.
-            </li>
+            {showPreRegistrationNote && (
+              <li>
+                The pre-registration bonus APR will continue to be offered until the allocated 1,000,000 HPP pool is
+                fully distributed.
+              </li>
+            )}
           </ul>
         </div>
       </div>

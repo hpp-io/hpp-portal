@@ -11,15 +11,32 @@ import { stakingData } from '@/static/uiData';
 import FaqSection from '@/components/ui/Faq';
 import Button from '@/components/ui/Button';
 import { CheckIcon, XLogoIcon, APR_Web1, APR_Mobile1 } from '@/assets/icons';
+import AprJourneyInfo from '@/components/ui/AprJourneyInfo';
+import AprCalculator from '../AprCalculator';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, ReferenceDot } from 'recharts';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import axios from 'axios';
 import { useToast } from '@/hooks/useToast';
 import dayjs from '@/lib/dayjs';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import {
+  setAprLoading,
+  setAprBase,
+  setAprBonus,
+  setAprWhaleCredit,
+  setAprHoldCredit,
+  setAprDaoCredit,
+  setAprTotal,
+  setFinalAPR,
+} from '@/store/slices';
 
 export default function PreRegistrationClient() {
+  const dispatch = useAppDispatch();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { showToast } = useToast();
+  // APR Calculator controls
+  const calcPreRegYes = useAppSelector((state) => state.apr.calcPreRegYes);
+  const calcWhaleTier = useAppSelector((state) => state.apr.calcWhaleTier);
 
   // Optional countdown (same env/fallback behavior as Home)
   const [remainingSec, setRemainingSec] = useState<number | null>(null);
@@ -74,6 +91,50 @@ export default function PreRegistrationClient() {
   }, []);
 
   const breakdown = React.useMemo(() => remainingBreakdown(remainingSec ?? 0), [remainingSec]);
+
+  // Fetch APR Calculator data
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      try {
+        dispatch(setAprLoading(true));
+        const tierNum = Math.max(1, Math.min(6, Number(String(calcWhaleTier).replace(/\D/g, '')) || 1));
+        const apiBaseUrl = process.env.NEXT_PUBLIC_HPP_STAKING_API_URL;
+        if (!apiBaseUrl) {
+          console.error('NEXT_PUBLIC_HPP_STAKING_API_URL is not set');
+          return;
+        }
+        const resp = await axios.get(`${apiBaseUrl}/apr/calculate`, {
+          params: { tier: tierNum, preRegistered: calcPreRegYes === 'yes' },
+          headers: { accept: 'application/json' },
+        });
+        const data: any = resp?.data ?? {};
+        const d = data?.data ?? {};
+        if (!cancelled && data?.success && d) {
+          if (typeof d.baseAPR === 'number') dispatch(setAprBase(d.baseAPR));
+          if (typeof d.bonusAPR === 'number') dispatch(setAprBonus(d.bonusAPR));
+          if (typeof d.whaleBoostCredit === 'number') dispatch(setAprWhaleCredit(d.whaleBoostCredit));
+          const holdC = d.holdCredit ?? d.holdBoostCredit ?? d.holdAPR;
+          if (typeof holdC === 'number') dispatch(setAprHoldCredit(holdC));
+          const daoC = d.daoCredit ?? d.daoBoostCredit ?? d.governanceCredit;
+          if (typeof daoC === 'number') dispatch(setAprDaoCredit(daoC));
+          if (typeof d.totalAPR === 'number') dispatch(setAprTotal(d.totalAPR));
+          // Always use finalAPR if available, otherwise calculate or use totalAPR
+          if (typeof d.finalAPR === 'number') {
+            dispatch(setFinalAPR(d.finalAPR));
+          }
+        }
+      } catch {
+        // ignore
+      } finally {
+        if (!cancelled) dispatch(setAprLoading(false));
+      }
+    };
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [calcWhaleTier, calcPreRegYes, dispatch]);
 
   // Local form state (UI only)
   const [ethAddress, setEthAddress] = useState('');
@@ -317,8 +378,8 @@ export default function PreRegistrationClient() {
                 <div className="text-[#5DF23F] text-4xl min-[810px]:text-5xl mt-4">Pre-Registration</div>
               </div>
               <div className="mt-4">
-                <p className="text-lg text-[#bfbfbf]">Pre-register now to secure up to 20% APR!</p>
-                <p className="text-lg text-[#bfbfbf]">Bring your buddy, Boost the APR, Earn together!</p>
+                <p className="text-lg text-[#bfbfbf] font-semibold">Pre-register now to secure up to 20% APR!</p>
+                <p className="text-lg text-[#bfbfbf] font-semibold">Bring your buddy, Boost the APR, Earn together!</p>
               </div>
               {remainingSec !== null && (
                 <div className="mt-5 inline-grid grid-cols-7 items-end justify-items-center text-white gap-0">
@@ -453,6 +514,18 @@ export default function PreRegistrationClient() {
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Important Notes */}
+          <div className="mt-5 px-5 max-w-6xl mx-auto w-full">
+            <div className="text-[#5DF23F] text-base leading-[1.5] tracking-[0.8px] font-semibold">Important</div>
+            <ul className="text-base text-white leading-[1.5] tracking-[0.8px] list-disc pl-5">
+              <li>
+                Pre-registration is only available through WalletConnect, MetaMask, and Phantom. Use only those wallet
+                addresses.
+              </li>
+              <li>Exchange deposit addresses and unsupported wallets are not eligible for reward APR.</li>
+            </ul>
           </div>
 
           {/* Status Cards */}
@@ -604,6 +677,7 @@ export default function PreRegistrationClient() {
                         APR Journey
                       </span>
                     </div>
+                    <AprJourneyInfo />
                   </div>
                 </div>
                 <div className="w-full p-5">
@@ -847,6 +921,11 @@ export default function PreRegistrationClient() {
                 )}
               </div>
             </div>
+          </div>
+
+          {/* APR Calculator */}
+          <div className="px-5 max-w-6xl mx-auto w-full mt-7.5">
+            <AprCalculator options={{ whaleBoost: false }} />
           </div>
 
           {/* FAQ */}
