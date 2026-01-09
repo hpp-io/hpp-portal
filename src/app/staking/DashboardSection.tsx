@@ -6,7 +6,16 @@ import Button from '@/components/ui/Button';
 import WalletButton from '@/components/ui/WalletButton';
 import { useAccount, useDisconnect } from 'wagmi';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { setActivityPage, setWalletFinalApr, setWalletFinalAprLoading } from '@/store/slices';
+import {
+  setActivityPage,
+  setWalletFinalApr,
+  setWalletFinalAprLoading,
+  setWalletBaseApr,
+  setWalletBonusApr,
+  setWalletWhaleCredit,
+  setWalletHoldCredit,
+  setWalletDaoCredit,
+} from '@/store/slices';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { formatUnits, parseUnits } from 'viem';
 import Big from 'big.js';
@@ -107,6 +116,15 @@ export default function DashboardSection() {
         } else {
           dispatch(setWalletFinalApr(null));
         }
+        // Set base APR and bonus APR
+        if (typeof d.baseAPR === 'number') dispatch(setWalletBaseApr(d.baseAPR));
+        if (typeof d.bonusAPR === 'number') dispatch(setWalletBonusApr(d.bonusAPR));
+        // Set credit values for Bonus Credit display
+        if (typeof d.whaleBoostCredit === 'number') dispatch(setWalletWhaleCredit(d.whaleBoostCredit));
+        const holdC = d.holdCredit ?? d.holdBoostCredit ?? d.holdAPR ?? null;
+        const daoC = d.daoCredit ?? d.daoBoostCredit ?? d.governanceCredit ?? null;
+        dispatch(setWalletHoldCredit(typeof holdC === 'number' ? (holdC as number) : null));
+        dispatch(setWalletDaoCredit(typeof daoC === 'number' ? (daoC as number) : null));
       } else {
         dispatch(setWalletFinalApr(null));
       }
