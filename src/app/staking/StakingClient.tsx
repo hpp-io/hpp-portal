@@ -354,7 +354,12 @@ export default function StakingClient() {
                 status,
               };
             })
-            .sort((a: any, b: any) => (a.date < b.date ? 1 : -1))
+            .sort((a: any, b: any) => {
+              // Parse dates for accurate comparison
+              const dateA = new Date(a.date.replace(' ', 'T')).getTime();
+              const dateB = new Date(b.date.replace(' ', 'T')).getTime();
+              return dateB - dateA; // Most recent first (descending)
+            })
         : [];
       // Fallback amount for withdraw/claim from token transfers if missing
       try {

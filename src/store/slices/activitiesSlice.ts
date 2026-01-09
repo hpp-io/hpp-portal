@@ -38,9 +38,19 @@ const activitiesSlice = createSlice({
       const blockscoutIds = new Set(blockscoutActivities.map((a) => a.id.toLowerCase()));
       const localToKeep = localActivities.filter((local) => !blockscoutIds.has(local.id.toLowerCase()));
       // Merge: Blockscout activities + local activities that are still pending
-      state.activities = [...blockscoutActivities, ...localToKeep].sort((a: Activity, b: Activity) =>
-        a.date < b.date ? 1 : -1
-      );
+      // Sort by date descending (most recent first), and if dates are equal, prioritize local activities
+      state.activities = [...blockscoutActivities, ...localToKeep].sort((a: Activity, b: Activity) => {
+        // Parse dates for accurate comparison
+        const dateA = new Date(a.date.replace(' ', 'T')).getTime();
+        const dateB = new Date(b.date.replace(' ', 'T')).getTime();
+        if (dateA !== dateB) {
+          return dateB - dateA; // Most recent first (descending)
+        }
+        // If dates are equal, prioritize local activities (they should appear first)
+        if (a.isLocal && !b.isLocal) return -1;
+        if (!a.isLocal && b.isLocal) return 1;
+        return 0;
+      });
       // Reset to page 1 when activities change
       state.activityPage = 1;
     },
