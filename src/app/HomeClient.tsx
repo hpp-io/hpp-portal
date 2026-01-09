@@ -143,7 +143,7 @@ export default function HomeClient() {
                       <p className="text-base text-white font-normal leading-[1.2] mt-2.5">
                         <span className="whitespace-nowrap">{pre.description} </span>
                         {preRemainingSec !== null && (
-                          <span className="text-[#5DF23F] inline max-[600px]:block max-[600px]:mt-1">
+                          <span className="text-[#5DF23F] inline whitespace-nowrap max-[600px]:block max-[600px]:mt-1">
                             {formatRemaining(preRemainingSec)}
                           </span>
                         )}
