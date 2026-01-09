@@ -98,7 +98,8 @@ export default function PreRegistrationClient() {
     const run = async () => {
       try {
         dispatch(setAprLoading(true));
-        const tierNum = Math.max(1, Math.min(6, Number(String(calcWhaleTier).replace(/\D/g, '')) || 1));
+        // Pre-registration page: whale boost is disabled, so tier should be 0
+        const tierNum = 0;
         const apiBaseUrl = process.env.NEXT_PUBLIC_HPP_STAKING_API_URL;
         if (!apiBaseUrl) {
           console.error('NEXT_PUBLIC_HPP_STAKING_API_URL is not set');
