@@ -276,149 +276,183 @@ export default function StakingClient() {
   }, [fetchWalletApr]);
 
   // Fetch activity list from Blockscout (staking interactions + HPP token transfers)
-  const fetchActivities = useCallback(async () => {
-    if (!isConnected || !address || !HPP_STAKING_ADDRESS) {
-      dispatch(setActivities([]));
-      dispatch(setActivitiesLoading(false));
-      return;
-    }
-    const lambdaBase = process.env.NEXT_PUBLIC_HPP_BLOCKSCOUT_PROXY_URL;
-    if (!lambdaBase) {
-      console.error('NEXT_PUBLIC_HPP_BLOCKSCOUT_PROXY_URL is not defined');
-      dispatch(setActivitiesLoading(false));
-      return;
-    }
-    try {
-      dispatch(setActivitiesLoading(true));
-      // Blockscout API v2 via Lambda proxy: addresses/{staking}/transactions and filter by caller wallet (fetch all pages)
-      const isMainnet = HPP_CHAIN_ID === 190415;
-      const network = isMainnet ? 'mainnet' : 'sepolia';
-      const baseUrl = `${lambdaBase}/blockscout/${network}/api/v2/addresses/${HPP_STAKING_ADDRESS}/transactions`;
-      let items: any[] = [];
-      try {
-        let nextUrl: string | null = baseUrl;
-        let guard = 0;
-        while (nextUrl && guard < 200) {
-          const resp = await axios.get(nextUrl, { headers: { accept: 'application/json' } });
-          const pageItems: any[] = resp?.data?.items ?? [];
-          if (Array.isArray(pageItems) && pageItems.length > 0) items.push(...pageItems);
-          const np = resp?.data?.next_page_params;
-          if (!np || pageItems.length === 0) {
-            nextUrl = null;
-            break;
-          }
-          const qs = new URLSearchParams();
-          if (np.index !== undefined) qs.set('index', String(np.index));
-          if (np.value !== undefined) qs.set('value', String(np.value));
-          if (np.hash !== undefined) qs.set('hash', String(np.hash));
-          if (np.inserted_at !== undefined) qs.set('inserted_at', String(np.inserted_at));
-          if (np.block_number !== undefined) qs.set('block_number', String(np.block_number));
-          if (np.fee !== undefined) qs.set('fee', String(np.fee));
-          if (np.items_count !== undefined) qs.set('items_count', String(np.items_count));
-          nextUrl = `${baseUrl}?${qs.toString()}`;
-          guard += 1;
-        }
-      } catch {}
-      const walletLc = address.toLowerCase();
-      let mapped = Array.isArray(items)
-        ? items
-            .filter((it: any) => String(it?.from?.hash || '').toLowerCase() === walletLc)
-            .map((it: any) => {
-              const method = String(it.method || it?.decoded_input?.method_call || '').toLowerCase();
-              // Status mapping
-              const res = String(it.result || '').toLowerCase();
-              const ok = String(it.status || '').toLowerCase() === 'ok';
-              const hasRevert = !!it.revert_reason;
-              const status =
-                hasRevert || res === 'failed' ? 'Rejected' : ok && res === 'success' ? 'Completed' : 'Pending';
-              // Amount from decoded parameters (18 decimals)
-              let amountDisplay: string | undefined;
-              try {
-                const params: any[] = it?.decoded_input?.parameters ?? [];
-                const p = Array.isArray(params) ? params.find((x) => x?.name === 'amount') : null;
-                if (p?.value) {
-                  const units = formatUnits(BigInt(String(p.value)), 18);
-                  amountDisplay = `${formatTokenBalance(units, 3)} HPP`;
-                }
-              } catch {}
-              const actionDisplay = method
-                ? method.toLowerCase() === 'withdraw'
-                  ? 'Claim'
-                  : method.charAt(0).toUpperCase() + method.slice(1)
-                : 'Contract Call';
-              return {
-                id: String(it.hash),
-                date: dayjs(new Date(String(it.timestamp)).getTime()).format('YYYY-MM-DD HH:mm'),
-                action: actionDisplay,
-                amount: amountDisplay,
-                status,
-              };
-            })
-            .sort((a: any, b: any) => {
-              // Parse dates for accurate comparison
-              const dateA = new Date(a.date.replace(' ', 'T')).getTime();
-              const dateB = new Date(b.date.replace(' ', 'T')).getTime();
-              return dateB - dateA; // Most recent first (descending)
-            })
-        : [];
-      // Fallback amount for withdraw/claim from token transfers if missing
-      try {
-        const needAmount = mapped.filter((m: any) => !m.amount);
-        const tokenAddr = (process.env.NEXT_PUBLIC_HPP_TOKEN_CONTRACT || '').toLowerCase();
-        if (needAmount.length > 0 && tokenAddr) {
-          // 1) Fast path: address-level token transfers (single request; includes withdraw amounts)
-          try {
-            const addrTUrl = `${lambdaBase}/blockscout/${network}/api/v2/addresses/${address}/token-transfers?type=`;
-            const addrTResp = await axios.get(addrTUrl, { headers: { accept: 'application/json' } });
-            const addrTItems: any[] = addrTResp?.data?.items ?? [];
-            if (Array.isArray(addrTItems) && addrTItems.length > 0) {
-              const stakingLc = HPP_STAKING_ADDRESS.toLowerCase();
-              const walletLc = address.toLowerCase();
-              const byHashQuick = new Map<string, string>();
-              for (const tr of addrTItems) {
-                const tokenLc = String(tr?.token?.address_hash || '').toLowerCase();
-                if (tokenLc !== tokenAddr) continue;
-                const method = String(tr?.method || '').toLowerCase();
-                // withdraw transfers: to wallet (from may not always equal staking on explorer)
-                const toLc = String(tr?.to?.hash || '').toLowerCase();
-                const fromLc = String(tr?.from?.hash || '').toLowerCase();
-                if (!(method === 'withdraw' && toLc === walletLc)) continue;
-                const txHash = String(tr?.transaction_hash || tr?.tx_hash || tr?.hash || '');
-                if (!txHash) continue;
-                const dec =
-                  Number(tr?.token?.decimals) || Number(tr?.total?.decimals) || Number(tr?.token_decimals) || 18;
-                const raw = String(tr?.total?.value ?? tr?.value ?? tr?.amount ?? '0');
-                try {
-                  const units = formatUnits(BigInt(raw), Number.isFinite(dec) ? dec : 18);
-                  byHashQuick.set(txHash.toLowerCase(), `${formatTokenBalance(units, 3)} HPP`);
-                } catch {}
-              }
-              if (byHashQuick.size > 0) {
-                mapped = mapped.map((m: any) => {
-                  if (!m.amount) {
-                    const v = byHashQuick.get(String(m.id).toLowerCase());
-                    if (v) return { ...m, amount: v };
-                  }
-                  return m;
-                });
-              }
-            }
-          } catch {}
-        }
-      } catch {
-        // ignore transfer backfill failures
+  const fetchActivities = useCallback(
+    async (retryCount = 0) => {
+      if (!isConnected || !address || !HPP_STAKING_ADDRESS) {
+        dispatch(setActivities([]));
+        dispatch(setActivitiesLoading(false));
+        return;
       }
-      // Update Blockscout activities while preserving local activities
-      // The reducer will handle merging and preserving local activities automatically
-      dispatch(updateBlockscoutActivities(mapped));
-    } catch {
-      // On error, preserve local activities and only clear Blockscout data
-      // Use updateBlockscoutActivities with empty array to clear Blockscout data but keep local activities
-      dispatch(updateBlockscoutActivities([]));
-    } finally {
-      dispatch(setActivitiesLoading(false));
-    }
-  }, [isConnected, address, HPP_STAKING_ADDRESS, HPP_CHAIN_ID, dispatch]);
+      const lambdaBase = process.env.NEXT_PUBLIC_HPP_BLOCKSCOUT_PROXY_URL;
+      if (!lambdaBase) {
+        console.error('NEXT_PUBLIC_HPP_BLOCKSCOUT_PROXY_URL is not defined');
+        dispatch(setActivitiesLoading(false));
+        return;
+      }
+      const MAX_RETRIES = 3;
+      const RETRY_DELAY = 2000; // 2 seconds
+
+      try {
+        dispatch(setActivitiesLoading(true));
+        // Blockscout API v2 via Lambda proxy: addresses/{staking}/transactions and filter by caller wallet (fetch all pages)
+        const isMainnet = HPP_CHAIN_ID === 190415;
+        const network = isMainnet ? 'mainnet' : 'sepolia';
+        const baseUrl = `${lambdaBase}/blockscout/${network}/api/v2/addresses/${HPP_STAKING_ADDRESS}/transactions`;
+        // Helper function to check if error is Internal Server Error
+        const isInternalServerError = (err: any): boolean => {
+          return (
+            err?.response?.status === 500 ||
+            err?.response?.data?.message === 'Internal Server Error' ||
+            err?.message?.includes('Internal Server Error')
+          );
+        };
+
+        // Helper function to retry API call with exponential backoff
+        const retryApiCall = async (apiCall: () => Promise<any>, callRetryCount = 0): Promise<any> => {
+          try {
+            return await apiCall();
+          } catch (err: any) {
+            if (isInternalServerError(err) && callRetryCount < MAX_RETRIES) {
+              const delay = RETRY_DELAY * (callRetryCount + 1);
+              console.log(
+                `Internal Server Error, retrying API call... (${callRetryCount + 1}/${MAX_RETRIES}) after ${delay}ms`
+              );
+              await new Promise((resolve) => setTimeout(resolve, delay));
+              return retryApiCall(apiCall, callRetryCount + 1);
+            }
+            throw err;
+          }
+        };
+
+        let items: any[] = [];
+        try {
+          let nextUrl: string | null = baseUrl;
+          let guard = 0;
+          while (nextUrl && guard < 200) {
+            const resp = await retryApiCall(() => axios.get(nextUrl!, { headers: { accept: 'application/json' } }));
+            const pageItems: any[] = resp?.data?.items ?? [];
+            if (Array.isArray(pageItems) && pageItems.length > 0) items.push(...pageItems);
+            const np = resp?.data?.next_page_params;
+            if (!np || pageItems.length === 0) {
+              nextUrl = null;
+              break;
+            }
+            const qs = new URLSearchParams();
+            if (np.index !== undefined) qs.set('index', String(np.index));
+            if (np.value !== undefined) qs.set('value', String(np.value));
+            if (np.hash !== undefined) qs.set('hash', String(np.hash));
+            if (np.inserted_at !== undefined) qs.set('inserted_at', String(np.inserted_at));
+            if (np.block_number !== undefined) qs.set('block_number', String(np.block_number));
+            if (np.fee !== undefined) qs.set('fee', String(np.fee));
+            if (np.items_count !== undefined) qs.set('items_count', String(np.items_count));
+            nextUrl = `${baseUrl}?${qs.toString()}`;
+            guard += 1;
+          }
+        } catch {}
+        const walletLc = address.toLowerCase();
+        let mapped = Array.isArray(items)
+          ? items
+              .filter((it: any) => String(it?.from?.hash || '').toLowerCase() === walletLc)
+              .map((it: any) => {
+                const method = String(it.method || it?.decoded_input?.method_call || '').toLowerCase();
+                // Status mapping
+                const res = String(it.result || '').toLowerCase();
+                const ok = String(it.status || '').toLowerCase() === 'ok';
+                const hasRevert = !!it.revert_reason;
+                const status =
+                  hasRevert || res === 'failed' ? 'Rejected' : ok && res === 'success' ? 'Completed' : 'Pending';
+                // Amount from decoded parameters (18 decimals)
+                let amountDisplay: string | undefined;
+                try {
+                  const params: any[] = it?.decoded_input?.parameters ?? [];
+                  const p = Array.isArray(params) ? params.find((x) => x?.name === 'amount') : null;
+                  if (p?.value) {
+                    const units = formatUnits(BigInt(String(p.value)), 18);
+                    amountDisplay = `${formatTokenBalance(units, 3)} HPP`;
+                  }
+                } catch {}
+                const actionDisplay = method
+                  ? method.toLowerCase() === 'withdraw'
+                    ? 'Claim'
+                    : method.charAt(0).toUpperCase() + method.slice(1)
+                  : 'Contract Call';
+                return {
+                  id: String(it.hash),
+                  date: dayjs(new Date(String(it.timestamp)).getTime()).format('YYYY-MM-DD HH:mm'),
+                  action: actionDisplay,
+                  amount: amountDisplay,
+                  status,
+                };
+              })
+              .sort((a: any, b: any) => {
+                // Parse dates for accurate comparison
+                const dateA = new Date(a.date.replace(' ', 'T')).getTime();
+                const dateB = new Date(b.date.replace(' ', 'T')).getTime();
+                return dateB - dateA; // Most recent first (descending)
+              })
+          : [];
+        // Fallback amount for withdraw/claim from token transfers if missing
+        try {
+          const needAmount = mapped.filter((m: any) => !m.amount);
+          const tokenAddr = (process.env.NEXT_PUBLIC_HPP_TOKEN_CONTRACT || '').toLowerCase();
+          if (needAmount.length > 0 && tokenAddr) {
+            // 1) Fast path: address-level token transfers (single request; includes withdraw amounts)
+            try {
+              const addrTUrl = `${lambdaBase}/blockscout/${network}/api/v2/addresses/${address}/token-transfers?type=`;
+              const addrTResp = await retryApiCall(() =>
+                axios.get(addrTUrl, { headers: { accept: 'application/json' } })
+              );
+              const addrTItems: any[] = addrTResp?.data?.items ?? [];
+              if (Array.isArray(addrTItems) && addrTItems.length > 0) {
+                const stakingLc = HPP_STAKING_ADDRESS.toLowerCase();
+                const walletLc = address.toLowerCase();
+                const byHashQuick = new Map<string, string>();
+                for (const tr of addrTItems) {
+                  const tokenLc = String(tr?.token?.address_hash || '').toLowerCase();
+                  if (tokenLc !== tokenAddr) continue;
+                  const method = String(tr?.method || '').toLowerCase();
+                  // withdraw transfers: to wallet (from may not always equal staking on explorer)
+                  const toLc = String(tr?.to?.hash || '').toLowerCase();
+                  const fromLc = String(tr?.from?.hash || '').toLowerCase();
+                  if (!(method === 'withdraw' && toLc === walletLc)) continue;
+                  const txHash = String(tr?.transaction_hash || tr?.tx_hash || tr?.hash || '');
+                  if (!txHash) continue;
+                  const dec =
+                    Number(tr?.token?.decimals) || Number(tr?.total?.decimals) || Number(tr?.token_decimals) || 18;
+                  const raw = String(tr?.total?.value ?? tr?.value ?? tr?.amount ?? '0');
+                  try {
+                    const units = formatUnits(BigInt(raw), Number.isFinite(dec) ? dec : 18);
+                    byHashQuick.set(txHash.toLowerCase(), `${formatTokenBalance(units, 3)} HPP`);
+                  } catch {}
+                }
+                if (byHashQuick.size > 0) {
+                  mapped = mapped.map((m: any) => {
+                    if (!m.amount) {
+                      const v = byHashQuick.get(String(m.id).toLowerCase());
+                      if (v) return { ...m, amount: v };
+                    }
+                    return m;
+                  });
+                }
+              }
+            } catch {}
+          }
+        } catch {
+          // ignore transfer backfill failures
+        }
+        // Update Blockscout activities while preserving local activities
+        // The reducer will handle merging and preserving local activities automatically
+        dispatch(updateBlockscoutActivities(mapped));
+      } catch {
+        // On error, preserve local activities and only clear Blockscout data
+        // Use updateBlockscoutActivities with empty array to clear Blockscout data but keep local activities
+        dispatch(updateBlockscoutActivities([]));
+      } finally {
+        dispatch(setActivitiesLoading(false));
+      }
+    },
+    [isConnected, address, HPP_STAKING_ADDRESS, HPP_CHAIN_ID, dispatch]
+  );
 
   // Fetch activities on mount and when wallet connection changes
   useEffect(() => {
