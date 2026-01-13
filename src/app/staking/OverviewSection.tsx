@@ -55,6 +55,7 @@ export default function OverviewSection() {
   // Local state
   const [period, setPeriod] = React.useState<string>('1M');
   const [aprTab, setAprTab] = React.useState<'pre' | 'whale' | 'hold' | 'dao'>('whale');
+  const [totalPreRegisteredWallets, setTotalPreRegisteredWallets] = React.useState<number>(0);
 
   // Check if screen width is 900px or less
   const [isNarrow900, setIsNarrow900] = React.useState(false);
@@ -90,7 +91,7 @@ export default function OverviewSection() {
     try {
       const wei = BigInt((totalStakedAmount || '0').replace(/[^\d]/g, '') || '0');
       const units = formatUnits(wei, 18);
-      return formatTokenBalance(units, 0);
+      return formatTokenBalance(units, 2);
     } catch {
       return '0';
     }
@@ -168,12 +169,36 @@ export default function OverviewSection() {
     }
   }, [period, dispatch]);
 
+  // Fetch pre-registration stats
+  const fetchPreRegistrationStats = React.useCallback(async () => {
+    try {
+      const apiBaseUrl = process.env.NEXT_PUBLIC_HPP_STAKING_API_URL;
+      if (!apiBaseUrl) {
+        console.error('NEXT_PUBLIC_HPP_STAKING_API_URL is not set');
+        return;
+      }
+      const resp = await axios.get(`${apiBaseUrl}/pre-registration/stats`, {
+        headers: { accept: 'application/json' },
+      });
+      const data: any = resp?.data ?? {};
+      if (data?.success && data?.data) {
+        const d = data.data;
+        if (typeof d.totalPreRegisteredWallets === 'number') {
+          setTotalPreRegisteredWallets(d.totalPreRegisteredWallets);
+        }
+      }
+    } catch {
+      // ignore network errors; keep defaults
+    }
+  }, []);
+
   // Fetch overview stats when period changes or when overview tab is active
   React.useEffect(() => {
     if (topTab === 'overview') {
       fetchOverviewStats();
+      fetchPreRegistrationStats();
     }
-  }, [fetchOverviewStats, topTab]);
+  }, [fetchOverviewStats, fetchPreRegistrationStats, topTab]);
 
   return (
     <div className="mx-auto w-full">
@@ -355,18 +380,27 @@ export default function OverviewSection() {
               </div>
               {/* Progress track */}
               {(() => {
-                const wallets = Math.max(0, Math.min(1000, totalStakers || 0));
+                const wallets = Math.max(0, Math.min(1000, totalPreRegisteredWallets || 0));
                 const progressPercent = (wallets / 1000) * 100;
                 const formattedTotalWallets = wallets >= 1000 ? '1,000+' : wallets.toLocaleString();
                 const steps = [10, 12, 14, 16, 18, 20] as const;
-                const idx = Math.max(0, Math.min(5, Math.floor(Math.max(0, wallets - 1) / 200)));
-                const CUTOFF_PERCENT = steps[idx];
+                // Calculate CUTOFF_PERCENT same as pre-registration page
+                const CUTOFF_PERCENT =
+                  wallets >= 1000
+                    ? 20
+                    : (() => {
+                        const idx = Math.max(0, Math.min(4, Math.floor(Math.max(0, wallets - 1) / 200)));
+                        return (10 + idx * 2) as 10 | 12 | 14 | 16 | 18 | 20;
+                      })();
                 return (
-                  <div className="mt-10">
-                    <div className="relative">
+                  <div className="mt-10 overflow-visible">
+                    {/* Progress track */}
+                    <div className="relative overflow-visible">
+                      {/* Track with dashed ticks */}
                       <div className="h-5 rounded-full bg-black/50 relative overflow-hidden">
                         {([12, 14, 16, 18, 20] as const).map((p) => {
                           const leftPct = ((p - 10) / (20 - 10)) * 100;
+                          // Past ticks: solid black on top of the green fill; Future ticks: faint white
                           const tickColor = p <= CUTOFF_PERCENT ? '#0b0b0b' : 'rgba(255,255,255,0.24)';
                           return (
                             <div
@@ -378,9 +412,20 @@ export default function OverviewSection() {
                         })}
                         <div className="h-full bg-[#5DF23F] rounded-l-full" style={{ width: `${progressPercent}%` }} />
                       </div>
+                      {/* pointer bubble at current */}
                       <div
-                        className="absolute -top-7"
-                        style={{ left: `${progressPercent}%`, transform: 'translateX(-50%)' }}
+                        className="absolute -top-11"
+                        style={{
+                          left: `${Math.max(
+                            1,
+                            Math.min(
+                              // Responsive max value: 96 for small screens, 97 for medium, 99 for large
+                              isNarrow600 ? 96 : isNarrow900 ? 97 : 99,
+                              progressPercent
+                            )
+                          )}%`,
+                          transform: 'translateX(-50%)',
+                        }}
                       >
                         <span className="relative inline-block px-2 py-1 rounded bg-[#5DF23F] text-black text-sm font-semibold shadow">
                           {formattedTotalWallets}
@@ -399,37 +444,37 @@ export default function OverviewSection() {
                           />
                         </span>
                       </div>
-                    </div>
-                    {/* tick labels */}
-                    <div className="mt-2 relative h-5">
-                      {[
-                        { p: 10, label: isNarrow450 ? '10%' : '10% (Base)' },
-                        { p: 12, label: '12%' },
-                        { p: 14, label: '14%' },
-                        { p: 16, label: '16%' },
-                        { p: 18, label: '18%' },
-                        { p: 20, label: isNarrow450 ? '20%' : '20% (Max)' },
-                      ].map(({ p, label }) => {
-                        const isGreen = p >= 10 && p <= CUTOFF_PERCENT;
-                        const leftPct = ((p - 10) / (20 - 10)) * 100;
-                        return (
-                          <span
-                            key={p}
-                            className={[
-                              'absolute whitespace-nowrap font-semibold text-xs min-[810px]:text-sm',
-                              isGreen ? 'text-[#5DF23F]' : 'text-white',
-                              p === 10
-                                ? 'translate-x-0 text-left'
-                                : p === 20
-                                ? '-translate-x-full text-right'
-                                : '-translate-x-1/2 text-center',
-                            ].join(' ')}
-                            style={{ left: p === 10 ? '0%' : p === 20 ? '100%' : `${leftPct}%` }}
-                          >
-                            {label}
-                          </span>
-                        );
-                      })}
+                      {/* tick labels */}
+                      <div className="mt-2 relative h-5">
+                        {[
+                          { p: 10, label: isNarrow450 ? '10%' : '10% (Base)' },
+                          { p: 12, label: '12%' },
+                          { p: 14, label: '14%' },
+                          { p: 16, label: '16%' },
+                          { p: 18, label: '18%' },
+                          { p: 20, label: isNarrow450 ? '20%' : '20% (Max)' },
+                        ].map(({ p, label }) => {
+                          const isGreen = p >= 10 && p <= CUTOFF_PERCENT;
+                          const leftPct = ((p - 10) / (20 - 10)) * 100;
+                          return (
+                            <span
+                              key={p}
+                              className={[
+                                'absolute whitespace-nowrap font-semibold text-xs min-[810px]:text-sm',
+                                isGreen ? 'text-[#5DF23F]' : 'text-white',
+                                p === 10
+                                  ? 'translate-x-0 text-left'
+                                  : p === 20
+                                  ? '-translate-x-full text-right'
+                                  : '-translate-x-1/2 text-center',
+                              ].join(' ')}
+                              style={{ left: p === 10 ? '0%' : p === 20 ? '100%' : `${leftPct}%` }}
+                            >
+                              {label}
+                            </span>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
                 );
@@ -445,18 +490,18 @@ export default function OverviewSection() {
                     { range: '801~1000 Wallets', desc: 'Standard APR (10%) + Bonus APR (8%)', apr: 'APR 18%' },
                     { range: '1,000+ Wallets', desc: 'Standard APR (10%) + Bonus APR (10%)', apr: 'APR 20% (Max)' },
                   ];
-                  const wallets = Math.max(0, Math.min(1000, totalStakers || 0));
+                  const wallets = Math.max(0, Math.min(1000, totalPreRegisteredWallets || 0));
                   const steps = [10, 12, 14, 16, 18, 20] as const;
                   const currentRangeIdx = wallets >= 1000 ? 5 : Math.floor(Math.max(0, wallets - 1) / 200);
-                  const cutoffIdx = Math.max(
-                    0,
-                    steps.indexOf(
-                      (() => {
-                        const idx = Math.max(0, Math.min(5, Math.floor(Math.max(0, wallets - 1) / 200)));
-                        return steps[idx];
-                      })()
-                    )
-                  );
+                  // Calculate CUTOFF_PERCENT same as pre-registration page
+                  const CUTOFF_PERCENT =
+                    wallets >= 1000
+                      ? 20
+                      : (() => {
+                          const idx = Math.max(0, Math.min(4, Math.floor(Math.max(0, wallets - 1) / 200)));
+                          return (10 + idx * 2) as 10 | 12 | 14 | 16 | 18 | 20;
+                        })();
+                  const cutoffIdx = Math.max(0, steps.indexOf(CUTOFF_PERCENT));
                   return rows.map((row, idx) => {
                     const leftActive = idx <= currentRangeIdx;
                     const rightActive = idx <= cutoffIdx;

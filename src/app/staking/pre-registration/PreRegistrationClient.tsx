@@ -48,8 +48,8 @@ export default function PreRegistrationClient() {
       let endAt: ReturnType<typeof dayjs> | null = null;
       // Always fetch preRegistrationDate from base API
       try {
-        const apiBaseUrl = process.env.NEXT_PUBLIC_HPP_PRE_REGISTRATION_API_URL;
-        const resp = await axios.get(`${apiBaseUrl}/base`, {
+        const apiBaseUrl = process.env.NEXT_PUBLIC_HPP_STAKING_API_URL;
+        const resp = await axios.get(`${apiBaseUrl}/pre-registration/base`, {
           headers: { accept: 'application/json' },
         });
         const data: any = resp?.data ?? {};
@@ -154,8 +154,8 @@ export default function PreRegistrationClient() {
   // Fetch pre-registration stats from API (reusable)
   const fetchStats = React.useCallback(async () => {
     try {
-      const apiBaseUrl = process.env.NEXT_PUBLIC_HPP_PRE_REGISTRATION_API_URL || 'https://hpp-event-wallet.hpp.io/api';
-      const resp = await axios.get(`${apiBaseUrl}/stats`, {
+      const apiBaseUrl = process.env.NEXT_PUBLIC_HPP_STAKING_API_URL;
+      const resp = await axios.get(`${apiBaseUrl}/pre-registration/stats`, {
         headers: { accept: 'application/json' },
       });
       const data: any = resp?.data ?? {};
@@ -181,9 +181,9 @@ export default function PreRegistrationClient() {
     if (!isValidEth || !agreed || isSubmitting) return;
     setIsSubmitting(true);
     try {
-      const apiBaseUrl = process.env.NEXT_PUBLIC_HPP_PRE_REGISTRATION_API_URL || 'https://hpp-event-wallet.hpp.io/api';
+      const apiBaseUrl = process.env.NEXT_PUBLIC_HPP_STAKING_API_URL;
       const resp = await axios.post(
-        `${apiBaseUrl}/wallets`,
+        `${apiBaseUrl}/pre-registration/wallets`,
         { address: ethAddress.trim() },
         {
           headers: {
@@ -246,12 +246,14 @@ export default function PreRegistrationClient() {
   const [chartSideMargin, setChartSideMargin] = useState<number>(40);
   const [isNarrow450, setIsNarrow450] = useState<boolean>(false);
   const [isNarrow600, setIsNarrow600] = useState<boolean>(false);
+  const [isNarrow900, setIsNarrow900] = useState<boolean>(false);
   useEffect(() => {
     const compute = () => {
       const w = typeof window !== 'undefined' ? window.innerWidth : 1024;
       setChartSideMargin(w <= 600 ? 10 : 40);
       setIsNarrow450(w <= 450);
       setIsNarrow600(w <= 600);
+      setIsNarrow900(w <= 900);
     };
     compute();
     window.addEventListener('resize', compute);
@@ -550,8 +552,17 @@ export default function PreRegistrationClient() {
                       <XAxis
                         dataKey="percent"
                         ticks={[12, 14, 16, 18, 20]}
-                        tickFormatter={(v: number) =>
-                          v === 20
+                        tickFormatter={(v: number) => {
+                          // Hide X-axis labels for values that have pill labels (10, 12, 14, 16, 18, 20 up to maxPill)
+                          const allSteps = [10, 12, 14, 16, 18, 20];
+                          const maxPill = Math.min(CUTOFF_PERCENT, 20);
+                          const pillSteps = allSteps.filter((p) => p <= maxPill);
+                          // If this value has a pill label, hide it from X-axis
+                          if (pillSteps.includes(v)) {
+                            return '';
+                          }
+                          // Otherwise, show the label as before
+                          return v === 20
                             ? isNarrow450
                               ? '20%'
                               : '20% Max'
@@ -559,8 +570,8 @@ export default function PreRegistrationClient() {
                             ? ''
                             : v > CUTOFF_PERCENT
                             ? `${v}%`
-                            : ''
-                        }
+                            : '';
+                        }}
                         tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12, dy: 0 }}
                         tickMargin={10}
                         axisLine={false}
@@ -612,12 +623,21 @@ export default function PreRegistrationClient() {
                       <div className="absolute inset-x-0 bottom-8">
                         {pillSteps.map((p) => {
                           const isBase = p === 10;
-                          const label = isBase ? (isNarrow450 ? '10%' : 'Base 10%') : `${p}%`;
+                          const isMax = p === 20;
+                          const label = isBase
+                            ? isNarrow450
+                              ? '10%'
+                              : 'Base 10%'
+                            : isMax
+                            ? isNarrow450
+                              ? '20%'
+                              : '20% Max'
+                            : `${p}%`;
                           return (
                             <span
                               key={p}
                               className={[
-                                'absolute text-xs px-2 py-1 rounded-full font-normal',
+                                'absolute text-xs px-2 py-1 rounded-full font-normal whitespace-nowrap',
                                 'bg-[#5DF23F] text-black',
                               ].join(' ')}
                               style={{ left: leftCalc(p), transform: 'translateX(-50%)' }}
@@ -743,9 +763,9 @@ export default function PreRegistrationClient() {
                       <span>Pre-Registration is live. Bring your buddy, Boost the APR, Earn together!</span>
                     </div>
                     {/* APR Goal */}
-                    <div className="mt-6">
+                    <div className="mt-6 overflow-visible">
                       {/* Progress track */}
-                      <div className="relative">
+                      <div className="relative overflow-visible">
                         {/* Track with dashed ticks */}
                         <div className="h-5 rounded-full bg-black/50 relative overflow-hidden">
                           {([12, 14, 16, 18, 20] as const).map((p) => {
@@ -768,7 +788,17 @@ export default function PreRegistrationClient() {
                         {/* pointer bubble at current */}
                         <div
                           className="absolute -top-11"
-                          style={{ left: `${progressPercent}%`, transform: 'translateX(-50%)' }}
+                          style={{
+                            left: `${Math.max(
+                              1,
+                              Math.min(
+                                // Responsive max value: 96 for small screens, 97 for medium, 99 for large
+                                isNarrow600 ? 96 : isNarrow900 ? 97 : 99,
+                                progressPercent
+                              )
+                            )}%`,
+                            transform: 'translateX(-50%)',
+                          }}
                         >
                           <span className="relative inline-block px-2 py-1 rounded bg-[#5DF23F] text-black text-sm font-semibold shadow">
                             {totalWallets >= 1000 ? '1,000+' : totalWallets.toLocaleString()}

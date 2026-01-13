@@ -29,8 +29,8 @@ export default function HomeClient() {
       // Fetch preRegistrationDate from base API
       let endAt: ReturnType<typeof dayjs> | null = null;
       try {
-        const apiBaseUrl = process.env.NEXT_PUBLIC_HPP_PRE_REGISTRATION_API_URL;
-        const resp = await axios.get(`${apiBaseUrl}/base`, {
+        const apiBaseUrl = process.env.NEXT_PUBLIC_HPP_STAKING_API_URL;
+        const resp = await axios.get(`${apiBaseUrl}/pre-registration/base`, {
           headers: { accept: 'application/json' },
         });
         const data: any = resp?.data ?? {};
