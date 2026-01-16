@@ -306,7 +306,7 @@ export default function DashboardSection() {
               </div>
               <div className="mt-2.5 flex items-center gap-2">
                 <span className="text-white text-xl font-normal leading-[24px] tracking-[0]">
-                  {isConnected ? `${derivedWithdrawable} HPP` : '- HPP'}
+                  {/* {isConnected ? `${derivedWithdrawable} HPP` : '- HPP'} */}- HPP
                 </span>
               </div>
             </div>
