@@ -364,12 +364,12 @@ export const stakingData = {
         id: 2,
         question: 'Which token do I need to stake?',
         answer:
-          'Only HPP(Mainnet) is eligible for staking. If you have HPP(Ethereum) or legacy assets (AERGO / AQT), you must complete Migration Step 2 before staking.\n\nYou can find the migration guide here: https://portal-dev.hpp.io/migration/',
+          'Only HPP(Mainnet) is eligible for staking. If you have HPP(Ethereum) or legacy assets (AERGO / AQT), you must complete Migration Step 2 before staking.\n\nYou can find the migration guide [here](https://portal-dev.hpp.io/migration/)',
       },
       {
         id: 3,
         question: 'What are the steps of Staking?',
-        answer: 'You can find the official guide here',
+        answer: 'You can find the official guide [here](https://paper.hpp.io/guide/HPP_Staking_Guideline.pdf)',
       },
       {
         id: 4,
@@ -417,7 +417,7 @@ export const stakingData = {
         id: 11,
         question: 'Is staking safe?',
         answer:
-          'HPP Staking is operated through officially audited smart contracts by Certik (https://skynet.certik.com/ko/projects/aergo). However, all on-chain operations follow the self-custody principle — users are responsible for their own transactions and security practices.',
+          'HPP Staking is operated through officially audited smart contracts by [Certik](https://skynet.certik.com/ko/projects/aergo). However, all on-chain operations follow the self-custody principle — users are responsible for their own transactions and security practices.',
       },
       {
         id: 12,

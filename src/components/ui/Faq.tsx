@@ -29,36 +29,89 @@ export function FaqSection({
     const lines = (text || '').split('\n');
     const makeLinked = (line: string, lineIdx: number) => {
       const parts: React.ReactNode[] = [];
-      const urlRe = /(https?:\/\/[^\s]+)/g;
-      let last = 0;
-      let m: RegExpExecArray | null;
-      while ((m = urlRe.exec(line)) !== null) {
-        if (m.index > last) parts.push(line.slice(last, m.index));
-        const raw = m[0];
-        // Trim trailing punctuation commonly placed after URLs in text
-        let url = raw;
-        let trailing = '';
-        while (/[).,;:\]\!]+$/.test(url)) {
-          trailing = url.slice(-1) + trailing;
-          url = url.slice(0, -1);
+      let keyCounter = 0;
+      
+      // First, handle markdown-style links [text](url)
+      const markdownLinkRe = /\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g;
+      const segments: Array<{ type: 'text' | 'link'; content: string; url?: string }> = [];
+      let lastIndex = 0;
+      let match: RegExpExecArray | null;
+      
+      // Find all markdown links
+      while ((match = markdownLinkRe.exec(line)) !== null) {
+        // Add text before the link
+        if (match.index > lastIndex) {
+          segments.push({ type: 'text', content: line.slice(lastIndex, match.index) });
         }
-        parts.push(
-          <a
-            key={`url-${lineIdx}-${m.index}`}
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline text-[#1998FF] break-words"
-          >
-            {url}
-          </a>
-        );
-        if (trailing) {
-          parts.push(trailing);
-        }
-        last = urlRe.lastIndex;
+        // Add the link
+        segments.push({ type: 'link', content: match[1], url: match[2] });
+        lastIndex = markdownLinkRe.lastIndex;
       }
-      if (last < line.length) parts.push(line.slice(last));
+      // Add remaining text after last link
+      if (lastIndex < line.length) {
+        segments.push({ type: 'text', content: line.slice(lastIndex) });
+      }
+      
+      // If no markdown links found, process as before
+      if (segments.length === 0) {
+        segments.push({ type: 'text', content: line });
+      }
+      
+      // Process each segment
+      segments.forEach((segment) => {
+        if (segment.type === 'link') {
+          parts.push(
+            <a
+              key={`md-link-${lineIdx}-${keyCounter++}`}
+              href={segment.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline text-[#1998FF] break-words"
+            >
+              {segment.content}
+            </a>
+          );
+        } else {
+          // Process plain URLs in text segments
+          const text = segment.content;
+          const urlRe = /(https?:\/\/[^\s]+)/g;
+          let textLast = 0;
+          let urlMatch: RegExpExecArray | null;
+          
+          while ((urlMatch = urlRe.exec(text)) !== null) {
+            if (urlMatch.index > textLast) {
+              parts.push(text.slice(textLast, urlMatch.index));
+            }
+            const raw = urlMatch[0];
+            // Trim trailing punctuation commonly placed after URLs in text
+            let url = raw;
+            let trailing = '';
+            while (/[).,;:\]\!]+$/.test(url)) {
+              trailing = url.slice(-1) + trailing;
+              url = url.slice(0, -1);
+            }
+            parts.push(
+              <a
+                key={`url-${lineIdx}-${keyCounter++}`}
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline text-[#1998FF] break-words"
+              >
+                {url}
+              </a>
+            );
+            if (trailing) {
+              parts.push(trailing);
+            }
+            textLast = urlRe.lastIndex;
+          }
+          if (textLast < text.length) {
+            parts.push(text.slice(textLast));
+          }
+        }
+      });
+      
       return parts;
     };
     lines.forEach((line, i) => {
