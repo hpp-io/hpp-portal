@@ -364,7 +364,7 @@ export const stakingData = {
         id: 2,
         question: 'Which token do I need to stake?',
         answer:
-          'Only HPP(Mainnet) is eligible for staking. If you have HPP(Ethereum) or legacy assets (AERGO / AQT), you must complete Migration Step 2 before staking.\n\nYou can find the migration guide [here](https://portal-dev.hpp.io/migration/)',
+          'Only HPP(Mainnet) is eligible for staking. If you have HPP(Ethereum) or legacy assets (AERGO / AQT), you must complete Migration Step 2 before staking.\n\nYou can find the migration guide [here](https://portal.hpp.io/migration/)',
       },
       {
         id: 3,
@@ -432,6 +432,42 @@ export const stakingData = {
       },
     ],
   },
+};
+
+// Airdrop Page Data
+export const airdropData = {
+  faq: [
+    {
+      id: 1,
+      question: 'What is the $HPP Token?',
+      answer:
+        'The $HPP token is the native utility and governance token of the HPP ecosystem. It is used for staking, governance participation, ecosystem incentives, and accessing various services across HPP and its partner dApps.',
+    },
+    {
+      id: 2,
+      question: 'Who is eligible to claim the $HPP Airdrop?',
+      answer:
+        'Eligibility depends on specific airdrop campaigns. Generally, users who participated in HPP governance votes, ecosystem activities, or official HPP programs may qualify. To confirm, simply connect the wallet you used during the campaign.',
+    },
+    {
+      id: 3,
+      question: 'What is the deadline to claim the $HPP Airdrop?',
+      answer:
+        'Claim deadlines vary by event. Each campaign has its own claim window and, when applicable, a vesting schedule. Please check the airdrop\'s details page for the exact timeline and deadline.',
+    },
+    {
+      id: 4,
+      question: 'After claiming the airdrop rewards, how can I maximize my rewards?',
+      answer:
+        'After claiming your $HPP airdrop, you can stake your tokens to earn additional rewards. In general, staking earlier and staking larger amounts increases your potential returns.\n\nCurrently, you can earn up to 23% APR (Season 1) in additional rewards on top of your claimed amount, depending on the staking program and its conditions. With each new staking season, APRs are designed to increase over time, unlocking higher reward potential for continued participation.',
+    },
+    {
+      id: 5,
+      question: 'How can I check the tokens I\'ve already claimed in my wallet?',
+      answer:
+        'Once tokens are claimed, they are sent directly to your connected wallet and can be viewed in your wallet balance. If the tokens are not visible, add the official token contract address manually or verify the transaction using a blockchain explorer.\n\nFollow the [guideline](https://docs.hpp.io/getting-started/connect-to-hpp) to connect your wallet to the HPP platform.',
+    },
+  ],
 };
 
 // Common UI Data
