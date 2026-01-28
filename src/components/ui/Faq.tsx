@@ -30,13 +30,13 @@ export function FaqSection({
     const makeLinked = (line: string, lineIdx: number) => {
       const parts: React.ReactNode[] = [];
       let keyCounter = 0;
-      
+
       // First, handle markdown-style links [text](url)
       const markdownLinkRe = /\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g;
       const segments: Array<{ type: 'text' | 'link'; content: string; url?: string }> = [];
       let lastIndex = 0;
       let match: RegExpExecArray | null;
-      
+
       // Find all markdown links
       while ((match = markdownLinkRe.exec(line)) !== null) {
         // Add text before the link
@@ -51,12 +51,12 @@ export function FaqSection({
       if (lastIndex < line.length) {
         segments.push({ type: 'text', content: line.slice(lastIndex) });
       }
-      
+
       // If no markdown links found, process as before
       if (segments.length === 0) {
         segments.push({ type: 'text', content: line });
       }
-      
+
       // Process each segment
       segments.forEach((segment) => {
         if (segment.type === 'link') {
@@ -77,7 +77,7 @@ export function FaqSection({
           const urlRe = /(https?:\/\/[^\s]+)/g;
           let textLast = 0;
           let urlMatch: RegExpExecArray | null;
-          
+
           while ((urlMatch = urlRe.exec(text)) !== null) {
             if (urlMatch.index > textLast) {
               parts.push(text.slice(textLast, urlMatch.index));
@@ -111,7 +111,7 @@ export function FaqSection({
           }
         }
       });
-      
+
       return parts;
     };
     lines.forEach((line, i) => {
