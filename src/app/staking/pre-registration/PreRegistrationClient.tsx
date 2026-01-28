@@ -142,6 +142,7 @@ export default function PreRegistrationClient() {
   const [agreed, setAgreed] = useState(false);
   const isValidEth = /^0x[a-fA-F0-9]{40}$/.test(ethAddress.trim());
   const termsLink = legalLinks.find((l) => (l.label || '').toLowerCase().includes('terms'))?.href;
+  const privacyLink = legalLinks.find((l) => (l.label || '').toLowerCase().includes('privacy'))?.href;
   const [isSubmitting, setIsSubmitting] = useState(false);
   const shareIntentUrl = React.useMemo(() => {
     const base = (process.env.NEXT_PUBLIC_SITE_URL || '').replace(/\/$/, '');
@@ -500,6 +501,16 @@ export default function PreRegistrationClient() {
                         className="underline text-white font-semibold"
                       >
                         Terms & Conditions
+                      </a>
+                      {' '}
+                      and{' '}
+                      <a
+                        href={privacyLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline text-white font-semibold"
+                      >
+                        Privacy Policy
                       </a>
                     </span>
                   </label>
