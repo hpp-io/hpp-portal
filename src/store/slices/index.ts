@@ -8,4 +8,4 @@ export * from './activitiesSlice';
 export * from './balanceSlice';
 export * from './cooldownSlice';
 export * from './overviewSlice';
-
+export * from './airdropSlice';

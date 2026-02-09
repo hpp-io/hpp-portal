@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Sidebar from '@/components/ui/Sidebar';
 import Header from '@/components/ui/Header';
@@ -12,16 +12,64 @@ import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import FaqSection from '@/components/ui/Faq';
 import DontMissAirdrop from '@/components/ui/DontMissAirdrop';
 import { airdropData } from '@/static/uiData';
-import { mockAirdropEvents, mockAirdropEventIds, formatReward, type AirdropEvent, type AirdropStatus } from './mockData';
+import axios from 'axios';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { setAirdropLoading, setAirdropEvents, type AirdropType, type AirdropEventData, AirdropStatus } from '@/store/slices';
+import { formatReward } from '@/lib/helpers';
 
-// Re-export types for backward compatibility
-export type { AirdropEvent, AirdropStatus };
+
+interface ApiAirdropEvent {
+  id: string;
+  name: string;
+  eventName?: string;
+  reward: number;
+  starts: string;
+  ends: string;
+  status: AirdropStatus;
+  icon?: string;
+  contract?: string;
+  [key: string]: any;
+}
+
+// Cache duration: 5 minutes
+const CACHE_DURATION = 5 * 60 * 1000;
 
 export default function AirdropClient() {
   const router = useRouter();
+  const dispatch = useAppDispatch();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'HPP' | 'DApp' | 'Collaboration'>('HPP');
-  const [expandedEvents, setExpandedEvents] = useState<Set<string>>(new Set([mockAirdropEventIds[0]]));
+  const [expandedEvents, setExpandedEvents] = useState<Set<string>>(new Set());
+
+  // Get data from Redux
+  const airdropState = useAppSelector((state) => state.airdrop);
+  
+  // Map API type to tab name
+  const getApiType = (tab: 'HPP' | 'DApp' | 'Collaboration'): AirdropType => {
+    switch (tab) {
+      case 'HPP':
+        return 'hpp';
+      case 'DApp':
+        return 'dapp';
+      case 'Collaboration':
+        return 'collaboration';
+      default:
+        return 'hpp';
+    }
+  };
+
+  const apiType = useMemo(() => getApiType(activeTab), [activeTab]);
+  const eventsData = airdropState.events[apiType];
+  const isLoading = airdropState.loading[apiType];
+  const lastFetched = airdropState.lastFetched[apiType];
+
+  // Convert Redux data to AirdropEvent format (with icon)
+  const airdropEvents = useMemo(() => {
+    return eventsData.map((event: AirdropEventData) => ({
+      ...event,
+      icon: HPPTickerIcon,
+    }));
+  }, [eventsData]);
 
   const toggleEvent = (eventId: string) => {
     setExpandedEvents((prev) => {
@@ -34,6 +82,90 @@ export default function AirdropClient() {
       return next;
     });
   };
+
+  // Fetch airdrop events from API (only if not cached or cache expired)
+  useEffect(() => {
+    const fetchAirdropEvents = async () => {
+      // Check if we have cached data that's still valid
+      const now = Date.now();
+      if (lastFetched && now - lastFetched < CACHE_DURATION && eventsData.length > 0) {
+        // Use cached data, set first event as expanded if available
+        if (eventsData.length > 0 && expandedEvents.size === 0) {
+          setExpandedEvents(new Set([eventsData[0].id]));
+        }
+        return;
+      }
+
+      // Clear expanded events when switching tabs
+      setExpandedEvents(new Set());
+      dispatch(setAirdropLoading({ type: apiType, loading: true }));
+      
+      try {
+        const apiBaseUrl = process.env.NEXT_PUBLIC_HPP_STAKING_API_URL;
+        if (!apiBaseUrl) {
+          console.error('NEXT_PUBLIC_HPP_STAKING_API_URL is not set');
+          dispatch(setAirdropLoading({ type: apiType, loading: false }));
+          return;
+        }
+
+        const response = await axios.get(`${apiBaseUrl}/airdrop/type/${apiType}`, {
+          headers: { accept: 'application/json' },
+        });
+
+        // Handle different response structures
+        let apiEventsData: any[] = [];
+        if (Array.isArray(response.data)) {
+          apiEventsData = response.data;
+        } else if (response.data?.data && Array.isArray(response.data.data)) {
+          apiEventsData = response.data.data;
+        } else if (response.data?.events && Array.isArray(response.data.events)) {
+          apiEventsData = response.data.events;
+        }
+
+        // Map API response to Redux-friendly AirdropEventData format (store extra fields if present)
+        const mappedEvents: AirdropEventData[] = apiEventsData.map((event: ApiAirdropEvent) => ({
+          id: event.id,
+          name: event.name || 'Unknown Event',
+          eventName: event.eventName || event.name || 'HPP',
+          reward: event.reward ?? 0,
+          starts: event.starts ?? '-',
+          ends: event.ends ?? '-',
+          status: event.status ?? 'Coming Soon',
+          // extended fields (optional)
+          icon: event.icon,
+          description: event.description,
+          claimPeriodStart: event.claimPeriodStart,
+          claimPeriodEnd: event.claimPeriodEnd,
+          vestingPeriodStart: event.vestingPeriodStart,
+          vestingPeriodEnd: event.vestingPeriodEnd,
+          vestingDuration: event.vestingDuration,
+          eligibilityDescription: event.eligibilityDescription,
+          governanceVoteLink: (event as any).governanceVoteLink,
+          governanceVoteText: (event as any).governanceVoteText,
+          imageUrl: (event as any).imageUrl,
+          contract: (event as any).contract,
+        }));
+
+        // Save to Redux
+        dispatch(setAirdropEvents({ type: apiType, events: mappedEvents }));
+        
+        // Set first event as expanded if available
+        if (mappedEvents.length > 0) {
+          setExpandedEvents(new Set([mappedEvents[0].id]));
+        } else {
+          setExpandedEvents(new Set());
+        }
+      } catch (error) {
+        console.error('Failed to fetch airdrop events:', error);
+        // Set empty array on error
+        dispatch(setAirdropEvents({ type: apiType, events: [] }));
+        setExpandedEvents(new Set());
+      }
+    };
+
+    fetchAirdropEvents();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, apiType]);
 
   return (
     <div className="flex flex-col h-screen bg-black overflow-x-hidden">
@@ -144,10 +276,30 @@ export default function AirdropClient() {
             </div>
 
             {/* Mobile/Tablet View (1200px 미만) */}
-            {activeTab === 'HPP' && (
-              <div className="min-[1200px]:hidden">
-                {mockAirdropEvents.map((event) => {
+            <div className="min-[1200px]:hidden">
+              {isLoading ? (
+                <div className="rounded-[5px] bg-[#121212] border border-[#2D2D2D] p-5 flex items-center justify-center">
+                  <DotLottieReact
+                    src="/lotties/Loading.lottie"
+                    autoplay
+                    loop
+                    className="w-[60px] h-[60px]"
+                    renderConfig={{
+                      autoResize: true,
+                      devicePixelRatio: typeof window !== 'undefined' ? window.devicePixelRatio : 2,
+                      freezeOnOffscreen: true,
+                    }}
+                    layout={{ fit: 'contain', align: [0.5, 0.5] }}
+                  />
+                </div>
+              ) : airdropEvents.length === 0 ? (
+                <div className="rounded-[5px] bg-[#121212] border border-[#2D2D2D] p-5 flex items-center justify-center">
+                  <p className="text-[#bfbfbf] text-base leading-[1]">Coming Soon+</p>
+                </div>
+              ) : (
+                airdropEvents.map((event) => {
                   const IconComponent = event.icon;
+
                   return (
                     <div key={event.id} className="rounded-[5px] bg-[#121212] border border-[#2D2D2D] overflow-hidden">
                       {/* Header */}
@@ -217,9 +369,9 @@ export default function AirdropClient() {
                       </div>
                     </div>
                   );
-                })}
-              </div>
-            )}
+                  })
+                )}
+            </div>
 
             {/* Desktop View (1200px+) - Table Style */}
             <div className="hidden min-[1200px]:block overflow-hidden">
@@ -234,9 +386,28 @@ export default function AirdropClient() {
               </div>
 
               {/* Table Content */}
-              {activeTab === 'HPP' ? (
-                <div>
-                  {mockAirdropEvents.map((event) => {
+              <div>
+                {isLoading ? (
+                  <div className="px-5 py-4 flex items-center justify-center">
+                    <DotLottieReact
+                      src="/lotties/Loading.lottie"
+                      autoplay
+                      loop
+                      className="w-[60px] h-[60px]"
+                      renderConfig={{
+                        autoResize: true,
+                        devicePixelRatio: typeof window !== 'undefined' ? window.devicePixelRatio : 2,
+                        freezeOnOffscreen: true,
+                      }}
+                      layout={{ fit: 'contain', align: [0.5, 0.5] }}
+                    />
+                  </div>
+                ) : airdropEvents.length === 0 ? (
+                  <div className="px-5 py-4 flex items-center justify-center">
+                    <p className="text-[#bfbfbf] text-base leading-[1]">Coming Soon</p>
+                  </div>
+                ) : (
+                  airdropEvents.map((event) => {
                     const IconComponent = event.icon;
                     return (
                       <div
@@ -285,25 +456,10 @@ export default function AirdropClient() {
                         </div>
                       </div>
                     );
-                  })}
-                </div>
-              ) : (
-                <div className="flex items-center justify-center">
-                  <p className="text-[#bfbfbf] text-base leading-[1] py-4">Coming Soon</p>
-                </div>
-              )}
-            </div>
-
-            {/* Coming Soon Message for DApp and Collaboration (Mobile/Tablet) */}
-            {(activeTab === 'DApp' || activeTab === 'Collaboration') && (
-              <div className="min-[1200px]:hidden">
-                <div className="rounded-[5px] bg-[#121212] border border-[#2D2D2D] overflow-hidden">
-                  <div className="flex items-center justify-center">
-                    <p className="text-[#bfbfbf] text-base leading-[1] py-4">Coming Soon</p>
-                  </div>
-                </div>
+                    })
+                  )}
               </div>
-            )}
+            </div>
           </div>
 
           {/* FAQ Section */}
