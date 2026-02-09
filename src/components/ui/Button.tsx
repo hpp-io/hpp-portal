@@ -2,7 +2,7 @@ import React from 'react';
 
 interface ButtonProps {
   children: React.ReactNode;
-  variant?: 'primary' | 'secondary' | 'white' | 'black';
+  variant?: 'primary' | 'secondary' | 'white' | 'black' | 'green';
   size?: 'sm' | 'md' | 'lg';
   className?: string;
   onClick?: () => void;
@@ -30,13 +30,15 @@ export default function Button({
   noPointer = false,
 }: ButtonProps) {
   const baseClasses =
-    'inline-flex items-center justify-center font-medium rounded-3xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-0 gap-2 whitespace-nowrap hover:opacity-95 active:opacity-90 disabled:hover:opacity-50';
+    'inline-flex items-center justify-center font-medium rounded-3xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-0 gap-2 whitespace-nowrap';
+  const interactiveClasses = disabled ? '' : 'hover:opacity-95 active:opacity-90';
 
   const variantClasses = {
-    primary: 'bg-primary text-white focus:ring-transparent hover:brightness-95',
-    secondary: 'bg-gray-100 text-gray-900 focus:ring-transparent hover:bg-gray-200',
-    white: '!bg-white !text-black !border-0 focus:ring-transparent hover:bg-[#f5f5f5]',
-    black: 'bg-black text-white focus:ring-transparent hover:bg-[#0d0d0d] active:bg-[#1a1a1a]',
+    primary: 'bg-primary text-white focus:ring-transparent',
+    secondary: 'bg-gray-100 text-gray-900 focus:ring-transparent',
+    white: '!bg-white !text-black !border-0 focus:ring-transparent',
+    black: 'bg-black text-white focus:ring-transparent',
+    green: 'bg-[#5DF23F] text-black focus:ring-transparent',
   } as const;
 
   const sizeClasses = {
@@ -46,7 +48,7 @@ export default function Button({
   };
 
   const cursorClasses = disabled ? 'opacity-50 cursor-not-allowed' : noPointer ? 'cursor-default' : 'cursor-pointer';
-  const classes = `${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${
+  const classes = `${baseClasses} ${interactiveClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${
     fullWidth ? 'w-full' : ''
   } ${cursorClasses} ${className}`;
 
