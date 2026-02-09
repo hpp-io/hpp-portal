@@ -1,9 +1,9 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
-type StakingTab = 'stake' | 'unstake' | 'claim';
-type TopTab = 'overview' | 'staking' | 'dashboard';
+export type StakingTab = 'stake' | 'unstake' | 'claim';
+export type TopTab = 'overview' | 'staking' | 'dashboard';
 
-interface UiState {
+export interface UiState {
   sidebarOpen: boolean;
   topTab: TopTab;
   activeTab: StakingTab;
@@ -33,4 +33,3 @@ const uiSlice = createSlice({
 
 export const { setSidebarOpen, setTopTab, setActiveTab } = uiSlice.actions;
 export default uiSlice.reducer;
-

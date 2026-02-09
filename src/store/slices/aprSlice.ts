@@ -8,7 +8,7 @@ interface AprState {
   aprLoading: boolean;
   aprBase: number;
   aprBonus: number;
-  aprWhaleCredit: number;
+  aprWhaleCredit: number | undefined;
   aprHoldCredit: number | undefined;
   aprDaoCredit: number | undefined;
   aprTotal: number;
@@ -21,7 +21,7 @@ const initialState: AprState = {
   aprLoading: false,
   aprBase: 10,
   aprBonus: 0,
-  aprWhaleCredit: 1,
+  aprWhaleCredit: undefined,
   aprHoldCredit: undefined,
   aprDaoCredit: undefined,
   aprTotal: 10,
@@ -78,4 +78,3 @@ export const {
   setFinalAPR,
 } = aprSlice.actions;
 export default aprSlice.reducer;
-
