@@ -1151,11 +1151,21 @@ export default function MigrationClient({
                             </label>
                             <div className="flex flex-col items-end space-y-1">
                               <span className="text-sm min-[810px]:text-base font-semibold text-black tracking-[0.8px] leading-[1.2] text-right min-[810px]:text-left">
-                                Balance:
-                                <br className="block min-[810px]:hidden" />{" "}
-                                {isBalanceLoading
-                                  ? "Loading..."
-                                  : `${balance || "0"}`}
+                                {isBalanceLoading ? (
+                                  <span className="inline-flex items-center justify-center align-middle">
+                                    <DotLottieReact
+                                      src="/lotties/Loading.lottie"
+                                      autoplay
+                                      loop
+                                      style={{ width: 24, height: 24, filter: "invert(1)" }}
+                                    />
+                                  </span>
+                                ) : (
+                                  <>
+                                    Balance:
+                                    <br className="block min-[810px]:hidden" /> {`${balance || "0"}`}
+                                  </>
+                                )}
                               </span>
                             </div>
                           </div>
@@ -1259,7 +1269,16 @@ export default function MigrationClient({
                               Balance:
                               <br className="block min-[810px]:hidden" />{" "}
                               {isHppBalanceLoading
-                                ? "Loading..."
+                                ? (
+                                    <span className="inline-flex items-center justify-center align-middle">
+                                      <DotLottieReact
+                                        src="/lotties/Loading.lottie"
+                                        autoplay
+                                        loop
+                                        style={{ width: 24, height: 24, filter: "invert(1)" }}
+                                      />
+                                    </span>
+                                  )
                                 : `${hppBalance || "0"}`}
                             </span>
                           </div>
