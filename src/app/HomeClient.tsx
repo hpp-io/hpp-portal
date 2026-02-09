@@ -108,7 +108,30 @@ export default function HomeClient() {
             {(() => {
               const pre = (homeData.quickActions as any[]).find((a) => a.title === 'Pre-Registration');
               if (!pre) return null;
-              const href: string | undefined = pre.href;
+              
+              // Loading state
+              if (preRemainingSec === null) {
+                return (
+                  <div className="mb-5">
+                    <div className="rounded-[5px] p-6 min-[1200px]:p-8 bg-[#4b4ab0] text-white flex flex-col items-center justify-center">
+                      <DotLottieReact
+                        src="/lotties/Loading.lottie"
+                        autoplay
+                        loop
+                        className="w-[60px] h-[60px]"
+                        renderConfig={{
+                          autoResize: true,
+                          devicePixelRatio: typeof window !== 'undefined' ? window.devicePixelRatio : 2,
+                          freezeOnOffscreen: true,
+                        }}
+                        layout={{ fit: 'contain', align: [0.5, 0.5] }}
+                      />
+                    </div>
+                  </div>
+                );
+              }
+              
+              const href: string | undefined = preRemainingSec === 0 ? pre.openHref : pre.href;
               const external = href ? /^https?:\/\//.test(href) : false;
               return (
                 <div className="mb-5">
@@ -135,14 +158,27 @@ export default function HomeClient() {
                       <div className="flex gap-3 justify-start">
                         <h3 className="text-3xl font-[900] leading-[1.2]">
                           HPP Staking{' '}
+                          {preRemainingSec === 0 ? (
+                            <>
+                              <br className="hidden max-[900px]:block" />
+                              <span className="text-[#5DF23F] whitespace-nowrap inline">
+                                Season 1
+                              </span>
+                              {' '}
+                              <span className="text-white whitespace-nowrap inline">
+                                is now open!
+                              </span>
+                            </>
+                          ) : (
                           <span className="text-[#5DF23F] whitespace-nowrap inline max-[600px]:block max-[600px]:mt-1">
                             Pre-Registration
                           </span>
+                          )}
                         </h3>
                       </div>
                       <p className="text-base text-white font-normal leading-[1.2] mt-2.5">
-                        <span className="whitespace-nowrap">{pre.description} </span>
-                        {preRemainingSec !== null && (
+                        <span>{preRemainingSec === 0 ? pre.openDescription : pre.description} </span>
+                        {preRemainingSec !== null && preRemainingSec !== 0 && (
                           <span className="text-[#5DF23F] inline whitespace-nowrap max-[600px]:block max-[600px]:mt-1">
                             {formatRemaining(preRemainingSec)}
                           </span>
@@ -151,7 +187,7 @@ export default function HomeClient() {
                       {href && (
                         <div className="mt-4 self-center hidden max-[810px]:block max-[599px]:flex max-[599px]:justify-center max-[599px]:ml-0">
                           <Button variant="black" size="md" href={href} external={external} className="cursor-pointer">
-                            Register Now
+                            {preRemainingSec === 0 ? 'Go to Stake' : 'Register Now'}
                           </Button>
                         </div>
                       )}
@@ -159,7 +195,7 @@ export default function HomeClient() {
                     {href && (
                       <div className="mt-4 self-center hidden min-[810px]:block min-[810px]:mt-0 min-[810px]:ml-6">
                         <Button variant="black" size="md" href={href} external={external} className="cursor-pointer">
-                          Register Now
+                          {preRemainingSec === 0 ? 'Go to Stake' : 'Register Now'}
                         </Button>
                       </div>
                     )}
