@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import Header from '@/components/ui/Header';
 import Footer from '@/components/ui/Footer';
 import Sidebar from '@/components/ui/Sidebar';
@@ -31,15 +32,21 @@ import {
 } from '@/store/slices';
 
 export default function PreRegistrationClient() {
+  const router = useRouter();
   const dispatch = useAppDispatch();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { showToast } = useToast();
+  // Optional countdown (same env/fallback behavior as Home)
+  const [remainingSec, setRemainingSec] = useState<number | null>(null);
+
+  // Redirect to /staking only when countdown ends.
+  useEffect(() => {
+    router.replace('/staking');
+  }, [router]);
+
   // APR Calculator controls
   const calcPreRegYes = useAppSelector((state) => state.apr.calcPreRegYes);
   const calcWhaleTier = useAppSelector((state) => state.apr.calcWhaleTier);
-
-  // Optional countdown (same env/fallback behavior as Home)
-  const [remainingSec, setRemainingSec] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -191,7 +198,7 @@ export default function PreRegistrationClient() {
             accept: 'application/json',
             'Content-Type': 'application/json',
           },
-        }
+        },
       );
       const data: any = resp?.data ?? {};
       if (data?.success === false) {
@@ -215,7 +222,7 @@ export default function PreRegistrationClient() {
           leftIcon={<XLogoIcon className="w-4 h-4" />}
         >
           Invite Friends
-        </Button>
+        </Button>,
       );
       await fetchStats();
     } catch (e: any) {
@@ -269,7 +276,7 @@ export default function PreRegistrationClient() {
       const clamped = Math.max(10, Math.min(20, Math.round(currentAprApi)));
       const nearest = steps.reduce(
         (prev, curr) => (Math.abs(curr - clamped) < Math.abs(prev - clamped) ? curr : prev),
-        steps[0]
+        steps[0],
       );
       return nearest;
     }
@@ -331,13 +338,16 @@ export default function PreRegistrationClient() {
       const clamped = Math.max(10, Math.min(20, Math.round(nextGoalAprApi)));
       const nearest = steps.reduce(
         (prev, curr) => (Math.abs(curr - clamped) < Math.abs(prev - clamped) ? curr : prev),
-        steps[0]
+        steps[0],
       );
       return nearest;
     }
     const next = steps.find((s) => s > CUTOFF_PERCENT);
     return (next ?? 20) as 10 | 12 | 14 | 16 | 18 | 20;
   }, [CUTOFF_PERCENT, nextGoalAprApi]);
+
+  // Prevent UI flash while redirecting
+  if (remainingSec === 0) return null;
 
   return (
     <div className="flex flex-col h-screen bg-black text-white overflow-x-hidden">
@@ -501,8 +511,7 @@ export default function PreRegistrationClient() {
                         className="underline text-white font-semibold"
                       >
                         Terms & Conditions
-                      </a>
-                      {' '}
+                      </a>{' '}
                       and{' '}
                       <a
                         href={privacyLink}
@@ -519,7 +528,7 @@ export default function PreRegistrationClient() {
                   <Button
                     variant="black"
                     size="lg"
-                    disabled={!isValidEth || !agreed || isSubmitting}
+                    disabled={!isValidEth || !agreed || isSubmitting || remainingSec === 0}
                     className="!rounded-full px-6 py-3"
                     onClick={handleRegisterClick}
                   >
@@ -534,10 +543,7 @@ export default function PreRegistrationClient() {
           <div className="mt-5 px-5 max-w-6xl mx-auto w-full">
             <div className="text-[#5DF23F] text-base leading-[1.5] tracking-[0.8px] font-semibold">Important</div>
             <ul className="text-base text-white leading-[1.5] tracking-[0.8px] list-disc pl-5">
-              <li>
-                Pre-registration is only available through WalletConnect, MetaMask, and Phantom. Use only those wallet
-                addresses.
-              </li>
+              <li>Pre-registration is available through EVM-compatible wallet addresses.</li>
               <li>Exchange deposit addresses and unsupported wallets are not eligible for reward APR.</li>
             </ul>
           </div>
@@ -578,10 +584,10 @@ export default function PreRegistrationClient() {
                               ? '20%'
                               : '20% Max'
                             : CUTOFF_PERCENT >= 20
-                            ? ''
-                            : v > CUTOFF_PERCENT
-                            ? `${v}%`
-                            : '';
+                              ? ''
+                              : v > CUTOFF_PERCENT
+                                ? `${v}%`
+                                : '';
                         }}
                         tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12, dy: 0 }}
                         tickMargin={10}
@@ -640,10 +646,10 @@ export default function PreRegistrationClient() {
                               ? '10%'
                               : 'Base 10%'
                             : isMax
-                            ? isNarrow450
-                              ? '20%'
-                              : '20% Max'
-                            : `${p}%`;
+                              ? isNarrow450
+                                ? '20%'
+                                : '20% Max'
+                              : `${p}%`;
                           return (
                             <span
                               key={p}
@@ -805,8 +811,8 @@ export default function PreRegistrationClient() {
                               Math.min(
                                 // Responsive max value: 96 for small screens, 97 for medium, 99 for large
                                 isNarrow600 ? 96 : isNarrow900 ? 97 : 99,
-                                progressPercent
-                              )
+                                progressPercent,
+                              ),
                             )}%`,
                             transform: 'translateX(-50%)',
                           }}
@@ -849,8 +855,8 @@ export default function PreRegistrationClient() {
                                   p === 10
                                     ? 'translate-x-0 text-left'
                                     : p === 20
-                                    ? '-translate-x-full text-right'
-                                    : '-translate-x-1/2 text-center',
+                                      ? '-translate-x-full text-right'
+                                      : '-translate-x-1/2 text-center',
                                 ].join(' ')}
                                 style={{ left: p === 10 ? '0%' : p === 20 ? '100%' : `${leftPct}%` }}
                               >
