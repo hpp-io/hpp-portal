@@ -134,7 +134,7 @@ export default function OverviewSection() {
         </div>
       );
     },
-    [formatNumberWithCommas]
+    [formatNumberWithCommas],
   );
 
   // Fetch overview stats
@@ -245,12 +245,12 @@ export default function OverviewSection() {
                           ? Math.floor((tvlChartData.length - 1) / 7)
                           : 0
                         : isNarrow900
-                        ? tvlChartData.length > 12
-                          ? Math.floor((tvlChartData.length - 1) / 11)
-                          : 0
-                        : tvlChartData.length > 16
-                        ? Math.floor((tvlChartData.length - 1) / 15)
-                        : 0
+                          ? tvlChartData.length > 12
+                            ? Math.floor((tvlChartData.length - 1) / 11)
+                            : 0
+                          : tvlChartData.length > 16
+                            ? Math.floor((tvlChartData.length - 1) / 15)
+                            : 0
                     }
                   />
                   <YAxis
@@ -421,8 +421,8 @@ export default function OverviewSection() {
                             Math.min(
                               // Responsive max value: 96 for small screens, 97 for medium, 99 for large
                               isNarrow600 ? 96 : isNarrow900 ? 97 : 99,
-                              progressPercent
-                            )
+                              progressPercent,
+                            ),
                           )}%`,
                           transform: 'translateX(-50%)',
                         }}
@@ -465,8 +465,8 @@ export default function OverviewSection() {
                                 p === 10
                                   ? 'translate-x-0 text-left'
                                   : p === 20
-                                  ? '-translate-x-full text-right'
-                                  : '-translate-x-1/2 text-center',
+                                    ? '-translate-x-full text-right'
+                                    : '-translate-x-1/2 text-center',
                               ].join(' ')}
                               style={{ left: p === 10 ? '0%' : p === 20 ? '100%' : `${leftPct}%` }}
                             >
@@ -571,9 +571,27 @@ export default function OverviewSection() {
           )}
           {aprTab === 'whale' && (
             <div className="px-5 pb-7.5">
-              <div className="text-white text-base leading-[20px] tracking-[0] font-semibold mb-4">
-                <span className="mr-1">🐳</span>
-                <span>Whale Boost: The more you stake, the higher your APR</span>
+              <div className="text-white text-base leading-[20px] tracking-[0] font-semibold mb-4 flex flex-col min-[600px]:flex-row min-[600px]:items-center min-[600px]:justify-between gap-4">
+                <div className="flex-1">
+                  <div className="text-white">
+                    <span className="mr-1">🐳</span>
+                    <span>Whale Boost: The more you stake, the higher your APR</span>
+                  </div>
+                  <div className="text-[#BFBFBF] text-base font-normal leading-[1.5]">
+                    Stake more HPP to reach higher tiers and earn Bonus Credits to enhance your staking rewards.
+                  </div>
+                </div>
+                <div className="flex-shrink-0">
+                  <Button
+                    variant="white"
+                    size="sm"
+                    className="rounded-[5px]"
+                    href="https://docs.hpp.io/community/staking-guide"
+                    external
+                  >
+                    Learn More
+                  </Button>
+                </div>
               </div>
               <div className="grid grid-cols-3 gap-3 bg-[#2D2D2D] text-[#bfbfbf] rounded-[5px] px-4 py-2 text-base font-semibold">
                 <div className="text-left">Tier</div>
