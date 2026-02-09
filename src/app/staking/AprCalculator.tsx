@@ -106,7 +106,14 @@ export default function AprCalculator({ options = {}, showPreRegistrationNote = 
             </div>
             <div className="flex items-center justify-center gap-2 text-[#5DF23F] text-base font-normal flex-wrap">
               <span className="flex items-center gap-1">
-                🐳 <span>{isAprLoading ? '...' : `${whaleCredit}%`}</span>
+                🐳{' '}
+                <span>
+                  {isAprLoading
+                    ? '...'
+                    : apiWhaleCredit && apiWhaleCredit > 1
+                    ? `${formatNumber(apiWhaleCredit * 100, 0)}%`
+                    : '-%'}
+                </span>
               </span>
               <span className="text-[#bfbfbf] text-base font-normal">×</span>
               <span className="flex items-center gap-1">
