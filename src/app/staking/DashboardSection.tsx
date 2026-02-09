@@ -241,7 +241,7 @@ export default function DashboardSection() {
         <div className="rounded-[8px] border border-[#2D2D2D] overflow-hidden">
           <div className="grid grid-cols-1 min-[1000px]:grid-cols-[2fr_1fr_1fr] gap-0">
             {/* Expected APR (spans 2 rows on wide) */}
-            <div className="bg-[#121212] px-5 py-7.5 min-[1000px]:row-span-2 border-[#2D2D2D]">
+            <div className="bg-[#121212] px-5 py-7.5 min-[1000px]:row-span-2 border-[#2D2D2D] text-center sm:text-left">
               <div className="text-[#bfbfbf] text-base leading-[1.5] tracking-[0.8px] font-normal">
                 Your Expected APR
               </div>
@@ -258,56 +258,65 @@ export default function DashboardSection() {
                   '10%+'
                 )}
               </div>
-              <div className="mt-15 text-white text-sm leading-[1] tracking-[0]">
+              <div className="mt-10 min-[1440px]:mt-15 text-white text-sm leading-[1] tracking-[0]">
                 {typeof walletBaseApr === 'number' && typeof walletBonusApr === 'number' ? (
                   <>
-                    Base APR ({walletBaseApr}% + 🔥{walletBonusApr}%)
-                    <span className="text-[#5DF23F] font-bold text-base"> × </span>
-                    <span>
+                    <span className="block sm:inline">Base APR ({walletBaseApr}% + 🔥{walletBonusApr}%)</span>
+                    <span className="block sm:inline text-[#5DF23F] font-bold text-base leading-[1] my-3 sm:my-0 sm:mx-2">
+                      ×
+                    </span>
+                    <span className="block sm:inline">
                       Bonus Credit ({whaleCreditStr} × {holdCreditStr} × {daoCreditStr})
                     </span>
                   </>
                 ) : (
                   <>
-                    Base APR (10% + 🔥-%) <span className="text-[#5DF23F]">×</span> Bonus Credit (🐳-% × 💰-% × 📝-%)
+                    <span className="block sm:inline">Base APR (10% + 🔥-%)</span>
+                    <span className="block sm:inline text-[#5DF23F] font-bold text-base leading-[1] my-3 sm:my-0 sm:mx-2">
+                      ×
+                    </span>
+                    <span className="block sm:inline">Bonus Credit (🐳-% × 💰-% × 📝-%)</span>
                   </>
                 )}
               </div>
             </div>
-            {/* Right top row */}
-            <div className="bg-[#121212] px-5 py-7.5 border-t border-[#2D2D2D] min-[1000px]:border-t-0 min-[1000px]:border-l">
-              <div className="text-[#bfbfbf] text-base leading-[1.5] tracking-[0.8px] font-normal">
-                Total Staked Amount
+            {/* Right cards: 1 col on narrow, 2 cols from 640px, then "contents" on wide to preserve 3-col layout */}
+            <div className="grid grid-cols-1 min-[640px]:grid-cols-2 min-[1000px]:contents text-center min-[640px]:text-left">
+              {/* Row 1 */}
+              <div className="bg-[#121212] px-5 py-7.5 border-t border-[#2D2D2D] min-[1000px]:border-t-0 min-[1000px]:border-l">
+                <div className="text-[#bfbfbf] text-base leading-[1.5] tracking-[0.8px] font-normal">
+                  Total Staked Amount
+                </div>
+                <div className="mt-2.5 flex items-center justify-center min-[640px]:justify-start gap-2">
+                  <span className="text-white text-xl font-normnal leading-[24px] tracking-[0]">
+                    {isConnected ? `${stakedTotal} HPP` : '- HPP'}
+                  </span>
+                </div>
               </div>
-              <div className="mt-2.5 flex items-center gap-2">
-                <span className="text-white text-xl font-normnal leading-[24px] tracking-[0]">
-                  {isConnected ? stakedTotal : '- HPP'}
-                </span>
+              <div className="bg-[#121212] px-5 py-7.5 border-t border-[#2D2D2D] min-[640px]:border-l min-[640px]:border-[#2D2D2D] min-[1000px]:border-t-0 min-[1000px]:border-l">
+                <div className="text-[#bfbfbf] text-base leading-[1.5] tracking-[0.8px] font-normal">
+                  Expected Annual Reward
+                </div>
+                <div className="mt-2.5 text-white text-xl font-normal leading-[24px] tracking-[0]">
+                  {annualRewardFromStake}
+                </div>
               </div>
-            </div>
-            <div className="bg-[#121212] px-5 py-7.5 border-t border-[#2D2D2D] min-[1000px]:border-t-0 min-[1000px]:border-l">
-              <div className="text-[#bfbfbf] text-base leading-[1.5] tracking-[0.8px] font-normal">
-                Expected Annual Reward
+              {/* Row 2 */}
+              <div className="bg-[#121212] px-5 py-7.5 border-t border-[#2D2D2D] min-[1000px]:border-l">
+                <div className="text-[#bfbfbf] text-base leading-[1.5] tracking-[0.8px] font-normal">
+                  Total Rewards Claimed
+                </div>
+                <div className="mt-2.5 text-white text-xl font-normal leading-[24px] tracking-[0]">- HPP</div>
               </div>
-              <div className="mt-2.5 text-white text-xl font-normal leading-[24px] tracking-[0]">
-                {annualRewardFromStake}
-              </div>
-            </div>
-            {/* Right bottom row */}
-            <div className="bg-[#121212] px-5 py-7.5 border-t border-[#2D2D2D] min-[1000px]:border-l">
-              <div className="text-[#bfbfbf] text-base leading-[1.5] tracking-[0.8px] font-normal">
-                Total Rewards Claimed
-              </div>
-              <div className="mt-2.5 text-white text-xl font-normal leading-[24px] tracking-[0]">- HPP</div>
-            </div>
-            <div className="bg-[#121212] px-5 py-7.5 border-t border-[#2D2D2D] min-[1000px]:border-l">
-              <div className="text-[#bfbfbf] text-base leading-[1.5] tracking-[0.8px] font-normal">
-                Unclaimed Reward
-              </div>
-              <div className="mt-2.5 flex items-center gap-2">
-                <span className="text-white text-xl font-normal leading-[24px] tracking-[0]">
-                  {/* {isConnected ? `${derivedWithdrawable} HPP` : '- HPP'} */}- HPP
-                </span>
+              <div className="bg-[#121212] px-5 py-7.5 border-t border-[#2D2D2D] min-[640px]:border-l min-[640px]:border-[#2D2D2D] min-[1000px]:border-l">
+                <div className="text-[#bfbfbf] text-base leading-[1.5] tracking-[0.8px] font-normal">
+                  Unclaimed Reward
+                </div>
+                <div className="mt-2.5 flex items-center justify-center min-[640px]:justify-start gap-2">
+                  <span className="text-white text-xl font-normal leading-[24px] tracking-[0]">
+                    {/* {isConnected ? `${derivedWithdrawable} HPP` : '- HPP'} */}- HPP
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -343,12 +352,9 @@ export default function DashboardSection() {
                       HPP_CHAIN_ID === 190415 ? 'https://explorer.hpp.io' : 'https://sepolia-explorer.hpp.io';
                     const txUrl = `${explorerBase}/tx/${tx.id}`;
                     return (
-                      <a
+                      <div
                         key={tx.id}
-                        href={txUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block px-5 py-4 last:border-b last:border-[#2D2D2D] hover:bg-[#1a1a1a] transition-colors cursor-pointer"
+                        className="block px-5 py-4 last:border-b last:border-[#2D2D2D] hover:bg-[#1a1a1a] transition-colors"
                       >
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
@@ -358,19 +364,33 @@ export default function DashboardSection() {
                             </div>
                           </div>
                           <div className="text-right">
-                            <div className={`text-white text-sm leading-[1.2] tracking-[0.8px]`}>
-                              {tx.status === 'Pending' ? (
-                                <span className="pending-text">Pending</span>
-                              ) : (
-                                tx.status || 'Completed'
-                              )}
+                            <div className="flex items-center justify-end gap-2 text-white text-sm leading-[1.2] tracking-[0.8px]">
+                              <span>
+                                {tx.status === 'Pending' ? <span className="pending-text">Pending</span> : tx.status || 'Completed'}
+                              </span>
+                              <a
+                                href={txUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="cursor-pointer hover:opacity-80"
+                                aria-label="View transaction on explorer"
+                              >
+                                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                                  />
+                                </svg>
+                              </a>
                             </div>
                             <div className="mt-2.5 text-white text-base leading-[1.2] tracking-[0.8px] font-normal">
                               {tx.amount ?? '-'}
                             </div>
                           </div>
                         </div>
-                      </a>
+                      </div>
                     );
                   })}
               </div>
