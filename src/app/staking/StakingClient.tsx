@@ -25,6 +25,7 @@ import axios from 'axios';
 import OverviewSection from './OverviewSection';
 import DashboardSection from './DashboardSection';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import type { UiState } from '@/store/slices/uiSlice';
 import {
   setSidebarOpen,
   setTopTab,
@@ -76,9 +77,9 @@ type TopTab = 'overview' | 'staking' | 'dashboard';
 export default function StakingClient() {
   const dispatch = useAppDispatch();
   // UI state
-  const sidebarOpen = useAppSelector((state) => state.ui.sidebarOpen);
-  const topTab = useAppSelector((state) => state.ui.topTab);
-  const activeTab = useAppSelector((state) => state.ui.activeTab);
+  const sidebarOpen = useAppSelector((state) => (state.ui as UiState).sidebarOpen);
+  const topTab = useAppSelector((state) => (state.ui as UiState).topTab);
+  const activeTab = useAppSelector((state) => (state.ui as UiState).activeTab);
   // Input state
   const amount = useAppSelector((state) => state.input.amount);
   const inputError = useAppSelector((state) => state.input.inputError);
@@ -315,7 +316,7 @@ export default function StakingClient() {
             if (isInternalServerError(err) && callRetryCount < MAX_RETRIES) {
               const delay = RETRY_DELAY * (callRetryCount + 1);
               console.log(
-                `Internal Server Error, retrying API call... (${callRetryCount + 1}/${MAX_RETRIES}) after ${delay}ms`
+                `Internal Server Error, retrying API call... (${callRetryCount + 1}/${MAX_RETRIES}) after ${delay}ms`,
               );
               await new Promise((resolve) => setTimeout(resolve, delay));
               return retryApiCall(apiCall, callRetryCount + 1);
@@ -348,48 +349,48 @@ export default function StakingClient() {
             nextUrl = `${baseUrl}?${qs.toString()}`;
             guard += 1;
           }
-        } catch { }
+        } catch {}
         const walletLc = address.toLowerCase();
         let mapped = Array.isArray(items)
           ? items
-            .filter((it: any) => String(it?.from?.hash || '').toLowerCase() === walletLc)
-            .map((it: any) => {
-              const method = String(it.method || it?.decoded_input?.method_call || '').toLowerCase();
-              // Status mapping
-              const res = String(it.result || '').toLowerCase();
-              const ok = String(it.status || '').toLowerCase() === 'ok';
-              const hasRevert = !!it.revert_reason;
-              const status =
-                hasRevert || res === 'failed' ? 'Rejected' : ok && res === 'success' ? 'Completed' : 'Pending';
-              // Amount from decoded parameters (18 decimals)
-              let amountDisplay: string | undefined;
-              try {
-                const params: any[] = it?.decoded_input?.parameters ?? [];
-                const p = Array.isArray(params) ? params.find((x) => x?.name === 'amount') : null;
-                if (p?.value) {
-                  const units = formatUnits(BigInt(String(p.value)), 18);
-                  amountDisplay = `${formatTokenBalance(units, 3)} HPP`;
-                }
-              } catch { }
-              const actionDisplay = method
-                ? method.toLowerCase() === 'withdraw'
-                  ? 'Claim'
-                  : method.charAt(0).toUpperCase() + method.slice(1)
-                : 'Contract Call';
-              return {
-                id: String(it.hash),
-                date: dayjs(new Date(String(it.timestamp)).getTime()).format('YYYY-MM-DD HH:mm'),
-                action: actionDisplay,
-                amount: amountDisplay,
-                status,
-              };
-            })
-            .sort((a: any, b: any) => {
-              // Parse dates for accurate comparison
-              const dateA = new Date(a.date.replace(' ', 'T')).getTime();
-              const dateB = new Date(b.date.replace(' ', 'T')).getTime();
-              return dateB - dateA; // Most recent first (descending)
-            })
+              .filter((it: any) => String(it?.from?.hash || '').toLowerCase() === walletLc)
+              .map((it: any) => {
+                const method = String(it.method || it?.decoded_input?.method_call || '').toLowerCase();
+                // Status mapping
+                const res = String(it.result || '').toLowerCase();
+                const ok = String(it.status || '').toLowerCase() === 'ok';
+                const hasRevert = !!it.revert_reason;
+                const status =
+                  hasRevert || res === 'failed' ? 'Rejected' : ok && res === 'success' ? 'Completed' : 'Pending';
+                // Amount from decoded parameters (18 decimals)
+                let amountDisplay: string | undefined;
+                try {
+                  const params: any[] = it?.decoded_input?.parameters ?? [];
+                  const p = Array.isArray(params) ? params.find((x) => x?.name === 'amount') : null;
+                  if (p?.value) {
+                    const units = formatUnits(BigInt(String(p.value)), 18);
+                    amountDisplay = `${formatTokenBalance(units, 3)} HPP`;
+                  }
+                } catch {}
+                const actionDisplay = method
+                  ? method.toLowerCase() === 'withdraw'
+                    ? 'Claim'
+                    : method.charAt(0).toUpperCase() + method.slice(1)
+                  : 'Contract Call';
+                return {
+                  id: String(it.hash),
+                  date: dayjs(new Date(String(it.timestamp)).getTime()).format('YYYY-MM-DD HH:mm'),
+                  action: actionDisplay,
+                  amount: amountDisplay,
+                  status,
+                };
+              })
+              .sort((a: any, b: any) => {
+                // Parse dates for accurate comparison
+                const dateA = new Date(a.date.replace(' ', 'T')).getTime();
+                const dateB = new Date(b.date.replace(' ', 'T')).getTime();
+                return dateB - dateA; // Most recent first (descending)
+              })
           : [];
         // Fallback amount for withdraw/claim from token transfers if missing
         try {
@@ -400,7 +401,7 @@ export default function StakingClient() {
             try {
               const addrTUrl = `${lambdaBase}/blockscout/${network}/api/v2/addresses/${address}/token-transfers?type=`;
               const addrTResp = await retryApiCall(() =>
-                axios.get(addrTUrl, { headers: { accept: 'application/json' } })
+                axios.get(addrTUrl, { headers: { accept: 'application/json' } }),
               );
               const addrTItems: any[] = addrTResp?.data?.items ?? [];
               if (Array.isArray(addrTItems) && addrTItems.length > 0) {
@@ -423,7 +424,7 @@ export default function StakingClient() {
                   try {
                     const units = formatUnits(BigInt(raw), Number.isFinite(dec) ? dec : 18);
                     byHashQuick.set(txHash.toLowerCase(), `${formatTokenBalance(units, 3)} HPP`);
-                  } catch { }
+                  } catch {}
                 }
                 if (byHashQuick.size > 0) {
                   mapped = mapped.map((m: any) => {
@@ -435,7 +436,7 @@ export default function StakingClient() {
                   });
                 }
               }
-            } catch { }
+            } catch {}
           }
         } catch {
           // ignore transfer backfill failures
@@ -451,7 +452,7 @@ export default function StakingClient() {
         dispatch(setActivitiesLoading(false));
       }
     },
-    [isConnected, address, HPP_STAKING_ADDRESS, HPP_CHAIN_ID, dispatch]
+    [isConnected, address, HPP_STAKING_ADDRESS, HPP_CHAIN_ID, dispatch],
   );
 
   // Fetch activities on mount and when wallet connection changes
@@ -513,8 +514,8 @@ export default function StakingClient() {
   // Prefetch lottie spinner to avoid first-render delay
   useEffect(() => {
     try {
-      fetch('/lotties/Loading.lottie', { cache: 'force-cache' }).catch(() => { });
-    } catch { }
+      fetch('/lotties/Loading.lottie', { cache: 'force-cache' }).catch(() => {});
+    } catch {}
   }, []);
 
   const handleAmountChange = (raw: string) => {
@@ -644,7 +645,7 @@ export default function StakingClient() {
         args: [address],
       })) as bigint;
       const value = formatUnits(result, DECIMALS);
-      const formatted = formatTokenBalance(value, 3);
+      const formatted = formatTokenBalance(value, 2);
       dispatch(setStakedTotal(formatted));
     } catch (_e) {
       dispatch(setStakedTotal('0'));
@@ -701,8 +702,8 @@ export default function StakingClient() {
             abi: c.abi,
             functionName: c.functionName,
             args: [address as `0x${string}`, BigInt(rel)] as readonly [`0x${string}`, bigint],
-          })
-        )
+          }),
+        ),
       )) as unknown as Array<[bigint, bigint]>;
 
       results.forEach(([amountBn, unlockTimeBn]) => {
@@ -721,7 +722,7 @@ export default function StakingClient() {
           const m = Math.floor((remaining % 3600) / 60);
           const s = Math.floor(remaining % 60);
           note = `You will be able to claim in ${String(d).padStart(2, '0')}:${String(h).padStart(2, '0')}:${String(
-            m
+            m,
           ).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
         } else {
           note = 'You are able to claim.';
@@ -824,7 +825,7 @@ export default function StakingClient() {
             amount: amountDisplay,
             status: 'Pending',
             isLocal: true,
-          })
+          }),
         );
         // Refresh activities to merge local activity with Blockscout data
         // Polling will handle checking Blockscout automatically
@@ -918,7 +919,7 @@ export default function StakingClient() {
             amount: amountDisplay,
             status: 'Pending',
             isLocal: true,
-          })
+          }),
         );
         // Refresh activities to merge local activity with Blockscout data
         // Polling will handle checking Blockscout automatically
@@ -996,7 +997,7 @@ export default function StakingClient() {
             amount: amountDisplay,
             status: 'Pending',
             isLocal: true,
-          })
+          }),
         );
         // Refresh activities to merge local activity with Blockscout data
         // Polling will handle checking Blockscout automatically
@@ -1092,7 +1093,7 @@ export default function StakingClient() {
     if (!cooldowns?.length) return BigInt(0);
     return cooldowns.reduce(
       (acc, c) => (c.unlock <= nowSecTick ? acc + (c.amountWei ? BigInt(c.amountWei) : BigInt(0)) : acc),
-      BigInt(0)
+      BigInt(0),
     );
   }, [cooldowns, nowSecTick]);
   const derivedWithdrawable = useMemo(() => {
@@ -1102,7 +1103,7 @@ export default function StakingClient() {
       if (v.gt(0) && v.lt(new Big('0.01'))) {
         return '≈0.01';
       }
-    } catch { }
+    } catch {}
     return formatTokenBalance(val, 2);
   }, [derivedWithdrawableWei]);
 
@@ -1291,8 +1292,9 @@ export default function StakingClient() {
         />
 
         <main
-          className={`flex-1 overflow-y-auto transition-all duration-300 ${sidebarOpen ? 'opacity-50 min-[1200px]:opacity-100' : ''
-            }`}
+          className={`flex-1 overflow-y-auto transition-all duration-300 ${
+            sidebarOpen ? 'opacity-50 min-[1200px]:opacity-100' : ''
+          }`}
         >
           {/* Wrap content to push footer to bottom on mobile */}
           <div className="min-h-[calc(100vh-66px)] min-[1200px]:min-h-[calc(100vh-85px)] flex flex-col">
@@ -1416,8 +1418,9 @@ export default function StakingClient() {
                                 inputMode="decimal"
                                 pattern="\\d*\\.?\\d*"
                                 min="0"
-                                className={`w-full bg-transparent outline-none ${inputError ? 'text-[#FF1312]' : 'text-white'
-                                  } text-[40px] font-semibold leading-[1.2] tracking-[0.8px] placeholder:text-white/60`}
+                                className={`w-full bg-transparent outline-none ${
+                                  inputError ? 'text-[#FF1312]' : 'text-white'
+                                } text-[40px] font-semibold leading-[1.2] tracking-[0.8px] placeholder:text-white/60`}
                                 value={formatDisplayAmount(amount)}
                                 placeholder="0.00"
                                 onChange={(e) => handleAmountChange(e.target.value)}
@@ -1531,7 +1534,8 @@ export default function StakingClient() {
                                     : Number((amount || '0').replace(/,/g, '')) <= 0)
                                 }
                                 fullWidth
-                                className={`${isSubmitting ||
+                                className={`${
+                                  isSubmitting ||
                                   (activeTab === 'stake' ? isHppBalanceLoading : isStakedTotalLoading) ||
                                   !!inputError ||
                                   !amount ||
@@ -1539,9 +1543,9 @@ export default function StakingClient() {
                                   (activeTab === 'stake'
                                     ? Number(amount) <= 0
                                     : Number((amount || '0').replace(/,/g, '')) <= 0)
-                                  ? '!bg-[#9E9E9E] !text-white'
-                                  : ''
-                                  } !rounded-[5px] disabled:!opacity-100 disabled:!text-white`}
+                                    ? '!bg-[#9E9E9E] !text-white'
+                                    : ''
+                                } !rounded-[5px] disabled:!opacity-100 disabled:!text-white`}
                                 onClick={activeTab === 'stake' ? onStake : onUnstake}
                               >
                                 {isSubmitting
@@ -1598,8 +1602,9 @@ export default function StakingClient() {
                                 size="lg"
                                 fullWidth
                                 disabled={isSubmitting || derivedWithdrawableWei <= BigInt(0)}
-                                className={`${isSubmitting || derivedWithdrawableWei <= BigInt(0) ? '!bg-[#9E9E9E] !text-white' : ''
-                                  } !rounded-[5px] disabled:!opacity-100 disabled:!text-white`}
+                                className={`${
+                                  isSubmitting || derivedWithdrawableWei <= BigInt(0) ? '!bg-[#9E9E9E] !text-white' : ''
+                                } !rounded-[5px] disabled:!opacity-100 disabled:!text-white`}
                                 onClick={onClaim}
                               >
                                 {isSubmitting ? 'Processing...' : 'Claim'}
