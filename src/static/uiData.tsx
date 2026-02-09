@@ -28,7 +28,9 @@ export const homeData = {
     {
       title: 'Pre-Registration',
       description: 'Pre-register now to secure up to 20% APR!',
+      openDescription: 'Stake your HPP to earn rewards and participate in HPP ecosystem',
       href: '/staking/pre-registration',
+      openHref: '/staking',
     },
     {
       title: 'Migration',
@@ -453,7 +455,7 @@ export const airdropData = {
       id: 3,
       question: 'What is the deadline to claim the $HPP Airdrop?',
       answer:
-        'Claim deadlines vary by event. Each campaign has its own claim window and, when applicable, a vesting schedule. Please check the airdrop\'s details page for the exact timeline and deadline.',
+        "Claim deadlines vary by event. Each campaign has its own claim window and, when applicable, a vesting schedule. Please check the airdrop's details page for the exact timeline and deadline.",
     },
     {
       id: 4,
@@ -463,7 +465,7 @@ export const airdropData = {
     },
     {
       id: 5,
-      question: 'How can I check the tokens I\'ve already claimed in my wallet?',
+      question: "How can I check the tokens I've already claimed in my wallet?",
       answer:
         'Once tokens are claimed, they are sent directly to your connected wallet and can be viewed in your wallet balance. If the tokens are not visible, add the official token contract address manually or verify the transaction using a blockchain explorer.\n\nFollow the [guideline](https://docs.hpp.io/getting-started/connect-to-hpp) to connect your wallet to the HPP platform.',
     },
