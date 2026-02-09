@@ -65,7 +65,7 @@ export default function DashboardSection() {
     if (!cooldowns?.length) return BigInt(0);
     return cooldowns.reduce(
       (acc, c) => (c.unlock <= nowSecTick ? acc + (c.amountWei ? BigInt(c.amountWei) : BigInt(0)) : acc),
-      BigInt(0)
+      BigInt(0),
     );
   }, [cooldowns, nowSecTick]);
 
@@ -99,11 +99,11 @@ export default function DashboardSection() {
       const stakedAmountWei = finalStakedAmount.times(new Big(10).pow(18));
       const resp = await axios.get(
         `${process.env.NEXT_PUBLIC_HPP_STAKING_API_URL}/apr/wallet/${address}?stakedAmount=${stakedAmountWei.toFixed(
-          0
+          0,
         )}`,
         {
           headers: { accept: 'application/json' },
-        }
+        },
       );
       const data: any = resp?.data ?? {};
       const d = data?.data ?? {};
@@ -261,7 +261,9 @@ export default function DashboardSection() {
               <div className="mt-10 min-[1440px]:mt-15 text-white text-sm leading-[1] tracking-[0]">
                 {typeof walletBaseApr === 'number' && typeof walletBonusApr === 'number' ? (
                   <>
-                    <span className="block sm:inline">Base APR ({walletBaseApr}% + 🔥{walletBonusApr}%)</span>
+                    <span className="block sm:inline">
+                      Base APR ({walletBaseApr}% + 🔥{walletBonusApr}%)
+                    </span>
                     <span className="block sm:inline text-[#5DF23F] font-bold text-base leading-[1] my-3 sm:my-0 sm:mx-2">
                       ×
                     </span>
@@ -366,7 +368,11 @@ export default function DashboardSection() {
                           <div className="text-right">
                             <div className="flex items-center justify-end gap-2 text-white text-sm leading-[1.2] tracking-[0.8px]">
                               <span>
-                                {tx.status === 'Pending' ? <span className="pending-text">Pending</span> : tx.status || 'Completed'}
+                                {tx.status === 'Pending' ? (
+                                  <span className="pending-text">Pending</span>
+                                ) : (
+                                  tx.status || 'Completed'
+                                )}
                               </span>
                               <a
                                 href={txUrl}
@@ -375,7 +381,12 @@ export default function DashboardSection() {
                                 className="cursor-pointer hover:opacity-80"
                                 aria-label="View transaction on explorer"
                               >
-                                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg
+                                  className="w-4 h-4 text-white"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
                                   <path
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
