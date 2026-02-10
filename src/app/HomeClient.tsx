@@ -108,7 +108,7 @@ export default function HomeClient() {
             {(() => {
               const pre = (homeData.quickActions as any[]).find((a) => a.title === 'Pre-Registration');
               if (!pre) return null;
-              
+
               // Loading state
               if (preRemainingSec === null) {
                 return (
@@ -130,7 +130,7 @@ export default function HomeClient() {
                   </div>
                 );
               }
-              
+
               const href: string | undefined = preRemainingSec === 0 ? pre.openHref : pre.href;
               const external = href ? /^https?:\/\//.test(href) : false;
               return (
@@ -161,18 +161,13 @@ export default function HomeClient() {
                           {preRemainingSec === 0 ? (
                             <>
                               <br className="hidden max-[900px]:block" />
-                              <span className="text-[#5DF23F] whitespace-nowrap inline">
-                                Season 1
-                              </span>
-                              {' '}
-                              <span className="text-white whitespace-nowrap inline">
-                                is now open!
-                              </span>
+                              <span className="text-[#5DF23F] whitespace-nowrap inline">Season 1</span>{' '}
+                              <span className="text-white whitespace-nowrap inline">is now open!</span>
                             </>
                           ) : (
-                          <span className="text-[#5DF23F] whitespace-nowrap inline max-[600px]:block max-[600px]:mt-1">
-                            Pre-Registration
-                          </span>
+                            <span className="text-[#5DF23F] whitespace-nowrap inline max-[600px]:block max-[600px]:mt-1">
+                              Pre-Registration
+                            </span>
                           )}
                         </h3>
                       </div>
@@ -214,8 +209,8 @@ export default function HomeClient() {
                     action.title === 'Migration'
                       ? '/lotties/Migration.lottie'
                       : action.title === 'Bridge'
-                      ? '/lotties/Bridge.lottie'
-                      : '/lotties/StartBuilding.lottie';
+                        ? '/lotties/Bridge.lottie'
+                        : '/lotties/StartBuilding.lottie';
 
                   const CardContent = (
                     <>

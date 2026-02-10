@@ -25,6 +25,7 @@ export { default as CompleteIcon } from './Complete.svg';
 export { default as PendingIcon } from './Pending.svg';
 export { default as FailedIcon } from './Failed.svg';
 export { default as TransactionsIcon } from './Transactions.svg';
+<<<<<<< HEAD
 export { default as StakingIcon } from './Staking.svg';
 export { default as HPPLogoIcon } from './HPPLogo.svg';
 export { default as HPPTickerIcon } from './HPPTicker.svg';
@@ -37,6 +38,9 @@ export { default as ClaimIcon } from './Claim.svg';
 export { default as Wallet2Icon } from './Wallet2.svg';
 export { default as MobileWalletConnectIcon } from './MobileWalletConnect.svg';
 export { default as RightArrowIcon } from './RightArrow.svg';
+=======
+export { default as LinkIcon } from './Link.svg';
+>>>>>>> main
 
 // PNG
 export { default as Aergo } from './Aergo.png';
