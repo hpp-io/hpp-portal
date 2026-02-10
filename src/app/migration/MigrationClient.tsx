@@ -16,7 +16,7 @@ import {
   useWriteContract,
   useWaitForTransactionReceipt,
 } from 'wagmi';
-import { navItems, communityLinks } from '@/config/navigation';
+import { navItems, legalLinks } from '@/config/navigation';
 import { parseUnits, formatUnits, erc20Abi } from 'viem';
 import Big from 'big.js';
 import dayjs from 'dayjs';
@@ -143,7 +143,7 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
             (t, i) =>
               t.id === sortedIncoming[i].id &&
               t.status === sortedIncoming[i].status &&
-              t.amount === sortedIncoming[i].amount
+              t.amount === sortedIncoming[i].amount,
           );
         return same ? prev : sortedIncoming;
       }
@@ -397,7 +397,9 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
         network === 'sepolia' ? 'https://eth-sepolia.blockscout.com/api' : 'https://eth.blockscout.com/api';
       const requestParams = `module=account&action=tokentx&address=${walletAddress}&startblock=0&endblock=99999999&offset=${largeOffset}&sort=desc`;
       const requestUrl = `${baseUrl}?${requestParams}`;
-      const tokenTxResponse = await axios.get(requestUrl, { headers: { accept: 'application/json' } });
+      const tokenTxResponse = await axios.get(requestUrl, {
+        headers: { accept: 'application/json' },
+      });
       const tokenTxData = tokenTxResponse.data;
 
       if (tokenTxData.status === '1') {
@@ -441,7 +443,7 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
 
         // Sort by date (newest first)
         relevantTransactions.sort(
-          (a: Transaction, b: Transaction) => new Date(b.date).getTime() - new Date(a.date).getTime()
+          (a: Transaction, b: Transaction) => new Date(b.date).getTime() - new Date(a.date).getTime(),
         );
         updateHistoryWithServer(relevantTransactions);
         return relevantTransactions;
@@ -460,7 +462,7 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
   // Get appropriate icon for transaction type and status
   const getTransactionIcon = (type: Transaction['type'], status: Transaction['status']) => {
     if (status === 'Pending') {
-      return <PendingIcon className="w-8.5 h-8.5 text-white" />;
+      return <PendingIcon className="w-8.5 h-8.5 text-white animate-spin [animation-duration:1.25s]" />;
     } else if (status === 'Completed') {
       return <CompleteIcon className="w-8.5 h-8.5 text-black" />;
     } else {
@@ -684,7 +686,10 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
         const numeric = parseFloat(lastSubmittedAmountRef.current);
         const formatted = isNaN(numeric)
           ? lastSubmittedAmountRef.current
-          : numeric.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+          : numeric.toLocaleString('en-US', {
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 2,
+            });
         const network: 'mainnet' | 'sepolia' = chainId === 11155111 ? 'sepolia' : 'mainnet';
         // Calculate HPP amount for migrations
         let hppAmount = formatted;
@@ -761,7 +766,7 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
       <div className="flex flex-1 overflow-hidden">
         <Sidebar
           navItems={navItems}
-          communityLinks={communityLinks}
+          legalLinks={legalLinks}
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
         />
@@ -785,21 +790,18 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
             </Button>
           </div>
 
-          <div className="bg-[#121212] border-b border-[#161616] py-7.5">
-            <div className="px-4 max-w-6xl mx-auto">
-              <h1 className="text-[50px] min-[1200px]:text-[70px] leading-[1.5] font-[900] text-white">
-                Migrate to HPP
-              </h1>
-              <p className="text-xl text-[#bfbfbf] font-semibold leading-[1.5] max-w-5xl">
+          <div className="py-7.5">
+            <div className="px-5 max-w-6xl mx-auto">
+              <h1 className="text-[50px] leading-[1.5] font-[900] text-white text-center">Migrate to HPP</h1>
+              <p className="text-xl text-[#bfbfbf] font-semibold leading-[1.5] max-w-5xl text-center">
                 Move your {token} tokens to the HPP Mainnet using the official migration paths.
                 <br />
                 Follow the steps carefully to ensure a secure and complete migration.
               </p>
-              <div className="mt-5">
+              <div className="mt-5 flex justify-center">
                 <Button
                   variant="white"
                   size="lg"
-                  className="cursor-pointer"
                   onClick={() => {
                     const guideUrl =
                       token === 'AERGO'
@@ -954,11 +956,14 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                       <div className="mt-5 bg-primary rounded-lg p-4 border border-dashed border-white/50">
                         <div className="flex flex-col items-center text-center min-[810px]:flex-row min-[810px]:items-center min-[810px]:justify-between min-[810px]:text-left">
                           <div className="flex flex-col items-center min-[810px]:flex-row min-[810px]:items-center min-[810px]:space-x-4 mb-4 min-[810px]:mb-0">
-                            <WalletIcon className="w-12 h-12 text-white mb-3 min-[810px]:mb-0" />
+                            <WalletIcon className="hidden min-[810px]:block w-12 h-12 text-white" />
                             <div className="flex flex-col items-center min-[810px]:items-start">
-                              <span className="text-white font-semibold text-xl tracking-[0.8px] leading-[1.5em] min-[810px]:mb-0">
-                                Wallet Connected
-                              </span>
+                              <div className="flex items-center gap-2.5 mb-2">
+                                <WalletIcon className="w-5.5 h-5.5 text-white min-[810px]:hidden" />
+                                <span className="text-white font-semibold text-xl tracking-[0.8px] leading-[1.5em]">
+                                  Wallet Connected
+                                </span>
+                              </div>
                               <div
                                 className="text-base text-white font-normal tracking-[0.8px] leading-[1.5em] max-w-full text-center min-[810px]:text-left"
                                 style={{
@@ -978,7 +983,7 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                       </div>
                     ) : (
                       <div className="text-center mt-5">
-                        <WalletButton size="lg" />
+                        <WalletButton color="black" size="lg" />
                       </div>
                     )}
                   </div>
@@ -1006,9 +1011,21 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                             </label>
                             <div className="flex flex-col items-end space-y-1">
                               <span className="text-sm min-[810px]:text-base font-semibold text-black tracking-[0.8px] leading-[1.2] text-right min-[810px]:text-left">
-                                Balance:
-                                <br className="block min-[810px]:hidden" />{' '}
-                                {isBalanceLoading ? 'Loading...' : `${balance || '0'}`}
+                                {isBalanceLoading ? (
+                                  <span className="inline-flex items-center justify-center align-middle">
+                                    <DotLottieReact
+                                      src="/lotties/Loading.lottie"
+                                      autoplay
+                                      loop
+                                      style={{ width: 24, height: 24, filter: 'invert(1)' }}
+                                    />
+                                  </span>
+                                ) : (
+                                  <>
+                                    Balance:
+                                    <br className="block min-[810px]:hidden" /> {`${balance || '0'}`}
+                                  </>
+                                )}
                               </span>
                             </div>
                           </div>
@@ -1021,20 +1038,21 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                                   fromAmount === ''
                                     ? ''
                                     : isNaN(Number(fromAmount))
-                                    ? '0'
-                                    : token === 'AQT'
-                                    ? Number(fromAmount).toLocaleString()
-                                    : fromAmount.includes('.')
-                                    ? (() => {
-                                        // Apply commas only to integer part when decimal point exists
-                                        const parts = fromAmount.split('.');
-                                        const integerPart = parts[0];
-                                        const decimalPart = parts[1] || '';
-                                        return (
-                                          Number(integerPart).toLocaleString() + (decimalPart ? '.' + decimalPart : '.')
-                                        );
-                                      })()
-                                    : Number(fromAmount).toLocaleString()
+                                      ? '0'
+                                      : token === 'AQT'
+                                        ? Number(fromAmount).toLocaleString()
+                                        : fromAmount.includes('.')
+                                          ? (() => {
+                                              // Apply commas only to integer part when decimal point exists
+                                              const parts = fromAmount.split('.');
+                                              const integerPart = parts[0];
+                                              const decimalPart = parts[1] || '';
+                                              return (
+                                                Number(integerPart).toLocaleString() +
+                                                (decimalPart ? '.' + decimalPart : '.')
+                                              );
+                                            })()
+                                          : Number(fromAmount).toLocaleString()
                                 }
                                 onChange={(e) => {
                                   const value = e.target.value.replace(/,/g, '');
@@ -1059,9 +1077,7 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                                   // prevent accidental value changes by scroll
                                   (e.target as HTMLInputElement).blur();
                                 }}
-                                className={`w-full border-0 rounded-lg focus:outline-none focus:ring-0 text-[25px] min-[810px]:text-[40px] bg-transparent pl-0 text-black placeholder:text-[#bfbfbf] font-semibold tracking-[0.8px] leading-[1.2] text-left ${
-                                  inputError ? 'border-red-500' : ''
-                                }`}
+                                className={`w-full border-0 rounded-lg focus:outline-none focus:ring-0 text-[25px] min-[810px]:text-[40px] bg-transparent pl-0 text-black placeholder:text-[#bfbfbf] font-semibold tracking-[0.8px] leading-[1.2] text-left ${inputError ? 'border-red-500' : ''}`}
                                 placeholder={token === 'AQT' ? '0' : '0.0'}
                                 autoComplete="off"
                                 spellCheck={false}
@@ -1089,7 +1105,18 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                             <span className="text-sm min-[810px]:text-base font-semibold text-black tracking-[0.8px] leading-[1.2] text-right min-[810px]:text-left">
                               Balance:
                               <br className="block min-[810px]:hidden" />{' '}
-                              {isHppBalanceLoading ? 'Loading...' : `${hppBalance || '0'}`}
+                              {isHppBalanceLoading ? (
+                                <span className="inline-flex items-center justify-center align-middle">
+                                  <DotLottieReact
+                                    src="/lotties/Loading.lottie"
+                                    autoplay
+                                    loop
+                                    style={{ width: 24, height: 24, filter: 'invert(1)' }}
+                                  />
+                                </span>
+                              ) : (
+                                `${hppBalance || '0'}`
+                              )}
                             </span>
                           </div>
                           <div className="flex items-center space-x-3">
@@ -1099,24 +1126,24 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                                 toAmount === ''
                                   ? ''
                                   : isNaN(Number(toAmount))
-                                  ? '0'
-                                  : (() => {
-                                      const num = Number(toAmount);
-                                      if (Number.isInteger(num)) {
-                                        return num.toLocaleString();
-                                      } else {
-                                        // Apply commas only to integer part when decimal point exists
-                                        const parts = toAmount.split('.');
-                                        const integerPart = parts[0];
-                                        const decimalPart = parts[1] || '';
-                                        // Remove trailing zeros from decimal part
-                                        const cleanDecimalPart = decimalPart.replace(/0+$/, '');
-                                        return (
-                                          Number(integerPart).toLocaleString() +
-                                          (cleanDecimalPart ? '.' + cleanDecimalPart : '')
-                                        );
-                                      }
-                                    })()
+                                    ? '0'
+                                    : (() => {
+                                        const num = Number(toAmount);
+                                        if (Number.isInteger(num)) {
+                                          return num.toLocaleString();
+                                        } else {
+                                          // Apply commas only to integer part when decimal point exists
+                                          const parts = toAmount.split('.');
+                                          const integerPart = parts[0];
+                                          const decimalPart = parts[1] || '';
+                                          // Remove trailing zeros from decimal part
+                                          const cleanDecimalPart = decimalPart.replace(/0+$/, '');
+                                          return (
+                                            Number(integerPart).toLocaleString() +
+                                            (cleanDecimalPart ? '.' + cleanDecimalPart : '')
+                                          );
+                                        }
+                                      })()
                               }
                               readOnly
                               className="w-full py-3 border-0 rounded-lg focus:outline-none focus:ring-0 text-[25px] min-[810px]:text-[40px] bg-transparent pl-0 text-black placeholder:text-[#bfbfbf] font-semibold tracking-[0.8px] leading-[1.2] text-left cursor-default pointer-events-none"
@@ -1184,7 +1211,7 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                         {(showAllHistory ? transactionHistory : transactionHistory.slice(0, 5)).map((tx) => (
                           <div
                             key={tx.id}
-                            className="flex items-start min-[810px]:items-start items-center p-5 bg-[rgba(18,18,18,0.1)] hover:bg-[rgba(18,18,18,0.2)] rounded-[5px] mb-2 last:mb-0 cursor-pointer gap-3 min-[810px]:gap-5 transition-colors duration-200"
+                            className="flex items-start min-[810px]:items-start items-center p-5 bg-white/10 hover:bg-white/20 rounded-[5px] mb-2 last:mb-0 cursor-pointer gap-3 min-[810px]:gap-5 transition-colors duration-200"
                             style={{ cursor: 'pointer' }}
                             onClick={() => {
                               const etherscanUrl = createEtherscanLink(tx.hash, tx.network);
@@ -1193,9 +1220,7 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                           >
                             {/* Icon - always on the left */}
                             <div
-                              className={`w-13.5 h-13.5 rounded-full flex items-center justify-center flex-shrink-0 ${
-                                tx.status === 'Pending' ? 'bg-[#F07F1D]' : 'bg-white'
-                              }`}
+                              className={`w-13.5 h-13.5 rounded-full flex items-center justify-center flex-shrink-0 ${tx.status === 'Pending' ? 'bg-[#F07F1D]' : 'bg-white'}`}
                             >
                               {tx.icon}
                             </div>
@@ -1221,8 +1246,8 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                                       tx.status === 'Completed'
                                         ? 'text-[#25ff21]'
                                         : tx.status === 'Pending'
-                                        ? 'text-[#bfbfbf]'
-                                        : 'text-[#ff1312]'
+                                          ? 'text-[#bfbfbf]'
+                                          : 'text-[#ff1312]'
                                     }`}
                                   >
                                     {tx.status}
@@ -1233,7 +1258,7 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                               {/* Mobile: vertical layout */}
                               <div className="min-[600px]:hidden space-y-1">
                                 <div className="text-base font-semibold text-white leading-[20px]">{tx.type}</div>
-                                <div className="text-base text-white leading-[20px] tracking-[0px] font-semibold whitespace-pre text-left">
+                                <div className="text-base text-white leading-[20px] tracking-[0px] font-semibold text-left">
                                   {tx.amount}
                                 </div>
                                 <div className="text-sm text-[#bfbfbf] leading-[1.5] tracking-[0.8px] font-normal text-left">
@@ -1244,8 +1269,8 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                                     tx.status === 'Completed'
                                       ? 'text-[#25ff21]'
                                       : tx.status === 'Pending'
-                                      ? 'text-[#bfbfbf]'
-                                      : 'text-[#ff1312]'
+                                        ? 'text-[#bfbfbf]'
+                                        : 'text-[#ff1312]'
                                   }`}
                                 >
                                   {tx.status}
@@ -1256,7 +1281,7 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                         ))}
                       </div>
                     ) : (
-                      <div className="flex flex-col items-center justify-center py-8 bg-[rgba(18,18,18,0.1)] rounded-[5px]">
+                      <div className="flex flex-col items-center justify-center py-8 bg-white/10 rounded-[5px]">
                         {isLoadingHistory ? (
                           <div className="mb-4">
                             <DotLottieReact

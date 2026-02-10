@@ -26,16 +26,26 @@ import {
 export const homeData = {
   quickActions: [
     {
+      title: 'Pre-Registration',
+      description: 'Pre-register now to secure up to 20% APR!',
+      openDescription: 'Stake your HPP to earn rewards and participate in HPP ecosystem',
+      href: '/staking/pre-registration',
+      openHref: '/staking',
+    },
+    {
       title: 'Migration',
       description: 'Swap your legacy AERGO tokens to HPP and join the new AI-native ecosystem.',
+      href: '/migration',
     },
     {
       title: 'Bridge',
       description: 'Move assets seamlessly between Ethereum and HPP Mainnet.',
+      href: '/bridge',
     },
     {
       title: 'Start Building',
-      description: 'Access tools, docs, and SDKs to launch AI-integrated smart contracts and autonomous agents on HPP.',
+      description: 'Access tools and SDKs to launch AI-powered contracts and agents on HPP.',
+      href: 'https://docs.hpp.io',
     },
   ],
   ecosystemProjects: [
@@ -222,7 +232,7 @@ export const bridgeData = {
   ],
 };
 
-// Migration Page Data (if needed in the future)
+// Migration Page Data
 export const migrationData = {
   faq: [
     {
@@ -265,6 +275,199 @@ export const migrationData = {
       question: 'Where can I find the migration portal?',
       answer:
         'The official migration portal link will be published on the official HPP website and social channels. Always ensure to use the official link to avoid phishing risks.',
+    },
+  ],
+};
+
+// Staking Page Data
+export const stakingData = {
+  preRegistration: {
+    faq: [
+      {
+        id: 1,
+        question: 'What are the benefits of pre-registration?',
+        answer:
+          'Pre-registering gives you access to the final boosted APR, early launch notifications, and priority access when staking opens.\nSince APR increases as more users register, joining early is always beneficial.',
+      },
+      {
+        id: 2,
+        question: 'How is the APR determined?',
+        answer:
+          'APR increases based on the total number of pre-registered wallets.\n\nAPR Tiers:\n• Base APR: 10%\n• 201~400 Wallets: 12% APR\n• 401~600 Wallets: 14% APR\n• 601~800 Wallets: 16% APR\n• 801~1000 Wallets: 18% APR\n• 1,000+ Wallets: 20% APR (Max)\n\nThe final APR is fixed at the end of the pre-registration period.',
+      },
+      {
+        id: 3,
+        question: 'What do I need to pre-register?',
+        answer: 'Only your ETH wallet address. No deposit or staking is required during pre-registration.',
+      },
+      {
+        id: 4,
+        question: 'When does actual staking begin?',
+        answer:
+          'TBD. You will receive a notification once staking opens. Stake using the same wallet you pre-registered with to receive the final APR.',
+      },
+      {
+        id: 5,
+        question: 'Do I need to complete staking after pre-registering to receive the APR?',
+        answer:
+          'Yes. Pre-registration alone does not grant the APR. You must complete the actual staking process with the same wallet you pre-registered once staking opens. Only wallets that stake during the official staking period will receive the final APR.',
+      },
+      {
+        id: 6,
+        question: 'Why does inviting friends increase the APR?',
+        answer:
+          'This campaign uses a community-driven APR model. The more wallets that register, the higher the APR for everyone. “The more you bring, the more everyone earns.”',
+      },
+      {
+        id: 7,
+        question: 'Can I register multiple wallets?',
+        answer: 'Yes, but duplicate or suspicious wallets may be excluded during verification.',
+      },
+      {
+        id: 8,
+        question: 'Is my wallet information safe?',
+        answer:
+          'We only collect public wallet addresses. No private keys are ever requested, and all data is handled securely.',
+      },
+      {
+        id: 9,
+        question: 'If the APR changes after I pre-register, which APR do I get?',
+        answer:
+          'All participants receive the same final APR, determined by the total number of wallets at the end of the pre-registration period.',
+      },
+      {
+        id: 10,
+        question: 'Does pre-registration cost anything?',
+        answer: 'No. Pre-registration is completely free. You only need tokens once staking begins.',
+      },
+      {
+        id: 11,
+        question: 'When does pre-registration end?',
+        answer:
+          'The end date is shown on the campaign page. Only wallets registered before the deadline will qualify for the APR bonus.',
+      },
+      {
+        id: 12,
+        question: 'How long does the pre-registration bonus last?',
+        answer:
+          'The bonus APR will continue to be offered until the allocated 1,000,000 HPP pool is fully distributed.',
+      },
+    ],
+  },
+  staking: {
+    faq: [
+      {
+        id: 1,
+        question: 'What is HPP Staking?',
+        answer:
+          'HPP Staking allows users to deposit their HPP(Mainnet) tokens to support network security and governance participation. In return, users receive staking rewards based on their contribution.',
+      },
+      {
+        id: 2,
+        question: 'Which token do I need to stake?',
+        answer:
+          'Only HPP(Mainnet) is eligible for staking. If you have HPP(Ethereum) or legacy assets (AERGO / AQT), you must complete Migration Step 2 before staking.\n\nYou can find the migration guide [here](https://portal.hpp.io/migration/)',
+      },
+      {
+        id: 3,
+        question: 'What are the steps of Staking?',
+        answer: 'You can find the official guide [here](https://paper.hpp.io/guide/HPP_Staking_Guideline.pdf)',
+      },
+      {
+        id: 4,
+        question: 'How are staking rewards calculated?',
+        answer:
+          'Rewards are determined by multiple factors:\n• Your staked amount\n• Your staking duration\n• Total value staked (overall TVL)\n• Bonus Credit\n• Participation in seasonal missions (if applicable)\n\nThe final APR may vary depending on these combined factors.',
+      },
+      {
+        id: 5,
+        question: 'What is the Bonus Credit?',
+        answer:
+          'Bonus Credit is a multiplier applied to your APR based on your participation in specific activities such as Whale Boost (stake amount tiers), Hold & Earn missions (staking period), and DAO participation missions (Proposal, Forum Voting, On-Chain Voting).\n\nHigher participation results in higher Bonus Credit, which increases your final APR. Bonus Credit does not replace Base APR — it multiplies it.',
+      },
+      {
+        id: 6,
+        question: 'What is a Season?',
+        answer:
+          'A Season is a defined reward cycle in HPP Staking, typically lasting approximately 3 months.\n\nEach Season may introduce event-specific APR boosts, new Bonus Credit opportunities, time-limited missions, and seasonal staking policies or APR adjustments.\n\nWhen a Season ends, its rewards and missions conclude. A new Season may begin with updated policies and bonus structures.',
+      },
+      {
+        id: 7,
+        question: 'How is the final APR calculated?',
+        answer:
+          '(Base APR + Bonus APR) × Bonus Credit\n\n• Base APR: The default APR for all stakers.\n• Bonus APR: Additional APR earned from Pre-Registration or special events.\n• Bonus Credit: A multiplier earned through missions (e.g., ×101%, ×103%, ×107%).\n\nAPR may change depending on user participation and network policy.',
+      },
+      {
+        id: 8,
+        question: 'How are the rewards distributed?',
+        answer:
+          'The exact rewards depend on network policy and the amount of total staked tokens. They are not guaranteed or fixed.\n\nRewards are distributed per epoch based on the staking policy. Distribution may be automatic or require manual claiming depending on the final configuration.',
+      },
+      {
+        id: 9,
+        question: 'Can I unstake anytime? Or is there a lock-up period?',
+        answer:
+          'Yes — you can unstake anytime you want. There is no penalty for early unstaking, but there is a 7-day cooldown period before the claim becomes available.\n\nRewards are calculated daily but only distributed at the end of each Season. Even if you unstake mid-Season, you will receive the rewards accumulated up to that day — they are simply paid out when the Season ends.',
+      },
+      {
+        id: 10,
+        question: 'How are daily rewards calculated?',
+        answer:
+          'HPP uses a Daily Snapshot model. Every day, the system records your Effective Stake (your principal × Bonus Credits), and rewards are accumulated based on the proportion of your Effective Stake within the total staking pool.\n\nDaily Reward = (Your Effective Stake / Total Effective Stake of the day) × (Annual Reward / 365)\n\n• You earn rewards for every day you are staked\n• Rewards are claimed only at the end of the Season, not immediately\n• Unstaking early does not reduce already accumulated rewards',
+      },
+      {
+        id: 11,
+        question: 'Is staking safe?',
+        answer:
+          'HPP Staking is operated through officially audited smart contracts by [Certik](https://skynet.certik.com/ko/projects/aergo). However, all on-chain operations follow the self-custody principle — users are responsible for their own transactions and security practices.',
+      },
+      {
+        id: 12,
+        question: 'Will my staking APR change over time?',
+        answer: 'Yes. APR can change depending on stake participation and policy updates.',
+      },
+      {
+        id: 13,
+        question: 'Where can I get support?',
+        answer:
+          'You can receive support through the official HPP Telegram, or Website Support Center. For security reasons, always use official channels to avoid phishing attempts.',
+      },
+    ],
+  },
+};
+
+// Airdrop Page Data
+export const airdropData = {
+  faq: [
+    {
+      id: 1,
+      question: 'What is the $HPP Token?',
+      answer:
+        'The $HPP token is the native utility and governance token of the HPP ecosystem. It is used for staking, governance participation, ecosystem incentives, and accessing various services across HPP and its partner dApps.',
+    },
+    {
+      id: 2,
+      question: 'Who is eligible to claim the $HPP Airdrop?',
+      answer:
+        'Eligibility depends on specific airdrop campaigns. Generally, users who participated in HPP governance votes, ecosystem activities, or official HPP programs may qualify. To confirm, simply connect the wallet you used during the campaign.',
+    },
+    {
+      id: 3,
+      question: 'What is the deadline to claim the $HPP Airdrop?',
+      answer:
+        "Claim deadlines vary by event. Each campaign has its own claim window and, when applicable, a vesting schedule. Please check the airdrop's details page for the exact timeline and deadline.",
+    },
+    {
+      id: 4,
+      question: 'After claiming the airdrop rewards, how can I maximize my rewards?',
+      answer:
+        'After claiming your $HPP airdrop, you can stake your tokens to earn additional rewards. In general, staking earlier and staking larger amounts increases your potential returns.\n\nCurrently, you can earn up to 23% APR (Season 1) in additional rewards on top of your claimed amount, depending on the staking program and its conditions. With each new staking season, APRs are designed to increase over time, unlocking higher reward potential for continued participation.',
+    },
+    {
+      id: 5,
+      question: "How can I check the tokens I've already claimed in my wallet?",
+      answer:
+        'Once tokens are claimed, they are sent directly to your connected wallet and can be viewed in your wallet balance. If the tokens are not visible, add the official token contract address manually or verify the transaction using a blockchain explorer.\n\nFollow the [guideline](https://docs.hpp.io/getting-started/connect-to-hpp) to connect your wallet to the HPP platform.',
     },
   ],
 };

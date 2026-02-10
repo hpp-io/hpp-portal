@@ -6,28 +6,21 @@ import Sidebar from '@/components/ui/Sidebar';
 import Button from '@/components/ui/Button';
 import Header from '@/components/ui/Header';
 import Footer from '@/components/ui/Footer';
-import { navItems, communityLinks } from '@/config/navigation';
-import { ARB, Orbiter, FaqCloseIcon, FaqOpenIcon } from '@/assets/icons';
+import { navItems, legalLinks } from '@/config/navigation';
+import { ARB, Orbiter } from '@/assets/icons';
 import { bridgeData } from '@/static/uiData';
+import FaqSection from '@/components/ui/Faq';
+import { useHppChain } from '@/app/staking/hppClient';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 
 export default function BridgeClient() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [openFaqs, setOpenFaqs] = useState<number[]>([]);
-  const faqData = bridgeData.faq;
 
-  const currentEnv = (process.env.NEXT_PUBLIC_ENV || 'development').toLowerCase();
-  const isProduction = currentEnv === 'production';
-  const arbitrumBridgeHref = isProduction
-    ? 'https://bridge.arbitrum.io/?destinationChain=190415&sourceChain=ethereum&token=0xe33fbe7584eb79e2673abe576b7ac8c0de62565c'
-    : 'https://portal.arbitrum.io/bridge?destinationChain=hpp-sepolia&sanitized=true&sourceChain=sepolia&tab=bridge&token=0xb34e0d1fee60e078d611d4218afb004b639c7b76';
-
-  const openFaq = (id: number) => {
-    setOpenFaqs((prev) => (prev.includes(id) ? prev : [...prev, id]));
-  };
-
-  const closeFaq = (id: number) => {
-    setOpenFaqs((prev) => prev.filter((fid) => fid !== id));
-  };
+  const { id: HPP_CHAIN_ID } = useHppChain();
+  const arbitrumBridgeHref =
+    HPP_CHAIN_ID === 190415
+      ? 'https://bridge.arbitrum.io/?destinationChain=190415&sourceChain=ethereum&token=0xe33fbe7584eb79e2673abe576b7ac8c0de62565c'
+      : 'https://portal.arbitrum.io/bridge?destinationChain=hpp-sepolia&sanitized=true&sourceChain=sepolia&tab=bridge&token=0xb34e0d1fee60e078d611d4218afb004b639c7b76';
 
   return (
     <div className="flex flex-col h-screen bg-black text-white overflow-x-hidden">
@@ -40,7 +33,7 @@ export default function BridgeClient() {
       <div className="flex flex-1 overflow-hidden">
         <Sidebar
           navItems={navItems}
-          communityLinks={communityLinks}
+          legalLinks={legalLinks}
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
         />
@@ -51,10 +44,24 @@ export default function BridgeClient() {
           }`}
         >
           {/* Hero Section */}
-          <div className="bg-[#121212] border-b border-[#161616] py-7.5">
-            <div className="px-4 max-w-6xl mx-auto">
-              <h1 className="text-[50px] min-[1200px]:text-[70px] leading-[1.5] font-[900] text-white">Bridge</h1>
-              <p className="text-xl text-[#bfbfbf] font-semibold leading-[1.5] max-w-5xl">
+          <div className="py-12.5">
+            <div className="px-5 max-w-6xl mx-auto">
+              <div className="w-full flex justify-center">
+                <DotLottieReact
+                  src="/lotties/Bridge.lottie"
+                  autoplay
+                  loop
+                  className="w-[80px] h-[80px]"
+                  renderConfig={{
+                    autoResize: true,
+                    devicePixelRatio: typeof window !== 'undefined' ? window.devicePixelRatio : 2,
+                    freezeOnOffscreen: true,
+                  }}
+                  layout={{ fit: 'contain', align: [0.5, 0.5] }}
+                />
+              </div>
+              <h1 className="text-[50px] leading-[1.5] font-[900] text-white text-center">Bridge</h1>
+              <p className="text-xl text-[#bfbfbf] font-semibold leading-[1.5] max-w-5xl text-center">
                 HPP Bridge enables seamless and secure token transfers across multiple networks, ensuring
                 interoperability within the HPP ecosystem.
               </p>
@@ -62,7 +69,7 @@ export default function BridgeClient() {
           </div>
 
           {/* Content */}
-          <div className="px-4 max-w-6xl mx-auto mt-12.5 min-[1200px]:mt-25">
+          <div className="px-5 max-w-6xl mx-auto mt-20 ">
             {/* Bridge Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {/* Arbitrum Official Bridge */}
@@ -106,53 +113,13 @@ export default function BridgeClient() {
             </div>
 
             {/* Disclaimer */}
-            <p className="text-[#bfbfbf] text-base leading-[1.5] tracking-[0.8px] mt-10 min-[1200px]:mt-5 mb-25 min-[1200px]:mb-50">
+            <p className="text-[#bfbfbf] text-base leading-[1.5] tracking-[0.8px] mt-5 mb-25">
               These are independent third-party services that HPP links to for your convenience. HPP is not responsible
               for their operations, security, or any potential loss incurred when using them.
             </p>
 
             {/* FAQ */}
-            <div className="mb-20">
-              <h2 className="text-3xl leading-[1.5] font-[900] text-white mb-5">Frequently Asked Questions</h2>
-              <div>
-                {faqData.map((faq) => {
-                  const isOpen = openFaqs.includes(faq.id);
-                  return (
-                    <div key={faq.id} className="bg-[#111111]">
-                      <button
-                        className="w-full px-5 py-7.5 text-left flex items-center justify-between transition-colors cursor-pointer"
-                        onClick={() => (isOpen ? closeFaq(faq.id) : openFaq(faq.id))}
-                        aria-expanded={isOpen}
-                        aria-controls={`faq-panel-${faq.id}`}
-                      >
-                        <span className="text-white text-lg font-semibold leading-[1.2]">{faq.question}</span>
-                        <span className="pointer-events-none">
-                          {isOpen ? (
-                            <FaqCloseIcon className="w-4 h-4 opacity-80 transition-opacity" />
-                          ) : (
-                            <FaqOpenIcon className="w-4 h-4 opacity-80 transition-opacity" />
-                          )}
-                        </span>
-                      </button>
-                      <div
-                        id={`faq-panel-${faq.id}`}
-                        className="grid overflow-hidden"
-                        style={{
-                          gridTemplateRows: isOpen ? '1fr' : '0fr',
-                          transition: 'grid-template-rows 300ms ease, opacity 300ms ease',
-                          opacity: isOpen ? 1 : 0,
-                        }}
-                        aria-hidden={!isOpen}
-                      >
-                        <div className="px-5 pb-5 text-base leading-[1.5] tracking-[0.8px] text-[#bfbfbf] whitespace-pre-line overflow-hidden">
-                          {faq.answer}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+            <FaqSection items={bridgeData.faq} className="mb-20" />
           </div>
 
           <Footer />

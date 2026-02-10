@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import AppkitProvider from '@/context';
 import { ToastProvider } from '@/hooks/useToast';
+import { ReduxProvider } from '@/store/ReduxProvider';
 import localFont from 'next/font/local';
 
 const pretendard = localFont({
@@ -17,11 +18,11 @@ export const metadata: Metadata = {
   description:
     'Welcome to the HPP Portal, where you can migrate your assets, bridge across networks, and start building on AI-native Layer 2 infrastructure.',
   openGraph: {
-    images: ['/ogImage.png'],
+    images: ['/ogImage.jpg'],
     siteName: 'HPP Portal',
   },
   twitter: {
-    images: ['/ogImage.png'],
+    images: ['/ogImage.jpg'],
     card: 'summary_large_image',
   },
 };
@@ -34,9 +35,11 @@ export default function RootLayout({
   return (
     <html lang="en" className={pretendard.variable}>
       <body className="antialiased">
-        <AppkitProvider cookies={null}>
-          <ToastProvider>{children}</ToastProvider>
-        </AppkitProvider>
+        <ReduxProvider>
+          <AppkitProvider cookies={null}>
+            <ToastProvider>{children}</ToastProvider>
+          </AppkitProvider>
+        </ReduxProvider>
       </body>
     </html>
   );

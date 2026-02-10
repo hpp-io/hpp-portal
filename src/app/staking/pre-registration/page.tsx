@@ -7,13 +7,13 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'HPP Staking Pre-Registration | HPP Portal',
     description: 'Pre-register now to secure up to 20% APR on HPP Staking.',
-    images: ['/ogTwitter.jpg'],
+    images: ['/staking_pre_og.jpg'],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'HPP Staking Pre-Registration | HPP Portal',
     description: 'Pre-register now to secure up to 20% APR on HPP Staking.',
-    images: ['/ogTwitter.jpg'],
+    images: ['/staking_pre_og.jpg'],
   },
 };
 

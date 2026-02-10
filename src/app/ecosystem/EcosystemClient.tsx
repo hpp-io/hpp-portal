@@ -6,9 +6,10 @@ import Sidebar from '@/components/ui/Sidebar';
 import Button from '@/components/ui/Button';
 import Header from '@/components/ui/Header';
 import Footer from '@/components/ui/Footer';
-import { navItems, communityLinks } from '@/config/navigation';
+import { navItems, legalLinks } from '@/config/navigation';
 import { ecosystemData } from '@/static/uiData';
 import { CheckIcon } from '@/assets/icons';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 
 export default function EcosystemClient() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -24,7 +25,7 @@ export default function EcosystemClient() {
       <div className="flex flex-1 overflow-hidden">
         <Sidebar
           navItems={navItems}
-          communityLinks={communityLinks}
+          legalLinks={legalLinks}
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
         />
@@ -35,26 +36,40 @@ export default function EcosystemClient() {
           }`}
         >
           {/* Hero Section */}
-          <div className="bg-[#121212] border-b border-[#161616] py-7.5">
-            <div className="px-4 max-w-6xl mx-auto">
-              <h1 className="text-[50px] min-[1200px]:text-[70px] leading-[1.5] font-[900] text-white">
+          <div className="py-12.5">
+            <div className="px-5 max-w-6xl mx-auto">
+              <div className="w-full flex justify-center">
+                <DotLottieReact
+                  src="/lotties/Ecosystem.lottie"
+                  autoplay
+                  loop
+                  className="w-[80px] h-[80px]"
+                  renderConfig={{
+                    autoResize: true,
+                    devicePixelRatio: typeof window !== 'undefined' ? window.devicePixelRatio : 2,
+                    freezeOnOffscreen: true,
+                  }}
+                  layout={{ fit: 'contain', align: [0.5, 0.5] }}
+                />
+              </div>
+              <h1 className="text-[50px] leading-[1.5] font-[900] text-white text-center">
                 HPP <br className="hidden max-[810px]:inline" /> Ecosystem
               </h1>
-              <p className="text-xl text-[#bfbfbf] font-semibold leading-[1.5] max-w-7xl">
+              <p className="text-xl text-[#bfbfbf] font-semibold leading-[1.5] max-w-7xl text-center">
                 The HPP Ecosystem is an AI-native infrastructure designed for the full data lifecycle, uniting
                 intelligent agents, verifiable off-chain computation, and decentralized applications.
               </p>
             </div>
           </div>
 
-          <div className="px-4 max-w-6xl mx-auto">
+          <div className="px-5 max-w-6xl mx-auto">
             {/* Featured Partners */}
             <div className="mt-12.5 min-[1200px]:mt-25 mb-25 min-[1200px]:mb-37.5">
               <h2 className="text-3xl leading-[1.5] font-[900] text-white mb-8">Featured Partners</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 justify-items-center">
                 {ecosystemData.featuredPartners.map((partner, index) => {
                   const Card = (
-                    <div className="rounded-[5px] px-5 py-7.5 bg-[#111111] w-full lg:max-w-[400px] h-full flex flex-col border border-[#161616]">
+                    <div className="rounded-[5px] px-5 py-7.5 bg-[#111111] w-full lg:max-w-[400px] h-full flex flex-col transition-colors duration-200 group-hover:bg-[#161616]">
                       <div className="flex items-center space-x-2.5 mb-2.5">
                         <div className="w-8 h-8 bg-[#1f2937] rounded flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                           <Image src={partner.icon} alt={partner.name} width={22} height={22} />
@@ -70,7 +85,7 @@ export default function EcosystemClient() {
                       href={partner.link}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="w-full lg:max-w-[400px] h-full cursor-pointer"
+                      className="block w-full lg:max-w-[400px] h-full cursor-pointer group transition-transform duration-200"
                     >
                       {Card}
                     </a>
