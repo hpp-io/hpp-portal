@@ -8,9 +8,9 @@ Interact with the HPP Mainnet network — migrate assets, bridge to the native n
   - Arbitrum Official Bridge → HPP Mainnet
   - Orbiter Bridge → fast L2 transfers
 - **Token Migration (AERGO → HPP on Ethereum)**: In‑app migration
-- **Staking (HPP on HPP chain)**: Stake/Unstake and Claim
+- **Staking (HPP on HPP chain)**: Stake / Unstake / Claim (+ wallet APR / dashboard)
 - **Ecosystem**: Explore partners and integrations
-- **Airdrop**: Information page for upcoming drops
+- **Airdrop**: Coming soon
 - **Web3 Integration**: Reown AppKit + Wagmi + Viem
 
 ### Supported Networks
@@ -23,10 +23,10 @@ Interact with the HPP Mainnet network — migrate assets, bridge to the native n
 ### Routes
 
 - `/` Home
-- `/migration` AERGO (ETH) → HPP (ETH) in‑app migration
+- `/migration` AERGO/AQT (ETH) → HPP (ETH) in‑app migration
 - `/bridge` Bridges to HPP Mainnet — external links to Arbitrum Official Bridge and Orbiter
 - `/staking` HPP staking (stake / unstake / claim)
-- `/airdrop` Airdrop info
+- `/airdrop` Airdrop (Coming soon)
 - `/ecosystem` HPP ecosystem overview
 
 ### External Links
@@ -35,6 +35,8 @@ Interact with the HPP Mainnet network — migrate assets, bridge to the native n
   - `https://snapshot.box/%5C#/s:hpp.eth`
 - Build: Developer docs and tools
   - `https://docs.hpp.io/`
+- Staking guide
+  - `https://docs.hpp.io/community/staking-guide`
 - Block Explorer: HPP Mainnet and HPP Sepolia
   - Mainnet: `https://explorer.hpp.io`
   - Sepolia: `https://sepolia-explorer.hpp.io`
@@ -44,54 +46,55 @@ Interact with the HPP Mainnet network — migrate assets, bridge to the native n
 1. Install dependencies
 
 ```bash
-npm install
+yarn install
 ```
 
-2. Create `.env.local` and set the variables below
+2. Create `.env.local` (start from `.env.example`) and set the variables below
 
 ```bash
-# Reown AppKit
+# Wallet modal chain selection (AppKit/Wagmi)
+NEXT_PUBLIC_CHAIN=mainnet # or sepolia
+
+# Reown/AppKit project id (https://dashboard.reown.com)
 NEXT_PUBLIC_APP_KIT_PROJECT_ID=
 
-# App environment and site URL
+# Public site URL used in metadata (OpenGraph/Twitter images, etc.)
 NEXT_PUBLIC_SITE_URL=https://localhost:3000
 
-# Etherscan (for history lookup)
-NEXT_PUBLIC_ETHERSCAN_API_KEY=
+# Ethereum contract addresses (use mainnet or sepolia addresses accordingly)
+NEXT_PUBLIC_ETH_HPP_TOKEN_CONTRACT=0x...
+NEXT_PUBLIC_ETH_AERGO_TOKEN_CONTRACT=0x...
+NEXT_PUBLIC_ETH_AERGO_HPP_MIGRATION_CONTRACT=0x...
+NEXT_PUBLIC_ETH_AQT_TOKEN_CONTRACT=0x...
+NEXT_PUBLIC_ETH_AQT_HPP_MIGRATION_CONTRACT=0x...
 
-# Ethereum Mainnet contracts (production)
-NEXT_PUBLIC_MAINNET_ETH_HPP_TOKEN_CONTRACT=0x...
-NEXT_PUBLIC_MAINNET_ETH_AERGO_TOKEN_CONTRACT=0x...
-NEXT_PUBLIC_MAINNET_ETH_HPP_MIGRATION_CONTRACT=0x...
+# HPP chain config (used for staking reads/writes)
+NEXT_PUBLIC_HPP_CHAIN_ID=190415
+NEXT_PUBLIC_HPP_RPC_URL=https://...
+NEXT_PUBLIC_HPP_TOKEN_CONTRACT=0x...
+NEXT_PUBLIC_HPP_STAKING_CONTRACT=0x...
 
-# Sepolia test contracts (development)
-NEXT_PUBLIC_SEPOLIA_ETH_HPP_TOKEN_CONTRACT=0x...
-NEXT_PUBLIC_SEPOLIA_ETH_AERGO_TOKEN_CONTRACT=0x...
-NEXT_PUBLIC_SEPOLIA_ETH_HPP_MIGRATION_CONTRACT=0x...
+# Staking stats APIs (APR, pre-registration date, etc.)
+NEXT_PUBLIC_HPP_STAKING_API_URL=https://...
 
-# HPP chain (Mainnet / Sepolia)
-NEXT_PUBLIC_HPP_CHAIN_ID=190415               # 190415 (Mainnet) or 181228 (Sepolia)
-NEXT_PUBLIC_HPP_RPC_URL=https://...           # HPP RPC for selected chain
-NEXT_PUBLIC_HPP_TOKEN_CONTRACT=0x...           # HPP token on HPP chain
-NEXT_PUBLIC_HPP_STAKING_CONTRACT=0x...         # Staking contract on HPP chain
-
-# Ethereum network for AppKit (Mainnet / Sepolia)
-NEXT_PUBLIC_CHAIN=mainnet                      # or sepolia
+# Blockscout API v2 proxy (used for activity/history)
+NEXT_PUBLIC_HPP_BLOCKSCOUT_PROXY_URL=https://...
 ```
 
 3. Run the app (HTTPS dev server enabled)
 
 ```bash
-npm run dev
+yarn dev
 ```
 
 Open `https://localhost:3000`.
 
 ## Scripts
 
-- `npm run dev` — start dev server with HTTPS
-- `npm run build` — build for static export
-- `npm start` — start production server (if applicable)
+- `yarn dev` — start dev server with HTTPS
+- `yarn build` — build for static export
+- `yarn start` — start production server (if applicable)
+- `yarn lint` — lint
 
 ## Build & Deploy
 
