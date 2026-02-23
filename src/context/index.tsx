@@ -30,7 +30,7 @@ const metadata = {
 const selectedChainEnv = (process.env.NEXT_PUBLIC_CHAIN || 'mainnet').toLowerCase();
 const appKitNetworks = (selectedChainEnv === 'sepolia' ? [sepolia] : [mainnet]) as [
   typeof sepolia | typeof mainnet,
-  ...(typeof sepolia | typeof mainnet)[],
+  ...(typeof sepolia | typeof mainnet)[]
 ];
 const appKitDefaultNetwork = (selectedChainEnv === 'sepolia' ? sepolia : mainnet) as typeof sepolia | typeof mainnet;
 const termsLink = legalLinks.find((l) => (l.label || '').toLowerCase().includes('terms'))?.href;

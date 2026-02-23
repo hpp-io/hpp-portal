@@ -10,7 +10,7 @@ interface ToastContextType {
     message: string | ReactNode,
     type?: 'success' | 'error' | 'loading' | 'custom',
     link?: { text: string; url: string },
-    actions?: ReactNode,
+    actions?: ReactNode
   ) => void;
   hideToast: () => void;
   isVisible: boolean;
@@ -36,7 +36,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     message: string | ReactNode,
     type: 'success' | 'error' | 'loading' | 'custom' = 'loading',
     link?: { text: string; url: string },
-    actions?: ReactNode,
+    actions?: ReactNode
   ) => {
     setTitle(title);
     setMessage(message);
