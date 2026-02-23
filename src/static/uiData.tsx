@@ -455,7 +455,7 @@ export const airdropData = {
       id: 3,
       question: 'What is the deadline to claim the $HPP Airdrop?',
       answer:
-        "Claim deadlines vary by event. Each campaign has its own claim window and, when applicable, a vesting schedule. Please check the airdrop's details page for the exact timeline and deadline.",
+        'Airdrop claims will be available from 2026.2.23, 08:00 UTC to 2027.2.23, 08:00 UTC. The claim window has been extended to the vesting period plus an additional 3 months, ensuring that all eligible participants have sufficient time to receive their allocation.',
     },
     {
       id: 4,

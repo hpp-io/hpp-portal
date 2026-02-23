@@ -64,7 +64,7 @@ export default function SelectionClient() {
           </div>
           <div className="px-5 max-w-6xl mx-auto mt-20">
             <div className="grid grid-cols-1 min-[810px]:grid-cols-2 gap-5">
-              <div className="rounded-[5px] px-5 py-7.5 bg-primary w-full lg:max-w-[520px] flex flex-col">
+              <div className="rounded-[5px] px-5 py-7.5 bg-primary w-full flex flex-col">
                 <div className="flex flex-col items-start flex-1">
                   <div className="w-12.5 h-12.5 bg-white rounded-lg flex items-center justify-center mb-5">
                     <Image src={AERGO} alt="AERGO" />

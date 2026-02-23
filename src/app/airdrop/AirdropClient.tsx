@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Sidebar from '@/components/ui/Sidebar';
 import Header from '@/components/ui/Header';
 import Footer from '@/components/ui/Footer';
-import { HPPTickerIcon, FaqOpenIcon, FaqCloseIcon, RightArrowIcon } from '@/assets/icons';
+import { HPPTickerIcon, RightArrowIcon, DownIcon } from '@/assets/icons';
 import { navItems, legalLinks } from '@/config/navigation';
 import Button from '@/components/ui/Button';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
@@ -14,9 +14,14 @@ import DontMissAirdrop from '@/components/ui/DontMissAirdrop';
 import { airdropData } from '@/static/uiData';
 import axios from 'axios';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { setAirdropLoading, setAirdropEvents, type AirdropType, type AirdropEventData, AirdropStatus } from '@/store/slices';
+import {
+  setAirdropLoading,
+  setAirdropEvents,
+  type AirdropType,
+  type AirdropEventData,
+  AirdropStatus,
+} from '@/store/slices';
 import { formatReward } from '@/lib/helpers';
-
 
 interface ApiAirdropEvent {
   id: string;
@@ -39,11 +44,11 @@ export default function AirdropClient() {
   const dispatch = useAppDispatch();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'HPP' | 'DApp' | 'Collaboration'>('HPP');
-  const [expandedEvents, setExpandedEvents] = useState<Set<string>>(new Set());
+  const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
 
   // Get data from Redux
   const airdropState = useAppSelector((state) => state.airdrop);
-  
+
   // Map API type to tab name
   const getApiType = (tab: 'HPP' | 'DApp' | 'Collaboration'): AirdropType => {
     switch (tab) {
@@ -71,16 +76,29 @@ export default function AirdropClient() {
     }));
   }, [eventsData]);
 
-  const toggleEvent = (eventId: string) => {
-    setExpandedEvents((prev) => {
-      const next = new Set(prev);
-      if (next.has(eventId)) {
-        next.delete(eventId);
-      } else {
-        next.add(eventId);
-      }
-      return next;
+  const sortedAirdropEvents = useMemo(() => {
+    const order: Record<string, number> = { 'On-Going': 0, 'Coming Soon': 1, Ended: 2 };
+    return [...airdropEvents].sort((a, b) => {
+      const wa = order[a.status] ?? 99;
+      const wb = order[b.status] ?? 99;
+      if (wa !== wb) return wa - wb;
+      return String(a.name).localeCompare(String(b.name));
     });
+  }, [airdropEvents]);
+
+  const getDefaultExpandedId = (events: Array<Pick<AirdropEventData, 'id' | 'name' | 'status'>>) => {
+    const order: Record<string, number> = { 'On-Going': 0, 'Coming Soon': 1, Ended: 2 };
+    const sorted = [...events].sort((a, b) => {
+      const wa = order[a.status] ?? 99;
+      const wb = order[b.status] ?? 99;
+      if (wa !== wb) return wa - wb;
+      return String(a.name).localeCompare(String(b.name));
+    });
+    return sorted[0]?.id ?? null;
+  };
+
+  const toggleEvent = (eventId: string) => {
+    setExpandedEventId((prev) => (prev === eventId ? null : eventId));
   };
 
   // Fetch airdrop events from API (only if not cached or cache expired)
@@ -90,16 +108,16 @@ export default function AirdropClient() {
       const now = Date.now();
       if (lastFetched && now - lastFetched < CACHE_DURATION && eventsData.length > 0) {
         // Use cached data, set first event as expanded if available
-        if (eventsData.length > 0 && expandedEvents.size === 0) {
-          setExpandedEvents(new Set([eventsData[0].id]));
+        if (eventsData.length > 0 && !expandedEventId) {
+          setExpandedEventId(getDefaultExpandedId(eventsData));
         }
         return;
       }
 
       // Clear expanded events when switching tabs
-      setExpandedEvents(new Set());
+      setExpandedEventId(null);
       dispatch(setAirdropLoading({ type: apiType, loading: true }));
-      
+
       try {
         const apiBaseUrl = process.env.NEXT_PUBLIC_HPP_STAKING_API_URL;
         if (!apiBaseUrl) {
@@ -148,24 +166,30 @@ export default function AirdropClient() {
 
         // Save to Redux
         dispatch(setAirdropEvents({ type: apiType, events: mappedEvents }));
-        
+
         // Set first event as expanded if available
         if (mappedEvents.length > 0) {
-          setExpandedEvents(new Set([mappedEvents[0].id]));
+          setExpandedEventId(getDefaultExpandedId(mappedEvents));
         } else {
-          setExpandedEvents(new Set());
+          setExpandedEventId(null);
         }
       } catch (error) {
         console.error('Failed to fetch airdrop events:', error);
         // Set empty array on error
         dispatch(setAirdropEvents({ type: apiType, events: [] }));
-        setExpandedEvents(new Set());
+        setExpandedEventId(null);
       }
     };
 
     fetchAirdropEvents();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, apiType]);
+
+  const getStatusClasses = (status: AirdropStatus) => {
+    if (status === 'On-Going') return { dot: 'bg-[#5DF23F]', text: 'text-[#5DF23F]' };
+    if (status === 'Coming Soon') return { dot: 'bg-[#F7EA94]', text: 'text-[#F7EA94]' };
+    return { dot: 'bg-[#BFBFBF]', text: 'text-[#BFBFBF]' };
+  };
 
   return (
     <div className="flex flex-col h-screen bg-black overflow-x-hidden">
@@ -184,8 +208,9 @@ export default function AirdropClient() {
         />
 
         <main
-          className={`flex-1 overflow-y-auto transition-all duration-300 ${sidebarOpen ? 'opacity-50 min-[1200px]:opacity-100' : ''
-            }`}
+          className={`flex-1 overflow-y-auto transition-all duration-300 ${
+            sidebarOpen ? 'opacity-50 min-[1200px]:opacity-100' : ''
+          }`}
         >
           {/* Hero Section */}
           <div className="py-12.5">
@@ -248,34 +273,31 @@ export default function AirdropClient() {
             <div className="flex gap-2.5 mb-5">
               <button
                 onClick={() => setActiveTab('HPP')}
-                className={`px-5 py-2.5 rounded-[23px] text-base font-normal transition-colors cursor-pointer ${activeTab === 'HPP'
-                    ? 'bg-[#5DF23F] text-black'
-                    : 'bg-[#121212] text-white'
-                  }`}
+                className={`px-5 py-2.5 rounded-[23px] text-base font-normal transition-colors cursor-pointer ${
+                  activeTab === 'HPP' ? 'bg-[#5DF23F] text-black' : 'bg-[#121212] text-white'
+                }`}
               >
                 HPP
               </button>
               <button
                 onClick={() => setActiveTab('DApp')}
-                className={`px-5 py-2.5 rounded-[23px] text-base font-normal transition-colors cursor-pointer ${activeTab === 'DApp'
-                    ? 'bg-[#5DF23F] text-black'
-                    : 'bg-[#121212] text-white'
-                  }`}
+                className={`px-5 py-2.5 rounded-[23px] text-base font-normal transition-colors cursor-pointer ${
+                  activeTab === 'DApp' ? 'bg-[#5DF23F] text-black' : 'bg-[#121212] text-white'
+                }`}
               >
                 DApp
               </button>
               <button
                 onClick={() => setActiveTab('Collaboration')}
-                className={`px-5 py-2.5 rounded-[23px] text-base font-normal transition-colors cursor-pointer ${activeTab === 'Collaboration'
-                    ? 'bg-[#5DF23F] text-black'
-                    : 'bg-[#121212] text-white'
-                  }`}
+                className={`px-5 py-2.5 rounded-[23px] text-base font-normal transition-colors cursor-pointer ${
+                  activeTab === 'Collaboration' ? 'bg-[#5DF23F] text-black' : 'bg-[#121212] text-white'
+                }`}
               >
                 Collaboration
               </button>
             </div>
 
-            {/* Mobile/Tablet View (1200px 미만) */}
+            {/* Mobile/Tablet View (below 1200px) */}
             <div className="min-[1200px]:hidden">
               {isLoading ? (
                 <div className="rounded-[5px] bg-[#121212] border border-[#2D2D2D] p-5 flex items-center justify-center">
@@ -297,86 +319,145 @@ export default function AirdropClient() {
                   <p className="text-[#bfbfbf] text-base leading-[1]">Coming Soon+</p>
                 </div>
               ) : (
-                airdropEvents.map((event) => {
-                  const IconComponent = event.icon;
+                <div className="overflow-hidden">
+                  <div className="px-5 py-5 rounded-[5px] bg-[#121212]">
+                    <div className="text-[#bfbfbf] text-base font-semibold leading-[1]">Event</div>
+                  </div>
 
-                  return (
-                    <div key={event.id} className="rounded-[5px] bg-[#121212] border border-[#2D2D2D] overflow-hidden">
-                      {/* Header */}
-                      <button
-                        onClick={() => router.push(`/airdrop/${event.id}`)}
-                        className="w-full px-5 py-5 flex items-center justify-between border-b border-[#2D2D2D] hover:bg-[#1a1a1a] transition-colors cursor-pointer"
-                      >
-                        <div className="flex items-center gap-1.5">
-                          <IconComponent className="w-6 h-6 text-white flex-shrink-0" />
-                          <span className="text-white text-lg font-semibold leading-[1.2]">{event.name}</span>
-                        </div>
-                        <FaqCloseIcon className="w-4 h-4 text-white opacity-80" />
-                      </button>
+                  {sortedAirdropEvents.map((event, idx) => {
+                    const IconComponent = event.icon;
+                    const isOpen = expandedEventId === event.id;
+                    const isLast = idx === sortedAirdropEvents.length - 1;
+                    return (
+                      <div key={event.id}>
+                        <button
+                          type="button"
+                          onClick={() => toggleEvent(event.id)}
+                          className="w-full px-5 py-6 flex items-center justify-between hover:bg-[#1a1a1a] transition-colors cursor-pointer text-left"
+                          aria-expanded={isOpen}
+                          aria-controls={`airdrop-mobile-panel-${event.id}`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <IconComponent className="w-5 h-5 text-white flex-shrink-0" />
+                            <div className="flex flex-col gap-1">
+                              <span className={`${getStatusClasses(event.status).text} text-sm leading-[1]`}>
+                                {event.status}
+                              </span>
+                              <span className="text-white text-base font-semibold leading-[1]">{event.name}</span>
+                            </div>
+                          </div>
+                          <span
+                            className={`pointer-events-none inline-flex opacity-80 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+                          >
+                            <DownIcon className="w-5 h-5 text-white" />
+                          </span>
+                        </button>
 
-                      {/* Table Content */}
-                      <div className="px-5 py-5">
-                        {/* Table Header */}
-                        <div className="grid grid-cols-5 gap-4 mb-4">
-                          <div className="text-[#bfbfbf] text-base leading-[1] font-semibold">Event</div>
-                          <div className="text-[#bfbfbf] text-base leading-[1] font-semibold">Reward</div>
-                          <div className="text-[#bfbfbf] text-base leading-[1] font-semibold">Starts</div>
-                          <div className="text-[#bfbfbf] text-base leading-[1] font-semibold">Ends</div>
-                          <div className="text-[#bfbfbf] text-base leading-[1] font-semibold">Status</div>
-                        </div>
+                        <div
+                          id={`airdrop-mobile-panel-${event.id}`}
+                          className="grid overflow-hidden"
+                          style={{
+                            gridTemplateRows: isOpen ? '1fr' : '0fr',
+                            transition: 'grid-template-rows 300ms ease, opacity 300ms ease',
+                            opacity: isOpen ? 1 : 0,
+                          }}
+                          aria-hidden={!isOpen}
+                        >
+                          <div className="overflow-hidden">
+                            <div className="pt-2 px-5 pb-6">
+                              {/* Below 600px: 2-col (Event/Reward) + 3-col (Starts/Ends/Status) + button left-aligned */}
+                              <div className="flex flex-col gap-4 text-left items-start min-[600px]:hidden">
+                                <div className="w-full grid grid-cols-2 gap-x-4 gap-y-1 text-left">
+                                  <div className="text-[#bfbfbf] text-base leading-[1] font-semibold">Event</div>
+                                  <div className="text-[#bfbfbf] text-base leading-[1] font-semibold">Reward</div>
+                                  <div className="text-white text-base leading-[1]">{event.eventName}</div>
+                                  <div className="text-white text-base leading-[1]">{`${formatReward(event.reward)}`}</div>
+                                </div>
+                                <div className="w-full grid grid-cols-3 gap-x-4 gap-y-1 text-left">
+                                  <div className="text-[#bfbfbf] text-base leading-[1] font-semibold">Starts</div>
+                                  <div className="text-[#bfbfbf] text-base leading-[1] font-semibold">Ends</div>
+                                  <div className="text-[#bfbfbf] text-base leading-[1] font-semibold">Status</div>
+                                  <div className="text-white text-base leading-[1]">{event.starts}</div>
+                                  <div className="text-white text-base leading-[1]">{event.ends}</div>
+                                  <div className="flex items-center gap-1.5 justify-start">
+                                    <span
+                                      className={`w-2.5 h-2.5 rounded-full ${getStatusClasses(event.status).dot}`}
+                                    ></span>
+                                    <span
+                                      className={`text-sm leading-[1] whitespace-nowrap ${getStatusClasses(event.status).text}`}
+                                    >
+                                      {event.status}
+                                    </span>
+                                  </div>
+                                </div>
+                                {event.status === 'On-Going' && (
+                                  <div className="w-full flex justify-start pt-1">
+                                    <Button
+                                      variant="white"
+                                      size="sm"
+                                      className="cursor-pointer whitespace-nowrap font-semibold px-4 py-2 border border-white"
+                                      onClick={() => router.push(`/airdrop/${event.id}`)}
+                                    >
+                                      Go to Claim
+                                    </Button>
+                                  </div>
+                                )}
+                              </div>
 
-                        {/* Table Row */}
-                        <div className="grid grid-cols-5 gap-4 mb-5">
-                          <div className="text-white text-base leading-[1]">{event.eventName}</div>
-                          <div className="text-white text-base leading-[1]">{`${formatReward(event.reward)} HPP Token`}</div>
-                          <div className="text-white text-base leading-[1]">{event.starts}</div>
-                          <div className="text-white text-base leading-[1]">{event.ends}</div>
-                          <div className="flex items-center gap-1.5">
-                            <span
-                              className={`w-2.5 h-2.5 rounded-full ${
-                                event.status === 'On-Going'
-                                  ? 'bg-[#5DF23F]'
-                                  : event.status === 'Coming Soon'
-                                    ? 'bg-[#FFA500]'
-                                    : 'bg-[#999999]'
-                              }`}
-                            ></span>
-                            <span
-                              className={`text-sm leading-[1] ${
-                                event.status === 'On-Going'
-                                  ? 'text-[#5DF23F]'
-                                  : event.status === 'Coming Soon'
-                                    ? 'text-[#FFA500]'
-                                    : 'text-white'
-                              }`}
-                            >
-                              {event.status}
-                            </span>
+                              {/* 600px and up: table grid */}
+                              <div
+                                className="hidden min-[600px]:grid gap-4 items-center"
+                                style={{
+                                  gridTemplateColumns: '1.2fr 1.8fr 1fr 1fr 1.2fr 140px',
+                                  gridTemplateRows: 'auto auto',
+                                }}
+                              >
+                                <div className="text-[#bfbfbf] text-base leading-[1] font-semibold">Event</div>
+                                <div className="text-[#bfbfbf] text-base leading-[1] font-semibold">Reward</div>
+                                <div className="text-[#bfbfbf] text-base leading-[1] font-semibold">Starts</div>
+                                <div className="text-[#bfbfbf] text-base leading-[1] font-semibold">Ends</div>
+                                <div className="text-[#bfbfbf] text-base leading-[1] font-semibold">Status</div>
+                                <div className="row-span-2 flex justify-end items-center">
+                                  {event.status === 'On-Going' && (
+                                    <Button
+                                      variant="white"
+                                      size="sm"
+                                      className="cursor-pointer whitespace-nowrap font-semibold px-4 py-2"
+                                      onClick={() => router.push(`/airdrop/${event.id}`)}
+                                    >
+                                      Go to Claim
+                                    </Button>
+                                  )}
+                                </div>
+                                <div className="text-white text-base leading-[1]">{event.eventName}</div>
+                                <div className="text-white text-base leading-[1]">{`${formatReward(event.reward)}`}</div>
+                                <div className="text-white text-base leading-[1]">{event.starts}</div>
+                                <div className="text-white text-base leading-[1]">{event.ends}</div>
+                                <div className="flex items-center gap-1.5">
+                                  <span
+                                    className={`w-2.5 h-2.5 rounded-full ${getStatusClasses(event.status).dot}`}
+                                  ></span>
+                                  <span
+                                    className={`text-sm leading-[1] whitespace-nowrap ${getStatusClasses(event.status).text}`}
+                                  >
+                                    {event.status}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
                           </div>
                         </div>
-
-                        {/* Claim Button */}
-                        <div className="flex justify-end">
-                          <Button
-                            variant="white"
-                            size="md"
-                            className="cursor-pointer"
-                            onClick={() => router.push(`/airdrop/${event.id}`)}
-                          >
-                            Go to Claim
-                          </Button>
-                        </div>
                       </div>
-                    </div>
-                  );
-                  })
-                )}
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             {/* Desktop View (1200px+) - Table Style */}
-            <div className="hidden min-[1200px]:block overflow-hidden">
+            <div className="hidden min-[1200px]:block overflow-hidden bg-[#121212] rounded-[5px]">
               {/* Table Header */}
-              <div className="grid grid-cols-[2fr_1.5fr_1fr_1fr_1.5fr_auto] gap-4 px-5 py-4 bg-[#121212] rounded-[5px]">
+              <div className="grid grid-cols-[2fr_1.5fr_1fr_1fr_1.5fr_auto] gap-4 px-5 py-4">
                 <div className="text-[#bfbfbf] text-base leading-[1] font-semibold">Event</div>
                 <div className="text-[#bfbfbf] text-base leading-[1] font-semibold">Reward</div>
                 <div className="text-[#bfbfbf] text-base leading-[1] font-semibold">Starts</div>
@@ -407,7 +488,7 @@ export default function AirdropClient() {
                     <p className="text-[#bfbfbf] text-base leading-[1]">Coming Soon</p>
                   </div>
                 ) : (
-                  airdropEvents.map((event) => {
+                  sortedAirdropEvents.map((event) => {
                     const IconComponent = event.icon;
                     return (
                       <div
@@ -456,8 +537,8 @@ export default function AirdropClient() {
                         </div>
                       </div>
                     );
-                    })
-                  )}
+                  })
+                )}
               </div>
             </div>
           </div>

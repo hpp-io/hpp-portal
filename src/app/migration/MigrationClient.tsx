@@ -777,7 +777,7 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
           }`}
         >
           {/* Go Back Button */}
-          <div className="ml-4 max-w-6xl mx-auto mb-4 mt-3">
+          <div className="ml-4 max-w-6xl mx-auto my-4">
             <Button
               size="sm"
               onClick={() => router.back()}

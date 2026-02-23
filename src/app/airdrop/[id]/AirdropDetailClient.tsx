@@ -7,11 +7,9 @@ import Sidebar from '@/components/ui/Sidebar';
 import Header from '@/components/ui/Header';
 import Footer from '@/components/ui/Footer';
 import Button from '@/components/ui/Button';
-import WalletButton from '@/components/ui/WalletButton';
 import { navItems, legalLinks } from '@/config/navigation';
 import { useAccount, useDisconnect, useWalletClient } from 'wagmi';
 import { getWalletClient } from '@wagmi/core';
-import Image from 'next/image';
 import { useAppKit } from '@reown/appkit/react';
 import axios from 'axios';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
@@ -47,10 +45,7 @@ export default function AirdropDetailClient({ id }: { id: string }) {
   const [claimableAmountRaw, setClaimableAmountRaw] = useState<bigint | null>(null);
   const [isVestingLoading, setIsVestingLoading] = useState(false);
   const [isClaiming, setIsClaiming] = useState(false);
-  const [isClaimModalOpen, setIsClaimModalOpen] = useState(false);
-  const [successModal, setSuccessModal] = useState<null | { variant: 'claim' | 'claimAndStake'; amount: string }>(
-    null
-  );
+  const [successModal, setSuccessModal] = useState<null | { variant: 'claim' | 'claimAndStake'; amount: string }>(null);
   const [historyItems, setHistoryItems] = useState<
     Array<{ id: string; date: string; action: string; amount?: string; status?: string; isLocal?: boolean }>
   >([]);
@@ -85,7 +80,7 @@ export default function AirdropDetailClient({ id }: { id: string }) {
   const { id: HPP_CHAIN_ID, chain: hppChain, rpcUrl } = useHppChain();
   const explorerBase = useMemo(
     () => (HPP_CHAIN_ID === 190415 ? 'https://explorer.hpp.io' : 'https://sepolia-explorer.hpp.io'),
-    [HPP_CHAIN_ID]
+    [HPP_CHAIN_ID],
   );
 
   // Ensure wallet is connected to HPP network for writes
@@ -133,10 +128,10 @@ export default function AirdropDetailClient({ id }: { id: string }) {
       setIsVestingLoading(true);
       const [scheduleResult, claimableResult] = await Promise.all([
         publicClient.readContract({
-        address: contractAddress,
-        abi: hppVestingABI,
-        functionName: 'getVestingSchedule',
-        args: [address],
+          address: contractAddress,
+          abi: hppVestingABI,
+          functionName: 'getVestingSchedule',
+          args: [address],
         }),
         publicClient.readContract({
           address: contractAddress,
@@ -165,13 +160,13 @@ export default function AirdropDetailClient({ id }: { id: string }) {
   // Parse vesting schedule data
   const vestingData = useMemo(() => {
     if (!vestingSchedule) return null;
-    
+
     // Handle both array and object formats
     let beneficiary: `0x${string}`;
     let totalAmount: bigint;
     let claimedAmount: bigint;
     let isActive: boolean;
-    
+
     if (Array.isArray(vestingSchedule)) {
       // Tuple format: [beneficiary, totalAmount, claimedAmount, isActive]
       [beneficiary, totalAmount, claimedAmount, isActive] = vestingSchedule;
@@ -195,13 +190,13 @@ export default function AirdropDetailClient({ id }: { id: string }) {
     // So "vested so far" = claimed + claimable
     const vestedAmountSafe = claimedAmountSafe + claimableSafe;
     const notVestedAmountSafe = totalAmountSafe > vestedAmountSafe ? totalAmountSafe - vestedAmountSafe : BigInt(0);
-    
+
     const totalAmountStr = formatUnits(totalAmountSafe, 18);
     const claimedAmountStr = formatUnits(claimedAmountSafe, 18);
     const claimableAmountStr = formatUnits(claimableSafe, 18);
     const vestedAmountStr = formatUnits(vestedAmountSafe, 18);
     const notVestedAmountStr = formatUnits(notVestedAmountSafe, 18);
-    
+
     return {
       beneficiary,
       totalAmount: totalAmountStr,
@@ -216,217 +211,228 @@ export default function AirdropDetailClient({ id }: { id: string }) {
   // Claimable amount (vested-but-unclaimed) from contract
   const claimableAmount = useMemo(() => vestingData?.claimableAmount ?? null, [vestingData]);
 
-  const fetchAirdropHistory = React.useCallback(async (opts?: { silent?: boolean }) => {
-    if (!isConnected || !address || !contractAddress) {
-      setHistoryItems([]);
-      setIsHistoryLoading(false);
-      return;
-    }
-    const lambdaBase = process.env.NEXT_PUBLIC_HPP_BLOCKSCOUT_PROXY_URL;
-    if (!lambdaBase) {
-      console.error('NEXT_PUBLIC_HPP_BLOCKSCOUT_PROXY_URL is not defined');
-      setIsHistoryLoading(false);
-      return;
-    }
-    const MAX_RETRIES = 3;
-    const RETRY_DELAY = 2000;
-    const isMainnet = HPP_CHAIN_ID === 190415;
-    const network = isMainnet ? 'mainnet' : 'sepolia';
-    const baseUrl = `${lambdaBase}/blockscout/${network}/api/v2/addresses/${contractAddress}/transactions`;
-
-    const isInternalServerError = (err: any): boolean => {
-      return (
-        err?.response?.status === 500 ||
-        err?.response?.data?.message === 'Internal Server Error' ||
-        err?.message?.includes('Internal Server Error')
-      );
-    };
-
-    const retryApiCall = async (apiCall: () => Promise<any>, callRetryCount = 0): Promise<any> => {
-      try {
-        return await apiCall();
-      } catch (err: any) {
-        if (isInternalServerError(err) && callRetryCount < MAX_RETRIES) {
-          const delay = RETRY_DELAY * (callRetryCount + 1);
-          await new Promise((resolve) => setTimeout(resolve, delay));
-          return retryApiCall(apiCall, callRetryCount + 1);
-        }
-        throw err;
+  const fetchAirdropHistory = React.useCallback(
+    async (opts?: { silent?: boolean }) => {
+      if (!isConnected || !address || !contractAddress) {
+        setHistoryItems([]);
+        setIsHistoryLoading(false);
+        return;
       }
-    };
-
-    try {
-      const silent = !!opts?.silent;
-      // Match staking Activity Log UX: don't flash full-page loader during background refresh/polling
-      if (!silent && historyItems.length === 0) setIsHistoryLoading(true);
-      let items: any[] = [];
-      let nextUrl: string | null = baseUrl;
-      let guard = 0;
-      while (nextUrl && guard < 200) {
-        const resp = await retryApiCall(() => axios.get(nextUrl!, { headers: { accept: 'application/json' } }));
-        const pageItems: any[] = resp?.data?.items ?? [];
-        if (Array.isArray(pageItems) && pageItems.length > 0) items.push(...pageItems);
-        const np = resp?.data?.next_page_params;
-        if (!np || pageItems.length === 0) {
-          nextUrl = null;
-          break;
-        }
-        const qs = new URLSearchParams();
-        if (np.index !== undefined) qs.set('index', String(np.index));
-        if (np.value !== undefined) qs.set('value', String(np.value));
-        if (np.hash !== undefined) qs.set('hash', String(np.hash));
-        if (np.inserted_at !== undefined) qs.set('inserted_at', String(np.inserted_at));
-        if (np.block_number !== undefined) qs.set('block_number', String(np.block_number));
-        if (np.fee !== undefined) qs.set('fee', String(np.fee));
-        if (np.items_count !== undefined) qs.set('items_count', String(np.items_count));
-        nextUrl = `${baseUrl}?${qs.toString()}`;
-        guard += 1;
+      const lambdaBase = process.env.NEXT_PUBLIC_HPP_BLOCKSCOUT_PROXY_URL;
+      if (!lambdaBase) {
+        console.error('NEXT_PUBLIC_HPP_BLOCKSCOUT_PROXY_URL is not defined');
+        setIsHistoryLoading(false);
+        return;
       }
+      const MAX_RETRIES = 3;
+      const RETRY_DELAY = 2000;
+      const isMainnet = HPP_CHAIN_ID === 190415;
+      const network = isMainnet ? 'mainnet' : 'sepolia';
+      const baseUrl = `${lambdaBase}/blockscout/${network}/api/v2/addresses/${contractAddress}/transactions`;
 
-      const walletLc = address.toLowerCase();
-      const normalizeMethod = (raw: any) =>
-        String(raw || '')
-          .trim()
-          .toLowerCase()
-          .replace(/[^a-z0-9_]/g, '');
-      // For now, only show Claim history. (Future: add "Claim + Staking" etc. here.)
-      const allowedMethods = new Set(['claimtokens', 'claimandstake']);
-      const mapStatus = (it: any): string => {
-        const res = String(it?.result || '').toLowerCase();
-        const ok = String(it?.status || '').toLowerCase() === 'ok';
-        const hasRevert = !!it?.revert_reason;
-        return hasRevert || res === 'failed' ? 'Rejected' : ok && res === 'success' ? 'Completed' : 'Pending';
+      const isInternalServerError = (err: any): boolean => {
+        return (
+          err?.response?.status === 500 ||
+          err?.response?.data?.message === 'Internal Server Error' ||
+          err?.message?.includes('Internal Server Error')
+        );
       };
-      let mapped = Array.isArray(items)
-        ? items
-            .filter((it: any) => String(it?.from?.hash || '').toLowerCase() === walletLc)
-            .filter((it: any) => {
-              const method = normalizeMethod(it?.method || it?.decoded_input?.method_call || it?.decoded_input?.method);
-              return allowedMethods.has(method);
-            })
-            .map((it: any) => {
-              const method = normalizeMethod(it?.method || it?.decoded_input?.method_call || it?.decoded_input?.method);
-              const action = method === 'claimandstake' ? 'Claim + Stake' : 'Claim';
-              return {
-                id: String(it.hash),
-                date: dayjs(new Date(String(it.timestamp)).getTime()).format('YYYY-MM-DD HH:mm'),
-                action,
-                amount: undefined as string | undefined,
-                status: mapStatus(it),
-                isLocal: false,
-              };
-            })
-            .sort((a: any, b: any) => {
-              const dateA = new Date(a.date.replace(' ', 'T')).getTime();
-              const dateB = new Date(b.date.replace(' ', 'T')).getTime();
-              return dateB - dateA;
-            })
-        : [];
 
-      // Backfill claimed amount from token transfers by tx hash (HPP token -> wallet, from contract)
+      const retryApiCall = async (apiCall: () => Promise<any>, callRetryCount = 0): Promise<any> => {
+        try {
+          return await apiCall();
+        } catch (err: any) {
+          if (isInternalServerError(err) && callRetryCount < MAX_RETRIES) {
+            const delay = RETRY_DELAY * (callRetryCount + 1);
+            await new Promise((resolve) => setTimeout(resolve, delay));
+            return retryApiCall(apiCall, callRetryCount + 1);
+          }
+          throw err;
+        }
+      };
+
       try {
-        const needAmount = mapped.filter((m: any) => !m.amount);
-        const tokenAddr = (process.env.NEXT_PUBLIC_HPP_TOKEN_CONTRACT || '').toLowerCase();
-        const contractLc = String(contractAddress).toLowerCase();
-        const stakingLc = String(process.env.NEXT_PUBLIC_HPP_STAKING_CONTRACT || '').toLowerCase();
-        if (needAmount.length > 0 && tokenAddr) {
-          const addrTUrl = `${lambdaBase}/blockscout/${network}/api/v2/addresses/${address}/token-transfers?type=`;
-          const addrTResp = await retryApiCall(() => axios.get(addrTUrl, { headers: { accept: 'application/json' } }));
-          const addrTItems: any[] = addrTResp?.data?.items ?? [];
-          if (Array.isArray(addrTItems) && addrTItems.length > 0) {
-            const byHashQuick = new Map<string, string>();
-            for (const tr of addrTItems) {
-              const tokenLc = String(tr?.token?.address_hash || '').toLowerCase();
-              if (tokenLc !== tokenAddr) continue;
-              const toLc = String(tr?.to?.hash || '').toLowerCase();
-              const fromLc = String(tr?.from?.hash || '').toLowerCase();
-              if (toLc !== walletLc) continue;
-              if (fromLc && fromLc !== contractLc) continue; // prefer contract->wallet transfers
-              const txHash = String(tr?.transaction_hash || tr?.tx_hash || tr?.hash || '');
-              if (!txHash) continue;
-              const dec =
-                Number(tr?.token?.decimals) || Number(tr?.total?.decimals) || Number(tr?.token_decimals) || 18;
-              const raw = String(tr?.total?.value ?? tr?.value ?? tr?.amount ?? '0');
+        const silent = !!opts?.silent;
+        // Match staking Activity Log UX: don't flash full-page loader during background refresh/polling
+        if (!silent && historyItems.length === 0) setIsHistoryLoading(true);
+        let items: any[] = [];
+        let nextUrl: string | null = baseUrl;
+        let guard = 0;
+        while (nextUrl && guard < 200) {
+          const resp = await retryApiCall(() => axios.get(nextUrl!, { headers: { accept: 'application/json' } }));
+          const pageItems: any[] = resp?.data?.items ?? [];
+          if (Array.isArray(pageItems) && pageItems.length > 0) items.push(...pageItems);
+          const np = resp?.data?.next_page_params;
+          if (!np || pageItems.length === 0) {
+            nextUrl = null;
+            break;
+          }
+          const qs = new URLSearchParams();
+          if (np.index !== undefined) qs.set('index', String(np.index));
+          if (np.value !== undefined) qs.set('value', String(np.value));
+          if (np.hash !== undefined) qs.set('hash', String(np.hash));
+          if (np.inserted_at !== undefined) qs.set('inserted_at', String(np.inserted_at));
+          if (np.block_number !== undefined) qs.set('block_number', String(np.block_number));
+          if (np.fee !== undefined) qs.set('fee', String(np.fee));
+          if (np.items_count !== undefined) qs.set('items_count', String(np.items_count));
+          nextUrl = `${baseUrl}?${qs.toString()}`;
+          guard += 1;
+        }
+
+        const walletLc = address.toLowerCase();
+        const normalizeMethod = (raw: any) =>
+          String(raw || '')
+            .trim()
+            .toLowerCase()
+            .replace(/[^a-z0-9_]/g, '');
+        // For now, only show Claim history. (Future: add "Claim + Staking" etc. here.)
+        const allowedMethods = new Set(['claimtokens', 'claimandstake']);
+        const mapStatus = (it: any): string => {
+          const res = String(it?.result || '').toLowerCase();
+          const ok = String(it?.status || '').toLowerCase() === 'ok';
+          const hasRevert = !!it?.revert_reason;
+          return hasRevert || res === 'failed' ? 'Rejected' : ok && res === 'success' ? 'Completed' : 'Pending';
+        };
+        let mapped = Array.isArray(items)
+          ? items
+              .filter((it: any) => String(it?.from?.hash || '').toLowerCase() === walletLc)
+              .filter((it: any) => {
+                const method = normalizeMethod(
+                  it?.method || it?.decoded_input?.method_call || it?.decoded_input?.method,
+                );
+                return allowedMethods.has(method);
+              })
+              .map((it: any) => {
+                const method = normalizeMethod(
+                  it?.method || it?.decoded_input?.method_call || it?.decoded_input?.method,
+                );
+                const action = method === 'claimandstake' ? 'Claim + Stake' : 'Claim';
+                return {
+                  id: String(it.hash),
+                  date: dayjs(new Date(String(it.timestamp)).getTime()).format('YYYY-MM-DD HH:mm'),
+                  action,
+                  amount: undefined as string | undefined,
+                  status: mapStatus(it),
+                  isLocal: false,
+                };
+              })
+              .sort((a: any, b: any) => {
+                const dateA = new Date(a.date.replace(' ', 'T')).getTime();
+                const dateB = new Date(b.date.replace(' ', 'T')).getTime();
+                return dateB - dateA;
+              })
+          : [];
+
+        // Backfill claimed amount from token transfers by tx hash (HPP token -> wallet, from contract)
+        try {
+          const needAmount = mapped.filter((m: any) => !m.amount);
+          const tokenAddr = (process.env.NEXT_PUBLIC_HPP_TOKEN_CONTRACT || '').toLowerCase();
+          const contractLc = String(contractAddress).toLowerCase();
+          const stakingLc = String(process.env.NEXT_PUBLIC_HPP_STAKING_CONTRACT || '').toLowerCase();
+          if (needAmount.length > 0 && tokenAddr) {
+            const addrTUrl = `${lambdaBase}/blockscout/${network}/api/v2/addresses/${address}/token-transfers?type=`;
+            const addrTResp = await retryApiCall(() =>
+              axios.get(addrTUrl, { headers: { accept: 'application/json' } }),
+            );
+            const addrTItems: any[] = addrTResp?.data?.items ?? [];
+            if (Array.isArray(addrTItems) && addrTItems.length > 0) {
+              const byHashQuick = new Map<string, string>();
+              for (const tr of addrTItems) {
+                const tokenLc = String(tr?.token?.address_hash || '').toLowerCase();
+                if (tokenLc !== tokenAddr) continue;
+                const toLc = String(tr?.to?.hash || '').toLowerCase();
+                const fromLc = String(tr?.from?.hash || '').toLowerCase();
+                if (toLc !== walletLc) continue;
+                if (fromLc && fromLc !== contractLc) continue; // prefer contract->wallet transfers
+                const txHash = String(tr?.transaction_hash || tr?.tx_hash || tr?.hash || '');
+                if (!txHash) continue;
+                const dec =
+                  Number(tr?.token?.decimals) || Number(tr?.total?.decimals) || Number(tr?.token_decimals) || 18;
+                const raw = String(tr?.total?.value ?? tr?.value ?? tr?.amount ?? '0');
+                try {
+                  const units = formatUnits(BigInt(raw), Number.isFinite(dec) ? dec : 18);
+                  byHashQuick.set(txHash.toLowerCase(), `${formatTokenBalance(units, 2)} HPP`);
+                } catch {}
+              }
+              if (byHashQuick.size > 0) {
+                mapped = mapped.map((m: any) => {
+                  if (!m.amount) {
+                    const v = byHashQuick.get(String(m.id).toLowerCase());
+                    if (v) return { ...m, amount: v };
+                  }
+                  return m;
+                });
+              }
+            }
+          }
+        } catch {
+          // ignore amount backfill failures
+        }
+
+        // If still missing amounts (e.g., Claim + Stake doesn't transfer to wallet), try tx-level token transfers (limited).
+        try {
+          const need = mapped.filter((m: any) => !m.amount).slice(0, 20);
+          const tokenAddr = (process.env.NEXT_PUBLIC_HPP_TOKEN_CONTRACT || '').toLowerCase();
+          const contractLc = String(contractAddress).toLowerCase();
+          const stakingLc = String(process.env.NEXT_PUBLIC_HPP_STAKING_CONTRACT || '').toLowerCase();
+          if (need.length > 0 && tokenAddr) {
+            for (const m of need) {
               try {
+                const url = `${lambdaBase}/blockscout/${network}/api/v2/transactions/${m.id}/token-transfers`;
+                const resp = await retryApiCall(() => axios.get(url, { headers: { accept: 'application/json' } }));
+                const tItems: any[] = resp?.data?.items ?? [];
+                if (!Array.isArray(tItems) || tItems.length === 0) continue;
+                // pick the HPP transfer that originated from this airdrop contract and went to wallet or staking
+                const tr = tItems.find((x: any) => {
+                  const tokenLc = String(x?.token?.address_hash || '').toLowerCase();
+                  if (tokenLc !== tokenAddr) return false;
+                  const fromLc = String(x?.from?.hash || '').toLowerCase();
+                  const toLc = String(x?.to?.hash || '').toLowerCase();
+                  if (fromLc && fromLc !== contractLc) return false;
+                  return toLc === walletLc || (stakingLc ? toLc === stakingLc : false);
+                });
+                if (!tr) continue;
+                const dec =
+                  Number(tr?.token?.decimals) || Number(tr?.total?.decimals) || Number(tr?.token_decimals) || 18;
+                const raw = String(tr?.total?.value ?? tr?.value ?? tr?.amount ?? '0');
                 const units = formatUnits(BigInt(raw), Number.isFinite(dec) ? dec : 18);
-                byHashQuick.set(txHash.toLowerCase(), `${formatTokenBalance(units, 2)} HPP`);
-              } catch {}
-            }
-            if (byHashQuick.size > 0) {
-              mapped = mapped.map((m: any) => {
-                if (!m.amount) {
-                  const v = byHashQuick.get(String(m.id).toLowerCase());
-                  if (v) return { ...m, amount: v };
-                }
-                return m;
-              });
+                const display = `${formatTokenBalance(units, 2)} HPP`;
+                mapped = mapped.map((x: any) =>
+                  String(x.id).toLowerCase() === String(m.id).toLowerCase() ? { ...x, amount: display } : x,
+                );
+              } catch {
+                // ignore per-tx failures
+              }
             }
           }
+        } catch {
+          // ignore tx transfer backfill failures
         }
-      } catch {
-        // ignore amount backfill failures
-      }
 
-      // If still missing amounts (e.g., Claim + Stake doesn't transfer to wallet), try tx-level token transfers (limited).
-      try {
-        const need = mapped.filter((m: any) => !m.amount).slice(0, 20);
-        const tokenAddr = (process.env.NEXT_PUBLIC_HPP_TOKEN_CONTRACT || '').toLowerCase();
-        const contractLc = String(contractAddress).toLowerCase();
-        const stakingLc = String(process.env.NEXT_PUBLIC_HPP_STAKING_CONTRACT || '').toLowerCase();
-        if (need.length > 0 && tokenAddr) {
-          for (const m of need) {
-            try {
-              const url = `${lambdaBase}/blockscout/${network}/api/v2/transactions/${m.id}/token-transfers`;
-              const resp = await retryApiCall(() => axios.get(url, { headers: { accept: 'application/json' } }));
-              const tItems: any[] = resp?.data?.items ?? [];
-              if (!Array.isArray(tItems) || tItems.length === 0) continue;
-              // pick the HPP transfer that originated from this airdrop contract and went to wallet or staking
-              const tr = tItems.find((x: any) => {
-                const tokenLc = String(x?.token?.address_hash || '').toLowerCase();
-                if (tokenLc !== tokenAddr) return false;
-                const fromLc = String(x?.from?.hash || '').toLowerCase();
-                const toLc = String(x?.to?.hash || '').toLowerCase();
-                if (fromLc && fromLc !== contractLc) return false;
-                return toLc === walletLc || (stakingLc ? toLc === stakingLc : false);
-              });
-              if (!tr) continue;
-              const dec =
-                Number(tr?.token?.decimals) || Number(tr?.total?.decimals) || Number(tr?.token_decimals) || 18;
-              const raw = String(tr?.total?.value ?? tr?.value ?? tr?.amount ?? '0');
-              const units = formatUnits(BigInt(raw), Number.isFinite(dec) ? dec : 18);
-              const display = `${formatTokenBalance(units, 2)} HPP`;
-              mapped = mapped.map((x: any) => (String(x.id).toLowerCase() === String(m.id).toLowerCase() ? { ...x, amount: display } : x));
-            } catch {
-              // ignore per-tx failures
-            }
-          }
-        }
-      } catch {
-        // ignore tx transfer backfill failures
-      }
-
-      // Merge with local pending items (staking Activity Log behavior)
-      setHistoryItems((prev) => {
-        const localItems = prev.filter((h) => h.isLocal);
-        const blockscoutIds = new Set(mapped.map((a: any) => String(a.id).toLowerCase()));
-        const localToKeep = localItems.filter((local) => !blockscoutIds.has(String(local.id).toLowerCase()));
-        return [...mapped, ...localToKeep].sort((a: any, b: any) => {
-          const dateA = new Date(String(a.date || '').replace(' ', 'T')).getTime();
-          const dateB = new Date(String(b.date || '').replace(' ', 'T')).getTime();
-          if (dateA !== dateB) return dateB - dateA;
-          if (a.isLocal && !b.isLocal) return -1;
-          if (!a.isLocal && b.isLocal) return 1;
-          return 0;
+        // Merge with local pending items (staking Activity Log behavior)
+        setHistoryItems((prev) => {
+          const localItems = prev.filter((h) => h.isLocal);
+          const blockscoutIds = new Set(mapped.map((a: any) => String(a.id).toLowerCase()));
+          const localToKeep = localItems.filter((local) => !blockscoutIds.has(String(local.id).toLowerCase()));
+          return [...mapped, ...localToKeep].sort((a: any, b: any) => {
+            const dateA = new Date(String(a.date || '').replace(' ', 'T')).getTime();
+            const dateB = new Date(String(b.date || '').replace(' ', 'T')).getTime();
+            if (dateA !== dateB) return dateB - dateA;
+            if (a.isLocal && !b.isLocal) return -1;
+            if (!a.isLocal && b.isLocal) return 1;
+            return 0;
+          });
         });
-      });
-      setHistoryPage(1);
-    } catch {
-      // Preserve local items even if Blockscout fetch fails
-      setHistoryItems((prev) => prev.filter((h) => h.isLocal));
-    } finally {
-      setIsHistoryLoading(false);
-    }
-  }, [isConnected, address, contractAddress, HPP_CHAIN_ID, historyItems.length]);
+        setHistoryPage(1);
+      } catch {
+        // Preserve local items even if Blockscout fetch fails
+        setHistoryItems((prev) => prev.filter((h) => h.isLocal));
+      } finally {
+        setIsHistoryLoading(false);
+      }
+    },
+    [isConnected, address, contractAddress, HPP_CHAIN_ID, historyItems.length],
+  );
 
   // Fetch on-chain history when wallet or contract changes
   useEffect(() => {
@@ -482,7 +488,6 @@ export default function AirdropDetailClient({ id }: { id: string }) {
       const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash as `0x${string}` });
       if (receipt.status === 'success') {
         hideToast();
-        setIsClaimModalOpen(false);
         const amountNumeric = claimableAmount ? formatTokenBalance(claimableAmount, 2) : '0.00';
         setSuccessModal({ variant: 'claim', amount: amountNumeric });
         // Add local history immediately (Pending until indexed by Blockscout)
@@ -568,7 +573,6 @@ export default function AirdropDetailClient({ id }: { id: string }) {
       const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash as `0x${string}` });
       if (receipt.status === 'success') {
         hideToast();
-        setIsClaimModalOpen(false);
         const amountNumeric = claimableAmount ? formatTokenBalance(claimableAmount, 2) : '0.00';
         setSuccessModal({ variant: 'claimAndStake', amount: amountNumeric });
         const amountDisplay = claimableAmount ? `${formatTokenBalance(claimableAmount, 2)} HPP` : undefined;
@@ -622,12 +626,12 @@ export default function AirdropDetailClient({ id }: { id: string }) {
     const vested = new Big(vestingData.vestedAmount);
     const claimed = new Big(vestingData.claimedAmount);
     const notVested = new Big(vestingData.notVestedAmount);
-    
+
     if (total.eq(0)) return null;
-    
+
     const notVestedPercent = total.gt(0) ? notVested.div(total).times(100).toNumber() : 0;
     const vestedPercent = total.gt(0) ? vested.div(total).times(100).toNumber() : 0;
-    
+
     return {
       notVestedPercent,
       vestedPercent,
@@ -641,7 +645,7 @@ export default function AirdropDetailClient({ id }: { id: string }) {
 
   const historyPageCount = useMemo(
     () => Math.max(1, Math.ceil((historyItems?.length || 0) / 10)),
-    [historyItems?.length]
+    [historyItems?.length],
   );
 
   // Computed values
@@ -681,7 +685,7 @@ export default function AirdropDetailClient({ id }: { id: string }) {
           rel="noopener noreferrer"
         >
           {match[1]}
-        </a>
+        </a>,
       );
       lastIndex = match.index + match[0].length;
     }
@@ -801,7 +805,7 @@ export default function AirdropDetailClient({ id }: { id: string }) {
           }`}
         >
           {/* Go Back Button */}
-          <div className="ml-4 max-w-6xl mx-auto mb-4 mt-3">
+          <div className="ml-4 max-w-6xl mx-auto my-4">
             <Button
               size="sm"
               onClick={() => router.back()}
@@ -850,30 +854,34 @@ export default function AirdropDetailClient({ id }: { id: string }) {
                         airdropDetail.status === 'On-Going'
                           ? '#5DF23F'
                           : airdropDetail.status === 'Coming Soon'
-                          ? '#F7EA94'
-                          : '#BFBFBF',
+                            ? '#F7EA94'
+                            : '#BFBFBF',
                     }}
                   >
                     {airdropDetail.status}
                   </div>
                   <h1 className="text-[50px] leading-[1.5] font-[900] text-white">{airdropDetail.name}</h1>
                   <div className="space-y-6 text-white text-base leading-[1.5] mb-5">
-                    <p className="text-[#bfbfbf] text-base">
-                      {parseMarkdownLinks(airdropDetail.description)}
-                    </p>
+                    <p className="text-[#bfbfbf] text-base">{parseMarkdownLinks(airdropDetail.description)}</p>
                     <div className="space-y-1">
                       <p className="text-[#bfbfbf] text-base">
-                        Claim period: <span className="text-white text-base">{airdropDetail.claimPeriodStart} ~ {airdropDetail.claimPeriodEnd}</span>
+                        Claim period:{' '}
+                        <span className="text-white text-base">
+                          {airdropDetail.claimPeriodStart} ~ {airdropDetail.claimPeriodEnd}
+                        </span>
                       </p>
                       <p className="text-[#bfbfbf] text-base">
-                        Vesting Period: <span className="text-white text-base">{airdropDetail.vestingPeriodStart} ~ {airdropDetail.vestingPeriodEnd} (
-                          {airdropDetail.vestingDuration})</span>
+                        Vesting Period:{' '}
+                        <span className="text-white text-base">
+                          {airdropDetail.vestingPeriodStart} ~ {airdropDetail.vestingPeriodEnd} (
+                          {airdropDetail.vestingDuration})
+                        </span>
                       </p>
                     </div>
                     <p className="text-[#bfbfbf] text-base">{airdropDetail.eligibilityDescription}</p>
                   </div>
                   {isConnected ? (
-                   <></>
+                    <></>
                   ) : (
                     <Button
                       variant="white"
@@ -894,27 +902,27 @@ export default function AirdropDetailClient({ id }: { id: string }) {
             <div className="px-5 max-w-6xl mx-auto mt-7.5 mb-20">
               {/* Wallet Connection Status */}
               {address && (
-              <div className="flex items-center justify-between mb-8">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center justify-between mb-8">
+                  <div className="flex items-center gap-3">
                     <span className="inline-flex items-center justify-center w-11 h-11 rounded-full overflow-hidden">
-                    {React.createElement('wui-avatar', { ref: avatarRef, address })}
-                  </span>
-                  <div className="flex flex-col">
+                      {React.createElement('wui-avatar', { ref: avatarRef, address })}
+                    </span>
+                    <div className="flex flex-col">
                       <span className="text-white text-base font-semibold leading-[1.5] tracking-[0.8px]">
                         Token plans for
                       </span>
-                    <span className="text-white text-sm leading-[1.5] tracking-[0.8px]">{shortAddress}</span>
+                      <span className="text-white text-sm leading-[1.5] tracking-[0.8px]">{shortAddress}</span>
+                    </div>
                   </div>
-                </div>
                   <Button
                     variant="white"
                     size="lg"
                     onClick={() => disconnect()}
                     className="cursor-pointer border border-black"
                   >
-                  Disconnect
-                </Button>
-              </div>
+                    Disconnect
+                  </Button>
+                </div>
               )}
 
               {/* Eligibility Status */}
@@ -930,8 +938,10 @@ export default function AirdropDetailClient({ id }: { id: string }) {
 
               {/* Overview Section */}
               <div className="bg-[#121212] rounded-lg px-5 border border-[#2D2D2D] mb-5">
-                <h3 className="text-[#bfbfbf] text-xl font-semibold leading-[1.2] tracking-[0.8] mb-5 py-5">Overview</h3>
-                
+                <h3 className="text-[#bfbfbf] text-xl font-semibold leading-[1.2] tracking-[0.8] mb-5 py-5">
+                  Overview
+                </h3>
+
                 {/* Progress Bar */}
                 <div>
                   {/* Progress Bar Container */}
@@ -940,70 +950,113 @@ export default function AirdropDetailClient({ id }: { id: string }) {
                     {progressData && (
                       <div className="absolute right-0 -top-6 flex items-center justify-end">
                         <span className="text-[#bfbfbf] text-sm font-semibold leading-[1.5] tracking-[0]">
-                          {progressData.vestedAmount}/{progressData.totalAmount} ({progressData.claimedAmount} HPP Claimed)
+                          {progressData.vestedAmount}/{progressData.totalAmount}
                         </span>
                       </div>
                     )}
-                    
+
                     {/* Progress Bar Background */}
                     <div className="relative w-full h-6 bg-[#2D2D2D] rounded-full overflow-hidden">
-                      {/* Not Vested (Green) */}
+                      {/* Vested (Green) */}
                       {progressData && (
-                        <div className="absolute left-0 top-0 h-full bg-[#5DF23F]" style={{ width: `${progressData.notVestedPercent}%` }}></div>
+                        <div
+                          className="absolute left-0 top-0 h-full bg-[#5DF23F]"
+                          style={{ width: `${progressData.vestedPercent}%` }}
+                        ></div>
                       )}
-                      {/* Vested (Purple) */}
+                      {/* Not Vested (Purple) */}
                       {progressData && (
-                        <div className="absolute right-0 top-0 h-full bg-[#4949B4]" style={{ width: `${progressData.vestedPercent}%` }}></div>
+                        <div
+                          className="absolute right-0 top-0 h-full bg-[#4949B4]"
+                          style={{ width: `${progressData.notVestedPercent}%` }}
+                        ></div>
                       )}
                     </div>
-                    
+
                     {/* Dashed vertical lines extending above the bar */}
-                    <div className="absolute left-[25%] top-0 h-6 w-px" style={{ borderLeft: '1px dashed #2D2D2D' }}></div>
-                    <div className="absolute left-[50%] top-0 h-6 w-px" style={{ borderLeft: '1px dashed #2D2D2D' }}></div>
-                    <div className="absolute left-[75%] top-0 h-6 w-px" style={{ borderLeft: '1px dashed #2D2D2D' }}></div>
-                    
+                    <div
+                      className="absolute left-[25%] top-0 h-6 w-px"
+                      style={{ borderLeft: '1px dashed #2D2D2D' }}
+                    ></div>
+                    <div
+                      className="absolute left-[50%] top-0 h-6 w-px"
+                      style={{ borderLeft: '1px dashed #2D2D2D' }}
+                    ></div>
+                    <div
+                      className="absolute left-[75%] top-0 h-6 w-px"
+                      style={{ borderLeft: '1px dashed #2D2D2D' }}
+                    ></div>
+
                     {/* Percentage markers */}
                     <div className="relative mt-3 h-4">
-                      <span className="absolute left-0 text-[#bfbfbf] text-sm font-semibold leading-[1] tracking-[0]">0%</span>
-                      <span className="absolute left-[25%] -translate-x-1/2 text-[#bfbfbf] text-sm font-semibold leading-[1] tracking-[0]">25%</span>
-                      <span className="absolute left-[50%] -translate-x-1/2 text-[#bfbfbf] text-sm font-semibold leading-[1] tracking-[0]">50%</span>
-                      <span className="absolute left-[75%] -translate-x-1/2 text-[#bfbfbf] text-sm font-semibold leading-[1] tracking-[0]">75%</span>
-                      <span className="absolute right-0 text-[#bfbfbf] text-sm font-semibold leading-[1] tracking-[0]">100%</span>
+                      <span className="absolute left-0 text-[#bfbfbf] text-sm font-semibold leading-[1] tracking-[0]">
+                        0%
+                      </span>
+                      <span className="absolute left-[25%] -translate-x-1/2 text-[#bfbfbf] text-sm font-semibold leading-[1] tracking-[0]">
+                        25%
+                      </span>
+                      <span className="absolute left-[50%] -translate-x-1/2 text-[#bfbfbf] text-sm font-semibold leading-[1] tracking-[0]">
+                        50%
+                      </span>
+                      <span className="absolute left-[75%] -translate-x-1/2 text-[#bfbfbf] text-sm font-semibold leading-[1] tracking-[0]">
+                        75%
+                      </span>
+                      <span className="absolute right-0 text-[#bfbfbf] text-sm font-semibold leading-[1] tracking-[0]">
+                        100%
+                      </span>
                     </div>
                   </div>
                 </div>
 
                 {/* Summary Cards */}
                 <div className="-mx-5 border-t border-[#2D2D2D]">
-                  <div className="grid grid-cols-1 min-[640px]:grid-cols-4">
-                    <div className="flex flex-col items-center text-center px-4 py-4 border-b min-[640px]:border-b-0 min-[640px]:border-r border-[#2D2D2D]">
-                      <span className="text-[#bfbfbf] text-base leading-[1.2] tracking-[0.8px] mb-2">Total Allocation</span>
+                  <div className="grid grid-cols-1 min-[800px]:grid-cols-4">
+                    <div className="flex flex-col items-center text-center px-4 py-4 border-b min-[800px]:border-b-0 min-[800px]:border-r border-[#2D2D2D]">
+                      <span className="text-[#bfbfbf] text-base leading-[1.2] tracking-[0.8px] mb-2">
+                        Total Allocation
+                      </span>
                       <span className="text-white text-xl font-semibold leading-[24px]">
-                        {isVestingLoading ? '...' : vestingData ? `${formatTokenBalance(vestingData.totalAmount, 0)} HPP` : '- HPP'}
+                        {isVestingLoading
+                          ? '...'
+                          : vestingData
+                            ? `${formatTokenBalance(vestingData.totalAmount, 0)} HPP`
+                            : '- HPP'}
                       </span>
                     </div>
-                    <div className="flex flex-col items-center text-center px-4 py-4 border-b min-[640px]:border-b-0 min-[640px]:border-r border-[#2D2D2D]">
+                    <div className="flex flex-col items-center text-center px-4 py-4 border-b min-[800px]:border-b-0 min-[800px]:border-r border-[#2D2D2D]">
                       <div className="flex items-center gap-1.5 mb-2">
                         <div className="w-3.5 h-3.5 rounded-full bg-[#5DF23F]"></div>
-                        <span className="text-[#bfbfbf] text-base leading-[1.2] tracking-[0.8px]">Not Vested</span>
-                      </div>
-                      <span className="text-white text-xl font-semibold leading-[24px]">
-                        {isVestingLoading ? '...' : vestingData ? `${formatTokenBalance(vestingData.notVestedAmount, 2)} HPP` : '- HPP'}
-                      </span>
-                    </div>
-                    <div className="flex flex-col items-center text-center px-4 py-4 border-b min-[640px]:border-b-0 min-[640px]:border-r border-[#2D2D2D]">
-                      <div className="flex items-center gap-1.5 mb-2">
-                        <div className="w-3.5 h-3.5 rounded-full bg-[#4949B4]"></div>
                         <span className="text-[#bfbfbf] text-base leading-[1.2] tracking-[0.8px]">Vested</span>
                       </div>
                       <span className="text-white text-xl font-semibold leading-[24px]">
-                        {isVestingLoading ? '...' : vestingData ? `${formatTokenBalance(vestingData.vestedAmount, 2)} HPP` : '- HPP'}
+                        {isVestingLoading
+                          ? '...'
+                          : vestingData
+                            ? `${formatTokenBalance(vestingData.vestedAmount, 2)} HPP`
+                            : '- HPP'}
                       </span>
                     </div>
-                    <div className="flex flex-col items-center text-center px-4 py-4 min-[640px]:border-r border-[#2D2D2D]">
+                    <div className="flex flex-col items-center text-center px-4 py-4 border-b min-[800px]:border-b-0 min-[800px]:border-r border-[#2D2D2D]">
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <div className="w-3.5 h-3.5 rounded-full bg-[#4949B4]"></div>
+                        <span className="text-[#bfbfbf] text-base leading-[1.2] tracking-[0.8px]">Not Vested</span>
+                      </div>
+                      <span className="text-white text-xl font-semibold leading-[24px]">
+                        {isVestingLoading
+                          ? '...'
+                          : vestingData
+                            ? `${formatTokenBalance(vestingData.notVestedAmount, 2)} HPP`
+                            : '- HPP'}
+                      </span>
+                    </div>
+                    <div className="flex flex-col items-center text-center px-4 py-4 min-[800px]:border-r border-[#2D2D2D]">
                       <span className="text-[#bfbfbf] text-base leading-[1.2] tracking-[0.8px] mb-2">Claimed</span>
                       <span className="text-white text-xl font-semibold leading-[24px]">
-                        {isVestingLoading ? '...' : vestingData ? `${formatTokenBalance(vestingData.claimedAmount, 2)} HPP` : '- HPP'}
+                        {isVestingLoading
+                          ? '...'
+                          : vestingData
+                            ? `${formatTokenBalance(vestingData.claimedAmount, 2)} HPP`
+                            : '- HPP'}
                       </span>
                     </div>
                   </div>
@@ -1014,10 +1067,12 @@ export default function AirdropDetailClient({ id }: { id: string }) {
               {vestingData && vestingData.isActive && (
                 <div className="flex items-center justify-between bg-[#121212] rounded-lg px-5 py-7 mb-5">
                   <span>
-                    <span className="text-[#5DF23F] font-bold text-3xl leading-[1.5] tracking-[0.8px]">
+                    <span className="text-white font-bold text-3xl leading-[1.5] tracking-[0.8px]">
                       {isVestingLoading ? '...' : claimableAmount ? formatTokenBalance(claimableAmount, 2) : '0'}
                     </span>
-                    <span className="text-white text-xl leading-[1.5] tracking-[0.8px] ml-2">HPP tokens ready to claim.</span>
+                    <span className="text-white text-xl leading-[1.5] tracking-[0.8px] ml-2">
+                      HPP tokens ready to claim.
+                    </span>
                   </span>
                   <div className="flex gap-3">
                     {(() => {
@@ -1027,112 +1082,13 @@ export default function AirdropDetailClient({ id }: { id: string }) {
                         <Button
                           variant={isDisabled ? 'black' : 'white'}
                           size="md"
-                          onClick={() => setIsClaimModalOpen(true)}
+                          onClick={() => void onClaimTokens()}
                           disabled={isDisabled}
-                        >
-                      Claim
-                    </Button>
-                      );
-                    })()}
-                  </div>
-                </div>
-              )}
-
-              {/* Claim Options Modal */}
-              {isClaimModalOpen && (
-                <div
-                  className="fixed inset-0 z-50 flex items-center justify-center px-4 backdrop-blur-sm"
-                  style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}
-                  onClick={() => setIsClaimModalOpen(false)}
-                >
-                  <div
-                    className="relative w-full max-w-6xl rounded-[5px] bg-black p-4 border border-[#2D2D2D]"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <button
-                      aria-label="Close"
-                      className="absolute right-4 top-4 z-10 text-white cursor-pointer hover:opacity-80"
-                      onClick={() => setIsClaimModalOpen(false)}
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-
-                    {/* Reserve vertical space so the close button doesn't overlap the right card header */}
-                    <div className="pt-10 grid grid-cols-1 min-[900px]:grid-cols-2 gap-8">
-                      {/* Claim Only */}
-                      <div className="flex flex-col rounded-[5px] bg-[#121212] p-8 min-h-[260px]">
-                        <div className="flex-1">
-                          <div className="text-white text-xl font-semibold leading-[1.2] tracking-[0.8px] mb-5">
-                            Claim Only
-                          </div>
-                          <div className="text-[#bfbfbf] text-base leading-[1.2] tracking-[0.8px] mb-5">
-                            Claim and receive HPP immediately
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <div className="text-[#bfbfbf] text-base leading-[1.2] tracking-[0.8px]">Claim Amount</div>
-                            <div className="text-white text-base font-semibold leading-[1.2] tracking-[0.8px]">
-                              {claimableAmount ? formatTokenBalance(claimableAmount, 2) : '0.00'}
-                            </div>
-                          </div>
-                        </div>
-                        <Button
-                          variant="green"
-                          size="md"
-                          fullWidth
-                          className="mt-5 !rounded-full"
-                          disabled={isVestingLoading || isClaiming || !claimableAmount || new Big(claimableAmount).lte(0)}
-                          onClick={async () => {
-                            setIsClaimModalOpen(false);
-                            await onClaimTokens();
-                          }}
                         >
                           Claim
                         </Button>
-                      </div>
-
-                      {/* Claim + Stake */}
-                      <div className="flex flex-col rounded-[5px] bg-[#121212] p-8 min-h-[260px]">
-                        <div className="flex-1">
-                          <div className="text-white text-xl font-semibold leading-[1.2] tracking-[0.8px] mb-5">
-                            Claim + Stake
-                          </div>
-                          <div className="text-[#F7EA94] text-base leading-[1.2] tracking-[0.8px] mb-5">
-                            Staking goes into <span className="underline">HPP Staking</span>.
-                          </div>
-                          <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                              <div className="text-[#bfbfbf] text-base leading-[1.2] tracking-[0.8px]">
-                                Claim + Stake Amount
-                              </div>
-                              <div className="text-white text-base font-semibold leading-[1.2] tracking-[0.8px]">
-                                {claimableAmount ? formatTokenBalance(claimableAmount, 2) : '0.00'}
-                              </div>
-                            </div>
-                            <div className="flex items-center justify-between">
-                              <div className="text-[#bfbfbf] text-base leading-[1.2] tracking-[0.8px]">
-                                Staking APR (HPP)
-                              </div>
-                              <div className="text-[#5DF23F] text-base font-semibold leading-[1.2] tracking-[0.8px]">Max 23% APR</div>
-                            </div>
-                          </div>
-                        </div>
-                        <Button
-                          variant="green"
-                          size="md"
-                          fullWidth
-                          className="mt-5 !rounded-full"
-                          disabled={isVestingLoading || isClaiming || !claimableAmount || new Big(claimableAmount).lte(0)}
-                          onClick={async () => {
-                            setIsClaimModalOpen(false);
-                            await onClaimAndStake();
-                          }}
-                        >
-                          Claim + Stake
-                        </Button>
-                      </div>
-                    </div>
+                      );
+                    })()}
                   </div>
                 </div>
               )}
@@ -1207,172 +1163,183 @@ export default function AirdropDetailClient({ id }: { id: string }) {
                 </div>
               )}
 
-              {/* History Section */}
-              <div className="mb-25">
-                <div className="text-white text-base font-semibold leading-[1.2] tracking-[0.8px] mb-2.5">History</div>
-                <div className="rounded-[5px] bg-[#121212]">
-                  {isHistoryLoading &&
-                  (!historyItems || historyItems.length === 0 || !historyItems.some((h) => h.isLocal)) ? (
-                    <div className="h-[120px] flex items-center justify-center gap-2">
-                      <DotLottieReact src="/lotties/Loading.lottie" autoplay loop style={{ width: 24, height: 24 }} />
-                      <p className="text-[#bfbfbf] text-base leading-[1.5] tracking-[0.8px]">Fetching history...</p>
-                    </div>
-                  ) : historyItems && historyItems.length > 0 ? (
-                    <>
-                      <div className="divide-y divide-[#2D2D2D] pt-3.5">
-                        {historyItems
-                          .slice(Math.max(0, (historyPage - 1) * 10), Math.max(0, historyPage * 10))
-                          .map((tx) => (
-                            <div
-                              key={tx.id}
-                              className="px-5 py-4 last:border-b last:border-[#2D2D2D] hover:bg-[#1a1a1a] transition-colors"
-                            >
-                              <div className="flex items-start justify-between">
-                                <div className="flex-1">
-                                  <div className="text-[#bfbfbf] text-base leading-[1.2] tracking-[0.8px]">{tx.date}</div>
-                                  <div className="mt-2.5 text-[#5DF23F] text-base leading-[1.2] tracking-[0.8px] font-normal">
-                                    {tx.action}
+              {/* History Section - only when eligible */}
+              {vestingData && vestingData.isActive && (
+                <div className="mb-25">
+                  <div className="text-white text-base font-semibold leading-[1.2] tracking-[0.8px] mb-2.5">
+                    History
+                  </div>
+                  <div className="rounded-[5px] bg-[#121212]">
+                    {isHistoryLoading &&
+                    (!historyItems || historyItems.length === 0 || !historyItems.some((h) => h.isLocal)) ? (
+                      <div className="h-[120px] flex items-center justify-center gap-2">
+                        <DotLottieReact src="/lotties/Loading.lottie" autoplay loop style={{ width: 24, height: 24 }} />
+                        <p className="text-[#bfbfbf] text-base leading-[1.5] tracking-[0.8px]">Fetching history...</p>
+                      </div>
+                    ) : historyItems && historyItems.length > 0 ? (
+                      <>
+                        <div className="divide-y divide-[#2D2D2D] pt-3.5">
+                          {historyItems
+                            .slice(Math.max(0, (historyPage - 1) * 10), Math.max(0, historyPage * 10))
+                            .map((tx) => (
+                              <div
+                                key={tx.id}
+                                className="px-5 py-4 last:border-b last:border-[#2D2D2D] hover:bg-[#1a1a1a] transition-colors"
+                              >
+                                <div className="flex items-start justify-between">
+                                  <div className="flex-1">
+                                    <div className="text-[#bfbfbf] text-base leading-[1.2] tracking-[0.8px]">
+                                      {tx.date}
+                                    </div>
+                                    <div className="mt-2.5 text-[#5DF23F] text-base leading-[1.2] tracking-[0.8px] font-normal">
+                                      {tx.action}
+                                    </div>
                                   </div>
-                                </div>
-                                <div className="flex flex-col items-end gap-2">
-                                  <div className="flex items-center gap-2 text-white text-sm leading-[1.2] tracking-[0.8px]">
-                                    <span>
-                                      {tx.status === 'Pending' ? (
-                                        <span className="pending-text">Pending</span>
-                                      ) : (
-                                        tx.status || 'Completed'
-                                      )}
-                                    </span>
-                                    <a
-                                      href={`${explorerBase}/tx/${tx.id}`}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="cursor-pointer hover:opacity-80"
-                                      aria-label="View transaction on explorer"
-                                    >
-                                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                                    />
-                                  </svg>
-                                    </a>
-                                  </div>
-                                   <div className="text-white text-base leading-[1.2] tracking-[0.8px] font-normal">
-                                    {tx.amount || '-'}
+                                  <div className="flex flex-col items-end gap-2">
+                                    <div className="flex items-center gap-2 text-white text-sm leading-[1.2] tracking-[0.8px]">
+                                      <span>
+                                        {tx.status === 'Pending' ? (
+                                          <span className="pending-text">Pending</span>
+                                        ) : (
+                                          tx.status || 'Completed'
+                                        )}
+                                      </span>
+                                      <a
+                                        href={`${explorerBase}/tx/${tx.id}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="cursor-pointer hover:opacity-80"
+                                        aria-label="View transaction on explorer"
+                                      >
+                                        <svg
+                                          className="w-4 h-4 text-white"
+                                          fill="none"
+                                          stroke="currentColor"
+                                          viewBox="0 0 24 24"
+                                        >
+                                          <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                                          />
+                                        </svg>
+                                      </a>
+                                    </div>
+                                    <div className="text-white text-base leading-[1.2] tracking-[0.8px] font-normal">
+                                      {tx.amount || '-'}
+                                    </div>
                                   </div>
                                 </div>
                               </div>
-                            </div>
-                          ))}
-                      </div>
-                      {historyPageCount > 1 && (
-                        <div className="flex items-center justify-center pt-4 pb-7.5">
-                          <div className="flex items-center gap-4.5">
-                            <button
-                              aria-label="Previous page"
-                              className="cursor-pointer text-white hover:opacity-80 disabled:opacity-30 disabled:cursor-default"
-                              onClick={() => setHistoryPage(Math.max(1, historyPage - 1))}
-                              disabled={historyPage <= 1}
-                            >
-                              ◀
-                            </button>
-                            <div className="flex items-center gap-4.5">
-                              {(() => {
-                                const pages: (number | string)[] = [];
-                                const maxMobilePages = 5;
-                                const showAll = historyPageCount <= maxMobilePages;
-
-                                if (showAll) {
-                                  for (let i = 1; i <= historyPageCount; i++) {
-                                    pages.push(i);
-                                  }
-                                } else {
-                                  let startPage = Math.max(1, historyPage - 2);
-                                  let endPage = Math.min(historyPageCount, startPage + maxMobilePages - 1);
-
-                                  if (endPage - startPage < maxMobilePages - 1) {
-                                    startPage = Math.max(1, endPage - maxMobilePages + 1);
-                                  }
-
-                                  for (let i = startPage; i <= endPage; i++) {
-                                    pages.push(i);
-                                  }
-                                }
-
-                                return (
-                                  <>
-                                    <div className="hidden min-[640px]:flex items-center gap-4.5">
-                                      {Array.from({ length: historyPageCount }).map((_, i) => {
-                                        const n = i + 1;
-                                        const active = n === historyPage;
-                                        return (
-                                          <button
-                                            key={n}
-                                            aria-current={active ? 'page' : undefined}
-                                            className={[
-                                              'cursor-pointer flex items-center justify-center rounded-full',
-                                              'w-6 h-6 text-base leading-[1] tracking-[0]',
-                                              active ? 'bg-white text-black' : 'text-[#BFBFBF] hover:text-white',
-                                            ].join(' ')}
-                                            onClick={() => setHistoryPage(n)}
-                                          >
-                                            {n}
-                                          </button>
-                                        );
-                                      })}
-                                    </div>
-                                    <div className="flex min-[640px]:hidden items-center gap-4.5">
-                                      {pages.map((page, idx) => {
-                                        if (typeof page === 'string') {
-                                          return (
-                                            <span key={`ellipsis-${idx}`} className="text-[#BFBFBF]">
-                                              ...
-                                            </span>
-                                          );
-                                        }
-                                        const active = page === historyPage;
-                                        return (
-                                          <button
-                                            key={page}
-                                            aria-current={active ? 'page' : undefined}
-                                            className={[
-                                              'cursor-pointer flex items-center justify-center rounded-full',
-                                              'w-6 h-6 text-base leading-[1] tracking-[0]',
-                                              active ? 'bg-white text-black' : 'text-[#BFBFBF] hover:text-white',
-                                            ].join(' ')}
-                                            onClick={() => setHistoryPage(page)}
-                                          >
-                                            {page}
-                                          </button>
-                                        );
-                                      })}
-                                    </div>
-                                  </>
-                                );
-                              })()}
-                            </div>
-                            <button
-                              aria-label="Next page"
-                              className="cursor-pointer text-white hover:opacity-80 disabled:opacity-30 disabled:cursor-default"
-                              onClick={() => setHistoryPage(Math.min(historyPageCount, historyPage + 1))}
-                              disabled={historyPage >= historyPageCount}
-                            >
-                              ▶
-                            </button>
-                          </div>
+                            ))}
                         </div>
-                      )}
-                    </>
-                  ) : (
-                    <div className="h-[120px] flex items-center justify-center">
-                      <p className="text-[#bfbfbf] text-base leading-[1.5] tracking-[0.8px]">No history available.</p>
-                    </div>
-                  )}
+                        {historyPageCount > 1 && (
+                          <div className="flex items-center justify-center pt-4 pb-7.5">
+                            <div className="flex items-center gap-4.5">
+                              <button
+                                aria-label="Previous page"
+                                className="cursor-pointer text-white hover:opacity-80 disabled:opacity-30 disabled:cursor-default"
+                                onClick={() => setHistoryPage(Math.max(1, historyPage - 1))}
+                                disabled={historyPage <= 1}
+                              >
+                                ◀
+                              </button>
+                              <div className="flex items-center gap-4.5">
+                                {(() => {
+                                  const pages: (number | string)[] = [];
+                                  const maxMobilePages = 5;
+                                  const showAll = historyPageCount <= maxMobilePages;
+
+                                  if (showAll) {
+                                    for (let i = 1; i <= historyPageCount; i++) {
+                                      pages.push(i);
+                                    }
+                                  } else {
+                                    let startPage = Math.max(1, historyPage - 2);
+                                    let endPage = Math.min(historyPageCount, startPage + maxMobilePages - 1);
+
+                                    if (endPage - startPage < maxMobilePages - 1) {
+                                      startPage = Math.max(1, endPage - maxMobilePages + 1);
+                                    }
+
+                                    for (let i = startPage; i <= endPage; i++) {
+                                      pages.push(i);
+                                    }
+                                  }
+
+                                  return (
+                                    <>
+                                      <div className="hidden min-[640px]:flex items-center gap-4.5">
+                                        {Array.from({ length: historyPageCount }).map((_, i) => {
+                                          const n = i + 1;
+                                          const active = n === historyPage;
+                                          return (
+                                            <button
+                                              key={n}
+                                              aria-current={active ? 'page' : undefined}
+                                              className={[
+                                                'cursor-pointer flex items-center justify-center rounded-full',
+                                                'w-6 h-6 text-base leading-[1] tracking-[0]',
+                                                active ? 'bg-white text-black' : 'text-[#BFBFBF] hover:text-white',
+                                              ].join(' ')}
+                                              onClick={() => setHistoryPage(n)}
+                                            >
+                                              {n}
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                      <div className="flex min-[640px]:hidden items-center gap-4.5">
+                                        {pages.map((page, idx) => {
+                                          if (typeof page === 'string') {
+                                            return (
+                                              <span key={`ellipsis-${idx}`} className="text-[#BFBFBF]">
+                                                ...
+                                              </span>
+                                            );
+                                          }
+                                          const active = page === historyPage;
+                                          return (
+                                            <button
+                                              key={page}
+                                              aria-current={active ? 'page' : undefined}
+                                              className={[
+                                                'cursor-pointer flex items-center justify-center rounded-full',
+                                                'w-6 h-6 text-base leading-[1] tracking-[0]',
+                                                active ? 'bg-white text-black' : 'text-[#BFBFBF] hover:text-white',
+                                              ].join(' ')}
+                                              onClick={() => setHistoryPage(page)}
+                                            >
+                                              {page}
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                    </>
+                                  );
+                                })()}
+                              </div>
+                              <button
+                                aria-label="Next page"
+                                className="cursor-pointer text-white hover:opacity-80 disabled:opacity-30 disabled:cursor-default"
+                                onClick={() => setHistoryPage(Math.min(historyPageCount, historyPage + 1))}
+                                disabled={historyPage >= historyPageCount}
+                              >
+                                ▶
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="h-[120px] flex items-center justify-center">
+                        <p className="text-[#bfbfbf] text-base leading-[1.5] tracking-[0.8px]">No history available.</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
 
