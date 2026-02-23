@@ -1,6 +1,6 @@
 # HPP Portal
 
-Interact with the HPP Mainnet network — migrate assets, bridge to the native network, and explore the ecosystem. Built for fast, secure, and cost‑effective transactions on AI‑native infrastructure.
+Interact with the HPP Mainnet network — migrate assets, bridge to the native network, stake HPP, discover and claim airdrops, and explore the ecosystem. Built for fast, secure, and cost‑effective transactions on AI‑native infrastructure.
 
 ## Features
 
@@ -10,7 +10,7 @@ Interact with the HPP Mainnet network — migrate assets, bridge to the native n
 - **Token Migration (AERGO → HPP on Ethereum)**: In‑app migration
 - **Staking (HPP on HPP chain)**: Stake / Unstake / Claim (+ wallet APR / dashboard)
 - **Ecosystem**: Explore partners and integrations
-- **Airdrop**: Coming soon
+- **Airdrop**: Discover, join, and claim HPP airdrop events (HPP / DApp / Collaboration). View eligibility, vesting overview, and claim tokens on the HPP chain.
 - **Web3 Integration**: Reown AppKit + Wagmi + Viem
 
 ### Supported Networks
@@ -26,7 +26,8 @@ Interact with the HPP Mainnet network — migrate assets, bridge to the native n
 - `/migration` AERGO/AQT (ETH) → HPP (ETH) in‑app migration
 - `/bridge` Bridges to HPP Mainnet — external links to Arbitrum Official Bridge and Orbiter
 - `/staking` HPP staking (stake / unstake / claim)
-- `/airdrop` Airdrop (Coming soon)
+- `/airdrop` Airdrop event list (tabs: HPP, DApp, Collaboration)
+- `/airdrop/[id]` Airdrop detail — eligibility, vesting, claim
 - `/ecosystem` HPP ecosystem overview
 
 ### External Links
@@ -113,6 +114,12 @@ Open `https://localhost:3000`.
 2. **AERGO (ETH) → HPP (ETH)**: Use the in‑app migration page (`/migration`)
 3. **HPP (ETH) → HPP Mainnet**: Use the Arbitrum Canonical Bridge
 
+## Airdrop
+
+- **List** (`/airdrop`): Events by type (HPP / DApp / Collaboration); responsive layout (accordion + table on mobile/tablet, table on desktop). Data from `NEXT_PUBLIC_HPP_STAKING_API_URL` (e.g. `/airdrop/type/{type}`).
+- **Detail** (`/airdrop/[id]`): Eligibility status, vesting overview (vested / not vested), claim-only flow (HPP chain), history when eligible. Dynamic metadata (OG/twitter) uses event name when available.
+- **Env**: `NEXT_PUBLIC_HPP_STAKING_API_URL` and contract address from API/detail payload for vesting and claim.
+
 ## Staking Details
 
 - Claimable: derived from cooldowns; latest first; auto‑updates when ready.
@@ -123,6 +130,9 @@ Open `https://localhost:3000`.
 
 ## Architecture Notes
 
+- `src/app/airdrop/AirdropClient.tsx` — airdrop list page (tabs, accordion/table)
+- `src/app/airdrop/[id]/AirdropDetailClient.tsx` — airdrop detail (eligibility, vesting, claim, history)
+- `src/app/airdrop/abi.ts` — vesting contract ABI (claimTokens, etc.)
 - `src/app/staking/StakingClient.tsx` — staking UI and on‑chain interactions
 - `src/app/staking/abi.ts` — minimal ABIs incl. `cooldownDuration`, `getCooldownArrayInfo`, `getCooldown`
 - `src/app/staking/hppClient.ts` — `useHppChain()`, `useHppPublicClient()`; single source of HPP chain truth
