@@ -4,6 +4,7 @@ import { wagmiAdapter, projectId } from '@/config/walletConfig';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createAppKit } from '@reown/appkit/react';
 import { mainnet, sepolia } from '@reown/appkit/networks';
+import type { Chain } from 'viem';
 import React, { type ReactNode } from 'react';
 import { cookieToInitialState, WagmiProvider, type Config } from 'wagmi';
 import { legalLinks } from '@/config/navigation';

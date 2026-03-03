@@ -780,13 +780,13 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
           <div className="ml-4 max-w-6xl mx-auto my-4">
             <Button
               size="sm"
-              onClick={() => router.back()}
+              onClick={() => router.push('/migration')}
               className="flex items-center space-x-1 cursor-pointer !bg-[#121212] text-white rounded-[5px]"
             >
               <svg className="w-4 h-4 text-[#FFFFFF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M15 19l-7-7 7-7" />
               </svg>
-              <span>Go Back</span>
+              {'Go Back'}
             </Button>
           </div>
 

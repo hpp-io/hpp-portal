@@ -1,36 +1,41 @@
-import React from 'react';
+import React, { cache } from 'react';
 import type { Metadata } from 'next';
 import AirdropDetailClient from './AirdropDetailClient';
 
-async function getAirdropNameById(id: string): Promise<string | null> {
+const getAirdropNameById = cache(async (id: string): Promise<string | null> => {
   try {
     const apiBaseUrl = process.env.NEXT_PUBLIC_HPP_STAKING_API_URL;
     if (!apiBaseUrl) return null;
 
+    // Same as AirdropDetailClient: call type endpoint with ?id= for single-item response
     const types = ['hpp', 'dapp', 'collaboration'] as const;
     for (const t of types) {
-      const res = await fetch(`${apiBaseUrl}/airdrop/type/${t}`, {
+      const url = `${apiBaseUrl}/airdrop/type/${t}?id=${encodeURIComponent(id)}`;
+      const res = await fetch(url, {
         headers: { accept: 'application/json' },
-        cache: 'no-store',
+        next: { revalidate: 60 },
       });
       if (!res.ok) continue;
       const raw: any = await res.json();
-      const data = raw?.data ?? raw?.events ?? raw;
-      const items: any[] = Array.isArray(data) ? data : [];
-      const found = items.find((e: any) => String(e?.id || '') === String(id));
-      if (found?.name) return String(found.name);
+      // Match AirdropDetailClient detail parsing: data (array or object), raw array, or raw object
+      let detailData: any = null;
+      if (raw?.data !== undefined) {
+        detailData = Array.isArray(raw.data) ? (raw.data[0] ?? null) : raw.data;
+      } else if (Array.isArray(raw)) {
+        detailData = raw[0] ?? null;
+      } else if (raw && typeof raw === 'object') {
+        detailData = raw;
+      }
+      const name = detailData?.name ?? detailData?.eventName;
+      if (name) return String(name);
     }
     return null;
   } catch {
     return null;
   }
-}
+});
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}): Promise<Metadata> {
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
   const name = await getAirdropNameById(id);
   const title = name ? `${name} | HPP Portal` : 'Airdrop Detail | HPP Portal';
@@ -70,9 +75,11 @@ export async function generateStaticParams() {
         });
         if (!res.ok) return [];
         const raw: any = await res.json();
-        const data = raw?.data ?? raw?.events ?? raw;
-        const items: any[] = Array.isArray(data) ? data : [];
-        return items.map((e) => String(e?.id || '')).filter(Boolean);
+        let items: any[] = [];
+        if (Array.isArray(raw)) items = raw;
+        else if (Array.isArray(raw?.data)) items = raw.data;
+        else if (Array.isArray(raw?.events)) items = raw.events;
+        return items.map((e) => String(e?.id ?? '')).filter(Boolean);
       }),
     );
 
