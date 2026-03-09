@@ -3,6 +3,7 @@
 import React, { useMemo, useEffect, useCallback } from 'react';
 import '@reown/appkit-ui';
 import Button from '@/components/ui/Button';
+import Dropdown, { type Option } from '@/components/ui/Dropdown';
 import WalletButton from '@/components/ui/WalletButton';
 import { useAccount, useDisconnect } from 'wagmi';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
@@ -29,6 +30,34 @@ type CooldownItem = {
   cooling: boolean;
 };
 
+type LeaderboardItem = {
+  rank: number;
+  address: string;
+  tier: 'Platinum' | 'Gold' | 'Silver' | 'Bronze' | 'Iron';
+};
+
+const MOCK_XP_SUMMARY = {
+  rank: 56,
+  seasonXp: 3000,
+  forumXp: 1000,
+  votingXp: 1000,
+  tier: 'Iron' as const,
+  daoBonusRewardXp: 10_000_000,
+};
+
+const MOCK_LEADERBOARD: LeaderboardItem[] = [
+  { rank: 1, address: '0x582d2936b...e4e8bc302', tier: 'Platinum' },
+  { rank: 2, address: '0x582d2936b...e4e8bc302', tier: 'Platinum' },
+  { rank: 3, address: '0x582d2936b...e4e8bc302', tier: 'Platinum' },
+  { rank: 4, address: '0x582d2936b...e4e8bc302', tier: 'Platinum' },
+  { rank: 5, address: '0x582d2936b...e4e8bc302', tier: 'Platinum' },
+  { rank: 6, address: '0x582d2936b...e4e8bc302', tier: 'Platinum' },
+  { rank: 7, address: '0x582d2936b...e4e8bc302', tier: 'Gold' },
+  { rank: 8, address: '0x582d2936b...e4e8bc302', tier: 'Silver' },
+  { rank: 9, address: '0x582d2936b...e4e8bc302', tier: 'Bronze' },
+  { rank: 10, address: '0x582d2936b...e4e8bc302', tier: 'Iron' },
+];
+
 export default function DashboardSection() {
   const dispatch = useAppDispatch();
   const { address, isConnected } = useAccount();
@@ -51,6 +80,33 @@ export default function DashboardSection() {
   const activityPage = useAppSelector((state) => state.activities.activityPage);
   const cooldowns = useAppSelector((state) => state.cooldown.cooldowns);
   const nowSecTick = useAppSelector((state) => state.cooldown.nowSecTick);
+
+  // Local UI state (email connection & tabs)
+  const [isEmailConnected, setIsEmailConnected] = React.useState(false);
+  const [connectedEmail, setConnectedEmail] = React.useState<string | null>(null);
+  const [isEmailModalOpen, setIsEmailModalOpen] = React.useState(false);
+  const [email, setEmail] = React.useState('');
+  const [verificationCode, setVerificationCode] = React.useState('');
+  const [emailStep, setEmailStep] = React.useState<'input' | 'verify'>('input');
+  const [emailError, setEmailError] = React.useState<string | null>(null);
+  const [isSendingCode, setIsSendingCode] = React.useState(false);
+  const [isVerifyingCode, setIsVerifyingCode] = React.useState(false);
+  const [xpTab, setXpTab] = React.useState<'activity' | 'leaderboard'>('activity');
+  const [xpSeason, setXpSeason] = React.useState('season-1');
+
+  const xpSeasonOptions: Option[] = React.useMemo(
+    () => [
+      // TODO: Replace with API-driven season list
+      { key: 'season-1', label: 'Season 1' },
+      { key: 'season-2', label: 'Season 2' },
+      { key: 'season-3', label: 'Season 3' },
+    ],
+    [],
+  );
+  const xpSeasonLabel = useMemo(
+    () => xpSeasonOptions.find((o) => o.key === xpSeason)?.label ?? 'Season 1',
+    [xpSeasonOptions, xpSeason],
+  );
 
   // Computed values
   const shortAddress = useMemo(() => {
@@ -208,32 +264,156 @@ export default function DashboardSection() {
     }
   }, [address]);
 
+  // Reset email connection state when wallet disconnects
+  useEffect(() => {
+    if (!isConnected) {
+      setIsEmailConnected(false);
+      setConnectedEmail(null);
+      setXpTab('activity');
+    }
+  }, [isConnected]);
+
+  const handleOpenEmailModal = () => {
+    if (!isConnected) return;
+    setEmail('');
+    setVerificationCode('');
+    setEmailError(null);
+    setEmailStep('input');
+    setIsEmailModalOpen(true);
+  };
+
+  const handleCloseEmailModal = () => {
+    if (isSendingCode || isVerifyingCode) return;
+    setIsEmailModalOpen(false);
+  };
+
+  const handleSendVerificationCode = async () => {
+    if (!email || !email.includes('@')) {
+      setEmailError('Please enter a valid email address.');
+      return;
+    }
+    setEmailError(null);
+    setIsSendingCode(true);
+    try {
+      // TODO: Send verification code to the email via staking dashboard API
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      setEmailStep('verify');
+    } finally {
+      setIsSendingCode(false);
+    }
+  };
+
+  const handleVerifyEmail = async () => {
+    if (!verificationCode.trim()) {
+      setEmailError('Please enter the verification code.');
+      return;
+    }
+    setEmailError(null);
+    setIsVerifyingCode(true);
+    try {
+      // TODO: Verify email with the backend and persist connection state
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      setIsEmailConnected(true);
+      setConnectedEmail(email.trim());
+      setXpTab('activity');
+      setIsEmailModalOpen(false);
+    } finally {
+      setIsVerifyingCode(false);
+    }
+  };
+
   return (
     <div className="mx-auto w-full">
-      {/* Top banner */}
-      <div className="mt-5 w-full mb-5">
-        <div className="rounded-[8px] px-5 py-7.5 bg-[#4b4ab0]">
-          {!isConnected ? (
-            <div className="w-full flex justify-center">
-              <WalletButton color="black" size="lg" />
-            </div>
-          ) : (
-            <div className="flex items-center justify-between">
+      {/* Top banner & XP connect */}
+      <div className="mt-5 w-full mb-5 space-y-3.5">
+        <div className="flex flex-col min-[1024px]:flex-row gap-3">
+          <div className="flex-1 rounded-[8px] px-5 py-7.5 bg-[#4b4ab0]">
+            {!isConnected ? (
+              <div className="w-full flex justify-center">
+                <WalletButton color="black" size="lg" />
+              </div>
+            ) : (
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <span className="inline-flex items-center justify-center w-11 h-11 rounded-full overflow-hidden bg-black">
+                    {React.createElement('wui-avatar', { ref: avatarRef, address })}
+                  </span>
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-2">
+                      <span className="text-white text-base font-semibold leading-[1.5] tracking-[0.8px]">
+                        Account
+                        {isEmailConnected && connectedEmail ? ` (${connectedEmail})` : ''}
+                      </span>
+                      {isEmailConnected && (
+                        <button
+                          type="button"
+                          onClick={handleOpenEmailModal}
+                          className="px-2 py-0.5 rounded-full text-xs font-semibold bg-white text-black hover:bg-[#f5f5f5]"
+                        >
+                          Change
+                        </button>
+                      )}
+                    </div>
+                    <span className="text-white text-sm leading-[1.5] tracking-[0.8px]">{shortAddress}</span>
+                  </div>
+                </div>
+                <Button variant="black" size="lg" onClick={() => disconnect()}>
+                  Disconnect
+                </Button>
+              </div>
+            )}
+          </div>
+          {isConnected && isEmailConnected && (
+            <div className="w-full min-[1024px]:w-[260px] rounded-[8px] bg-[#121212] px-4 py-3 flex flex-col justify-center">
               <div className="flex items-center gap-3">
-                <span className="inline-flex items-center justify-center w-11 h-11 rounded-full overflow-hidden bg-black">
-                  {React.createElement('wui-avatar', { ref: avatarRef, address })}
-                </span>
-                <div className="flex flex-col">
-                  <span className="text-white text-base font-semibold leading-[1.5] tracking-[0.8px]">Account</span>
-                  <span className="text-white text-sm leading-[1.5] tracking-[0.8px]">{shortAddress}</span>
+                {/* Left: Tier badge tile */}
+                <div className="flex flex-col items-center justify-center w-14 h-14 rounded-[4px] bg-black">
+                  <span className="mt-1 text-xs text-white leading-[1.2] tracking-[0.8px]">{MOCK_XP_SUMMARY.tier}</span>
+                </div>
+                {/* Right: Label + amount */}
+                <div className="flex-1 flex flex-col">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[#bfbfbf] text-xs leading-[1.5] tracking-[0.8px]">DAO Bonus Reward</span>
+                    <button
+                      type="button"
+                      className="flex items-center justify-center w-4 h-4 rounded-full border border-[#bfbfbf] text-[10px] text-[#bfbfbf] leading-none"
+                      aria-label="More info about DAO bonus reward"
+                    >
+                      ?
+                    </button>
+                  </div>
+                  <span className="mt-1 text-[#5DF23F] text-base font-semibold leading-[1.2]">
+                    {MOCK_XP_SUMMARY.daoBonusRewardXp.toLocaleString()} XP
+                  </span>
                 </div>
               </div>
-              <Button variant="black" size="lg" onClick={() => disconnect()}>
-                Disconnect
-              </Button>
             </div>
           )}
         </div>
+
+        {isConnected && !isEmailConnected && (
+          <div className="rounded-[8px] px-5 py-5 bg-[#121212] flex flex-col min-[768px]:flex-row min-[768px]:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center w-9 h-9 rounded-full bg-[#5DF23F] text-black text-sm font-bold">
+                XP
+              </div>
+              <div className="flex flex-col">
+                <span className="text-white text-base font-semibold leading-[1.5] tracking-[0.8px]">XP</span>
+                <span className="text-[#bfbfbf] text-sm leading-[1.5] tracking-[0.8px]">
+                  Earn XP through DAO activities and unlock additional rewards.
+                </span>
+              </div>
+            </div>
+            <Button
+              variant="black"
+              size="md"
+              className="min-w-[150px] self-start min-[768px]:self-auto"
+              onClick={handleOpenEmailModal}
+            >
+              Connect Email
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Stats grid */}
@@ -325,11 +505,183 @@ export default function DashboardSection() {
         </div>
       </div>
 
-      {/* Activity Log */}
+      {/* XP summary row (only when email is connected) */}
+      {isEmailConnected && (
+        <div className="w-full mb-5">
+          <div className="rounded-[8px] border border-[#2D2D2D]">
+            <div className="grid grid-cols-1 min-[800px]:grid-cols-4 gap-0">
+              {/* Your Rank */}
+              <div className="bg-[#121212] px-5 py-4 border-t border-[#2D2D2D] min-[800px]:border-t-0 rounded-t-[8px] min-[800px]:rounded-none min-[800px]:rounded-l-[8px]">
+                <div className="flex flex-col items-start gap-1">
+                  <div className="w-full flex items-center justify-between">
+                    <span className="text-[#bfbfbf] text-base leading-[1.5] tracking-[0.8]">Your Rank</span>
+                    <Dropdown value={xpSeason} onChange={setXpSeason} options={xpSeasonOptions} />
+                  </div>
+                  <span className="text-[#5DF23F] text-3xl font-semibold leading-[34px] tracking-[0]">
+                    {MOCK_XP_SUMMARY.rank}
+                  </span>
+                </div>
+              </div>
+              {/* Season XP Total + selector */}
+              <div className="bg-[#121212] px-5 py-4 border-t border-[#2D2D2D] min-[800px]:border-t-0 min-[800px]:border-l">
+                <div className="flex flex-col items-start gap-1">
+                  <span className="text-[#bfbfbf] text-base leading-[1.5] tracking-[0.8]">
+                    {xpSeasonLabel} XP Total
+                  </span>
+                  <span className="text-[#5DF23F] text-3xl font-semibold leading-[34px] tracking-[0]">
+                    {MOCK_XP_SUMMARY.seasonXp.toLocaleString()} XP
+                  </span>
+                </div>
+              </div>
+              {/* Forum XP */}
+              <div className="bg-[#121212] px-5 py-4 border-t border-[#2D2D2D] min-[800px]:border-t-0 min-[800px]:border-l">
+                <div className="flex flex-col items-start gap-2">
+                  <span className="text-[#bfbfbf] text-base leading-[1.5] tracking-[0.8]">Forum XP</span>
+                  <span className="text-white text-xl font-normal leading-[24px] tracking-[0]">
+                    {MOCK_XP_SUMMARY.forumXp.toLocaleString()} XP
+                  </span>
+                </div>
+              </div>
+              {/* Voting XP */}
+              <div className="bg-[#121212] px-5 py-4 border-t border-[#2D2D2D] min-[800px]:border-t-0 min-[800px]:border-l rounded-b-[8px] min-[800px]:rounded-none min-[800px]:rounded-r-[8px]">
+                <div className="flex flex-col items-start gap-2">
+                  <span className="text-[#bfbfbf] text-base leading-[1.5] tracking-[0.8]">Voting XP</span>
+                  <span className="text-white text-xl font-normal leading-[24px] tracking-[0]">
+                    {MOCK_XP_SUMMARY.votingXp.toLocaleString()} XP
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Activity Log / XP Leaderboard */}
       <div className="w-full mb-25">
-        <div className="text-white text-base font-semibold leading-[1.2] tracking-[0.8px] mb-2.5">Activity Log</div>
+        {isEmailConnected ? (
+          <div className="flex items-center gap-2.5 mb-2.5">
+            <button
+              type="button"
+              className={[
+                'cursor-pointer px-4 py-1.5 rounded-full text-sm font-semibold',
+                xpTab === 'activity' ? 'bg-white text-black' : 'bg-[#121212] text-white hover:bg-[#1a1a1a]',
+              ].join(' ')}
+              onClick={() => setXpTab('activity')}
+            >
+              Activity Log
+            </button>
+            <button
+              type="button"
+              className={[
+                'cursor-pointer px-4 py-1.5 rounded-full text-sm font-semibold',
+                xpTab === 'leaderboard' ? 'bg-white text-black' : 'bg-[#121212] text-white hover:bg-[#1a1a1a]',
+              ].join(' ')}
+              onClick={() => setXpTab('leaderboard')}
+            >
+              XP Leaderboard
+            </button>
+          </div>
+        ) : (
+          <div className="text-white text-base font-semibold leading-[1.2] tracking-[0.8px] mb-2.5">Activity Log</div>
+        )}
         <div className="rounded-[5px] bg-[#121212]">
-          {!isConnected ? (
+          {xpTab === 'leaderboard' && isEmailConnected ? (
+            <div className="w-full">
+              <div className="flex items-center justify-end px-5 py-3 border-b border-[#2D2D2D]">
+                <div className="text-[#bfbfbf] text-xs leading-[1.5] tracking-[0.8px]">
+                  Updated Every 08:00/16:00/00:00 UTC
+                </div>
+              </div>
+              <div className="overflow-x-auto">
+                <div className="min-w-[600px]">
+                  <div className="flex px-5 py-3 border-b border-[#2D2D2D] text-sm text-[#bfbfbf] bg-[#1a1a1a]">
+                    <div className="w-20">Rank</div>
+                    <div className="flex-1">User Address</div>
+                    <div className="w-28 text-right">Tier</div>
+                  </div>
+                  {MOCK_LEADERBOARD.map((row) => (
+                    <div
+                      key={row.rank}
+                      className="flex px-5 py-3 border-b border-[#2D2D2D] last:border-b-0 text-sm text-white hover:bg-[#1a1a1a]"
+                    >
+                      <div className="w-20">{row.rank}</div>
+                      <div className="flex-1 flex items-center gap-2">
+                        <span>{row.address}</span>
+                        <span className="inline-flex items-center justify-center w-4 h-4 text-[#bfbfbf]">
+                          <svg
+                            className="w-3 h-3"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                            aria-hidden="true"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                            />
+                          </svg>
+                        </span>
+                      </div>
+                      <div className="w-28 flex items-center justify-end gap-2">
+                        <span
+                          className={[
+                            'inline-flex h-2.5 w-2.5 rounded-[2px]',
+                            row.tier === 'Platinum'
+                              ? 'bg-[#B86CFF]'
+                              : row.tier === 'Gold'
+                                ? 'bg-[#FF5A87]'
+                                : row.tier === 'Silver'
+                                  ? 'bg-[#5DE1FF]'
+                                  : row.tier === 'Bronze'
+                                    ? 'bg-[#4FA6FF]'
+                                    : 'bg-[#FFFFFF]',
+                          ].join(' ')}
+                        />
+                        <span className="text-xs text-white">{row.tier}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="flex items-center justify-center pt-4 pb-7.5">
+                <div className="flex items-center gap-4.5">
+                  <button
+                    aria-label="Previous page"
+                    type="button"
+                    className="cursor-default text-white opacity-30"
+                    disabled
+                  >
+                    ◀
+                  </button>
+                  <div className="flex items-center gap-2">
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <button
+                        key={n}
+                        type="button"
+                        className={[
+                          'w-6 h-6 flex items-center justify-center rounded-full text-base leading-[1] tracking-[0]',
+                          n === 1 ? 'bg-white text-black' : 'text-[#BFBFBF]',
+                        ].join(' ')}
+                        disabled
+                      >
+                        {n}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    aria-label="Next page"
+                    type="button"
+                    className="cursor-default text-white opacity-30"
+                    disabled
+                  >
+                    ▶
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : !isConnected ? (
             <div className="h-[180px] flex items-center justify-center">
               <p className="text-[#bfbfbf] text-base leading-[1.5] tracking-[0.8px]">
                 Connect your wallet to view activity.
@@ -518,6 +870,77 @@ export default function DashboardSection() {
           )}
         </div>
       </div>
+      {isEmailModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+          <div className="w-full max-w-md rounded-[8px] bg-[#121212] border border-[#2D2D2D] px-6 py-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-white text-lg font-semibold leading-[1.2] tracking-[0.8px]">Connect Email</h2>
+              <button
+                type="button"
+                onClick={handleCloseEmailModal}
+                className="text-[#bfbfbf] hover:text-white text-xl leading-none"
+              >
+                ×
+              </button>
+            </div>
+            <p className="text-sm text-[#bfbfbf] leading-[1.5] tracking-[0.8px] mb-4">
+              Enter your email address to receive a verification code.
+            </p>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs text-[#bfbfbf] mb-1 tracking-[0.08em] uppercase">Email</label>
+                <input
+                  type="email"
+                  className="w-full rounded-[5px] bg-black/40 border border-[#2D2D2D] px-3 py-2 text-sm text-white outline-none focus:border-white"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={emailStep === 'verify' || isSendingCode || isVerifyingCode}
+                />
+              </div>
+              {emailStep === 'verify' && (
+                <div>
+                  <label className="block text-xs text-[#bfbfbf] mb-1 tracking-[0.08em] uppercase">
+                    Verification Code
+                  </label>
+                  <input
+                    type="text"
+                    className="w-full rounded-[5px] bg-black/40 border border-[#2D2D2D] px-3 py-2 text-sm text-white outline-none focus:border-white"
+                    placeholder="Enter the code from your email"
+                    value={verificationCode}
+                    onChange={(e) => setVerificationCode(e.target.value)}
+                    disabled={isVerifyingCode}
+                  />
+                </div>
+              )}
+              {emailError && (
+                <p className="text-xs text-[#FF1312] leading-[1.5] tracking-[0.8px] whitespace-pre-line">
+                  {emailError}
+                </p>
+              )}
+            </div>
+            <div className="mt-6 flex justify-end gap-3">
+              <Button
+                variant="black"
+                size="sm"
+                onClick={handleCloseEmailModal}
+                disabled={isSendingCode || isVerifyingCode}
+              >
+                Cancel
+              </Button>
+              {emailStep === 'input' ? (
+                <Button variant="white" size="sm" onClick={handleSendVerificationCode} disabled={isSendingCode}>
+                  {isSendingCode ? 'Sending...' : 'Send Code'}
+                </Button>
+              ) : (
+                <Button variant="white" size="sm" onClick={handleVerifyEmail} disabled={isVerifyingCode}>
+                  {isVerifyingCode ? 'Verifying...' : 'Verify & Connect'}
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
