@@ -19,7 +19,7 @@ import { standardArbErc20Abi, hppStakingAbi } from './abi';
 import { formatDisplayAmount, PERCENTS, computePercentAmount, formatTokenBalance } from '@/lib/helpers';
 import { useHppPublicClient, useHppChain } from './hppClient';
 import { useToast } from '@/hooks/useToast';
-import { useEnsureChain } from '@/lib/wallet';
+import { useAutoWatchAssetOnce, useEnsureChain } from '@/lib/wallet';
 import { config as wagmiConfig } from '@/config/walletConfig';
 import axios from 'axios';
 import OverviewSection from './OverviewSection';
@@ -284,6 +284,7 @@ export default function StakingClient() {
   const publicClient = useHppPublicClient();
   const { showToast } = useToast();
   const ensureChain = useEnsureChain();
+  const autoWatchAssetOnce = useAutoWatchAssetOnce();
   const { data: walletClient } = useWalletClient();
   const currentChainId = useChainId();
   const { chain: hppChain, id: HPP_CHAIN_ID, rpcUrl } = useHppChain();
@@ -712,6 +713,12 @@ export default function StakingClient() {
       rpcUrls: [rpcUrl],
       nativeCurrency: hppChain.nativeCurrency,
     });
+    if (HPP_TOKEN_ADDRESS) {
+      await autoWatchAssetOnce({
+        chainId: HPP_CHAIN_ID,
+        token: { address: HPP_TOKEN_ADDRESS, symbol: 'HPP', decimals: 18 },
+      });
+    }
   };
 
   // Balance refresh helper
