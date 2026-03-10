@@ -14,6 +14,13 @@ export interface EnsureChainOptions {
   nativeCurrency?: NativeCurrency;
 }
 
+export interface WatchAssetErc20Options {
+  address: `0x${string}`;
+  symbol: string;
+  decimals: number;
+  image?: string;
+}
+
 /**
  * Hook that ensures the connected wallet is on the specified chain.
  * - Prefers wagmi's switchChain (works with WalletConnect/AppKit mobile).
@@ -93,3 +100,87 @@ export function useEnsureChain() {
     }
   };
 }
+
+/**
+ * Hook that requests adding an ERC-20 token to the connected wallet UI.
+ * Uses wallet transport first (WalletConnect/AppKit friendly), then injected provider fallback.
+ */
+export function useWatchAsset() {
+  const { data: walletClient } = useWalletClient();
+
+  return async (token: WatchAssetErc20Options): Promise<boolean> => {
+    const params = {
+      type: 'ERC20',
+      options: {
+        address: token.address,
+        symbol: token.symbol,
+        decimals: token.decimals,
+        ...(token.image ? { image: token.image } : {}),
+      },
+    };
+
+    const transportRequest = (walletClient as any)?.transport?.request as
+      | ((args: { method: string; params?: any[] | Record<string, any> }) => Promise<any>)
+      | undefined;
+    if (transportRequest) {
+      try {
+        const res = await transportRequest({ method: 'wallet_watchAsset', params });
+        return !!res;
+      } catch {
+        // fall through to injected fallback
+      }
+    }
+
+    const injected = typeof window !== 'undefined' ? (window as any).ethereum : undefined;
+    const injectedRequest: undefined | ((args: { method: string; params?: any }) => Promise<any>) =
+      injected?.request?.bind(injected);
+    if (injectedRequest) {
+      const res = await injectedRequest({ method: 'wallet_watchAsset', params });
+      return !!res;
+    }
+
+    return false;
+  };
+}
+
+/**
+ * Best-effort, "prompt once" token add UX helper.
+ * - Skips if already prompted recently.
+ * - Marks as prompted on success OR user rejection to avoid nagging.
+ */
+export function useAutoWatchAssetOnce() {
+  const watchAsset = useWatchAsset();
+
+  return async (args: { chainId: number; token: WatchAssetErc20Options; keyPrefix?: string; force?: boolean }) => {
+    if (typeof window === 'undefined') return false;
+    const keyPrefix = args.keyPrefix || 'hpp:watchAsset';
+    const tokenKey = `${keyPrefix}:${args.chainId}:${String(args.token.address).toLowerCase()}`;
+
+    if (!args.force) {
+      try {
+        const last = window.localStorage.getItem(tokenKey);
+        if (last) return false;
+      } catch {
+        // ignore storage errors (private mode, etc.)
+      }
+    }
+
+    try {
+      const added = await watchAsset(args.token);
+      try {
+        window.localStorage.setItem(tokenKey, String(Date.now()));
+      } catch {}
+      return added;
+    } catch (e: any) {
+      // If user rejected the request, avoid prompting again automatically.
+      const code = e?.code;
+      if (code === 4001) {
+        try {
+          window.localStorage.setItem(tokenKey, String(Date.now()));
+        } catch {}
+      }
+      return false;
+    }
+  };
+}
+

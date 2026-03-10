@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useCallback, useMemo } from 'react';
 import Head from 'next/head';
 import dayjs from '@/lib/dayjs';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
@@ -19,7 +19,7 @@ import { standardArbErc20Abi, hppStakingAbi } from './abi';
 import { formatDisplayAmount, PERCENTS, computePercentAmount, formatTokenBalance } from '@/lib/helpers';
 import { useHppPublicClient, useHppChain } from './hppClient';
 import { useToast } from '@/hooks/useToast';
-import { useEnsureChain } from '@/lib/wallet';
+import { useAutoWatchAssetOnce, useEnsureChain } from '@/hooks/useWallet';
 import { config as wagmiConfig } from '@/config/walletConfig';
 import axios from 'axios';
 import OverviewSection from './OverviewSection';
@@ -72,7 +72,21 @@ import {
 } from '@/store/slices';
 
 type StakingTab = 'stake' | 'unstake' | 'claim';
-type TopTab = 'overview' | 'staking' | 'dashboard';
+const VALID_TOP_TABS = ['overview', 'staking', 'dashboard'] as const;
+type TopTab = (typeof VALID_TOP_TABS)[number];
+const VALID_STAKING_TABS = ['stake', 'unstake', 'claim'] as const;
+const STAKING_TAB_PARAM = 'tab';
+const STAKING_PATH = '/staking/';
+const DEFAULT_STAKING_TAB: StakingTab = 'stake';
+const DEFAULT_TOP_TAB: TopTab = 'overview';
+
+function isValidStakingTab(v: string | null): v is StakingTab {
+  return !!v && (VALID_STAKING_TABS as readonly string[]).includes(v);
+}
+
+function isValidTopTab(v: string | null): v is TopTab {
+  return !!v && (VALID_TOP_TABS as readonly string[]).includes(v);
+}
 
 export default function StakingClient() {
   const dispatch = useAppDispatch();
@@ -95,6 +109,102 @@ export default function StakingClient() {
 
   // Activities
   const activities = useAppSelector((state) => state.activities.activities);
+
+  // Deep link support (single param):
+  // - /staking/?tab=overview|dashboard
+  // - /staking/?tab=stake|unstake|claim  (implies topTab=staking)
+  // - On first mount, read URL and set Redux before paint (prevents tab flash)
+  // - Keep URL normalized to /staking/?tab=...
+  useLayoutEffect(() => {
+    const sp = new URLSearchParams(window.location.search);
+    const tabParam = sp.get(STAKING_TAB_PARAM);
+    const nextTopTab: TopTab =
+      tabParam === 'dashboard'
+        ? 'dashboard'
+        : tabParam === 'overview'
+          ? 'overview'
+          : tabParam === 'staking' || isValidStakingTab(tabParam)
+            ? 'staking'
+            : DEFAULT_TOP_TAB;
+    const nextActiveTab: StakingTab = isValidStakingTab(tabParam) ? tabParam : DEFAULT_STAKING_TAB;
+
+    dispatch(setTopTab(nextTopTab));
+    if (nextTopTab === 'staking') dispatch(setActiveTab(nextActiveTab));
+
+    // Allow both:
+    // - tab=staking (generic Staking entry)
+    // - tab=stake|unstake|claim (specific sub-tab)
+    const desiredParam: string = nextTopTab === 'staking' ? (tabParam === 'staking' ? 'staking' : nextActiveTab) : nextTopTab;
+    if (tabParam !== desiredParam || window.location.pathname !== STAKING_PATH) {
+      sp.set(STAKING_TAB_PARAM, desiredParam);
+      window.history.replaceState(null, '', `${STAKING_PATH}?${sp.toString()}`);
+    }
+  }, [dispatch]);
+
+  const handleTopTabChange = useCallback(
+    (id: TopTab) => {
+      dispatch(setTopTab(id));
+
+      const sp = new URLSearchParams(window.location.search);
+      const currentParam = sp.get(STAKING_TAB_PARAM);
+      const desiredParam: string =
+        id === 'staking'
+          ? currentParam === 'staking' || isValidStakingTab(currentParam)
+            ? (currentParam as string)
+            : 'staking'
+          : id;
+      sp.set(STAKING_TAB_PARAM, desiredParam);
+      window.history.replaceState(null, '', `${STAKING_PATH}?${sp.toString()}`);
+    },
+    [dispatch, activeTab],
+  );
+
+  const handleStakingTabChange = useCallback(
+    (id: StakingTab) => {
+      dispatch(setTopTab('staking'));
+      dispatch(setActiveTab(id));
+
+      const sp = new URLSearchParams(window.location.search);
+      sp.set(STAKING_TAB_PARAM, id);
+      window.history.replaceState(null, '', `${STAKING_PATH}?${sp.toString()}`);
+    },
+    [dispatch],
+  );
+
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search);
+    const tabParam = sp.get(STAKING_TAB_PARAM);
+    const desiredParam: string = topTab === 'staking' ? (tabParam === 'staking' ? 'staking' : activeTab) : topTab;
+    if (tabParam !== desiredParam || window.location.pathname !== STAKING_PATH) {
+      sp.set(STAKING_TAB_PARAM, desiredParam);
+      window.history.replaceState(null, '', `${STAKING_PATH}?${sp.toString()}`);
+    }
+  }, [activeTab, topTab]);
+
+  useEffect(() => {
+    const onPopState = () => {
+      const sp = new URLSearchParams(window.location.search);
+      const tabParam = sp.get(STAKING_TAB_PARAM);
+
+      if (isValidStakingTab(tabParam)) {
+        dispatch(setTopTab('staking'));
+        dispatch(setActiveTab(tabParam));
+        return;
+      }
+      if (tabParam === 'staking') {
+        dispatch(setTopTab('staking'));
+        return;
+      }
+      if (isValidTopTab(tabParam)) {
+        dispatch(setTopTab(tabParam));
+        return;
+      }
+      dispatch(setTopTab(DEFAULT_TOP_TAB));
+    };
+
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [dispatch]);
 
   useEffect(() => {
     dispatch(setActivityPage(1));
@@ -174,6 +284,7 @@ export default function StakingClient() {
   const publicClient = useHppPublicClient();
   const { showToast } = useToast();
   const ensureChain = useEnsureChain();
+  const autoWatchAssetOnce = useAutoWatchAssetOnce();
   const { data: walletClient } = useWalletClient();
   const currentChainId = useChainId();
   const { chain: hppChain, id: HPP_CHAIN_ID, rpcUrl } = useHppChain();
@@ -602,6 +713,12 @@ export default function StakingClient() {
       rpcUrls: [rpcUrl],
       nativeCurrency: hppChain.nativeCurrency,
     });
+    if (HPP_TOKEN_ADDRESS) {
+      await autoWatchAssetOnce({
+        chainId: HPP_CHAIN_ID,
+        token: { address: HPP_TOKEN_ADDRESS, symbol: 'HPP', decimals: 18 },
+      });
+    }
   };
 
   // Balance refresh helper
@@ -1334,7 +1451,7 @@ export default function StakingClient() {
             {/* Content */}
             <div className="mt-20 px-5 max-w-6xl mx-auto w-full">
               <div className="flex items-center gap-2.5">
-                {(['overview', 'staking', 'dashboard'] as TopTab[]).map((id) => {
+                {VALID_TOP_TABS.map((id) => {
                   const isActive = topTab === id;
                   const label = id === 'overview' ? 'Overview' : id === 'staking' ? 'Staking' : 'My Dashboard';
                   return (
@@ -1342,18 +1459,18 @@ export default function StakingClient() {
                       key={id}
                       size="sm"
                       variant={isActive ? 'primary' : 'black'}
-                      className={[
-                        '!rounded-full px-4 py-2 text-sm font-semibold',
-                        !isActive ? '!bg-[#121212]' : '',
-                      ].join(' ')}
+                      className={['!rounded-full px-4 py-2 text-sm font-semibold', !isActive ? '!bg-[#121212]' : ''].join(
+                        ' ',
+                      )}
                       aria-pressed={isActive}
-                      onClick={() => dispatch(setTopTab(id))}
+                      onClick={() => handleTopTabChange(id)}
                     >
                       {label}
                     </Button>
                   );
                 })}
               </div>
+
               {topTab === 'staking' ? (
                 <div className="mx-auto w-full">
                   {/* Panel */}
@@ -1389,7 +1506,7 @@ export default function StakingClient() {
                                 ].join(' ')}
                                 leftIcon={leftIcon}
                                 aria-pressed={isActive}
-                                onClick={() => dispatch(setActiveTab(id))}
+                                onClick={() => handleStakingTabChange(id)}
                               >
                                 {label}
                               </Button>
