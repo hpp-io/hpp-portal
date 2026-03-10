@@ -19,7 +19,7 @@ import { standardArbErc20Abi, hppStakingAbi } from './abi';
 import { formatDisplayAmount, PERCENTS, computePercentAmount, formatTokenBalance } from '@/lib/helpers';
 import { useHppPublicClient, useHppChain } from './hppClient';
 import { useToast } from '@/hooks/useToast';
-import { useAutoWatchAssetOnce, useEnsureChain } from '@/lib/wallet';
+import { useAutoWatchAssetOnce, useEnsureChain } from '@/hooks/useWallet';
 import { config as wagmiConfig } from '@/config/walletConfig';
 import axios from 'axios';
 import OverviewSection from './OverviewSection';

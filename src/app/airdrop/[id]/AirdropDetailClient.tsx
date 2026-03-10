@@ -26,7 +26,7 @@ import { hppVestingABI } from '../abi';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { setAirdropDetailLoading, setAirdropDetail, type AirdropDetailData } from '@/store/slices';
 import { useToast } from '@/hooks/useToast';
-import { useAutoWatchAssetOnce, useEnsureChain } from '@/lib/wallet';
+import { useAutoWatchAssetOnce, useEnsureChain } from '@/hooks/useWallet';
 import { config as wagmiConfig } from '@/config/walletConfig';
 
 export default function AirdropDetailClient({ id }: { id: string }) {
