@@ -37,8 +37,7 @@ export const navItems = [
   },
   {
     label: 'Governance',
-    href: 'https://snapshot.box/#/s:hpp.eth',
-    external: true,
+    href: '/governance',
     icon: <GovernanceIcon />,
   },
   {
