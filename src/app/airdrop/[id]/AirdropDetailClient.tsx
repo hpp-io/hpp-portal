@@ -26,8 +26,9 @@ import { hppVestingABI } from '../abi';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { setAirdropDetailLoading, setAirdropDetail, type AirdropDetailData } from '@/store/slices';
 import { useToast } from '@/hooks/useToast';
-import { useAutoWatchAssetOnce, useEnsureChain } from '@/hooks/useWallet';
+import { useEnsureChain } from '@/hooks/useWallet';
 import { config as wagmiConfig } from '@/config/walletConfig';
+import { getHppExplorerBaseUrl } from '@/lib/hppExplorer';
 
 export default function AirdropDetailClient({ id }: { id: string }) {
   const router = useRouter();
@@ -39,7 +40,6 @@ export default function AirdropDetailClient({ id }: { id: string }) {
   const { disconnect } = useDisconnect();
   const { showToast, hideToast } = useToast();
   const ensureChain = useEnsureChain();
-  const autoWatchAssetOnce = useAutoWatchAssetOnce();
   const [error, setError] = useState<string | null>(null);
   const [historyPage, setHistoryPage] = useState(1);
   const [vestingSchedule, setVestingSchedule] = useState<[`0x${string}`, bigint, bigint, boolean] | null>(null);
@@ -80,10 +80,7 @@ export default function AirdropDetailClient({ id }: { id: string }) {
   const publicClient = useHppPublicClient();
   const { id: HPP_CHAIN_ID, chain: hppChain, rpcUrl } = useHppChain();
   const HPP_TOKEN_ADDRESS = process.env.NEXT_PUBLIC_HPP_TOKEN_CONTRACT as `0x${string}`;
-  const explorerBase = useMemo(
-    () => (HPP_CHAIN_ID === 190415 ? 'https://explorer.hpp.io' : 'https://sepolia-explorer.hpp.io'),
-    [HPP_CHAIN_ID],
-  );
+  const explorerBase = getHppExplorerBaseUrl();
 
   // Ensure wallet is connected to HPP network for writes
   const ensureHppChain = React.useCallback(async () => {
@@ -92,13 +89,7 @@ export default function AirdropDetailClient({ id }: { id: string }) {
       rpcUrls: [rpcUrl],
       nativeCurrency: hppChain.nativeCurrency,
     });
-    if (HPP_TOKEN_ADDRESS) {
-      await autoWatchAssetOnce({
-        chainId: HPP_CHAIN_ID,
-        token: { address: HPP_TOKEN_ADDRESS, symbol: 'HPP', decimals: 18 },
-      });
-    }
-  }, [ensureChain, HPP_CHAIN_ID, hppChain.name, hppChain.nativeCurrency, rpcUrl, HPP_TOKEN_ADDRESS, autoWatchAssetOnce]);
+  }, [ensureChain, HPP_CHAIN_ID, hppChain.name, hppChain.nativeCurrency, rpcUrl]);
 
   // Contract address: use API/Redux data (do not override with env).
   const contractAddress = useMemo(() => {

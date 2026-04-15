@@ -9,6 +9,7 @@ import {
   BuildIcon,
   StakingIcon,
 } from '@/assets/icons';
+import { getHppExplorerBaseUrl } from '@/lib/hppExplorer';
 
 export const navItems = [
   {
@@ -48,7 +49,7 @@ export const navItems = [
   },
   {
     label: 'Block Explorer',
-    href: 'https://explorer.hpp.io',
+    href: getHppExplorerBaseUrl(),
     external: true,
     icon: <BlockExplorerIcon />,
   },
