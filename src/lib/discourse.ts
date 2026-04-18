@@ -19,7 +19,7 @@ interface DiscourseCategoryResponse {
 
 export function getDiscourseBase(): string {
   const fromEnv = typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_HPP_DISCOURSE_BASE_URL : undefined;
-  return (fromEnv?.trim() || 'https://hpp.discourse.group').replace(/\/$/, '');
+  return (fromEnv?.trim() || 'https://forum.hpp.io').replace(/\/$/, '');
 }
 
 /**
@@ -57,15 +57,13 @@ export async function fetchDiscourseGeneralTopics(params?: {
   }
 
   const json = (await res.json()) as unknown;
-  const topics =
-    (json &&
-    typeof json === 'object' &&
-    'topics' in json &&
-    Array.isArray((json as { topics?: unknown }).topics)
+  const topics = (
+    json && typeof json === 'object' && 'topics' in json && Array.isArray((json as { topics?: unknown }).topics)
       ? ((json as { topics: DiscourseTopic[] }).topics ?? [])
       : Array.isArray((json as DiscourseCategoryResponse).topic_list?.topics)
         ? ((json as DiscourseCategoryResponse).topic_list?.topics ?? [])
-        : []) as DiscourseTopic[];
+        : []
+  ) as DiscourseTopic[];
 
   return topics;
 }
@@ -85,4 +83,3 @@ export function resolveDiscourseImageUrl(baseUrl: string, imageUrl?: string | nu
     return null;
   }
 }
-
