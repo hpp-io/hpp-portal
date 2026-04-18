@@ -363,7 +363,7 @@ export default function GovernanceClient() {
                         href={item.href}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="group relative grid h-full w-full grid-rows-[220px_minmax(0,1fr)] overflow-hidden rounded-[5px] bg-[#111111] transition-opacity duration-200 hover:opacity-95 min-h-[380px] md:grid-rows-[minmax(0,1fr)_minmax(0,1fr)] md:min-h-[300px]"
+                        className="group relative grid h-full w-full grid-rows-[168px_minmax(0,1fr)] overflow-hidden rounded-[5px] bg-[#111111] transition-opacity duration-200 hover:opacity-95 min-h-[340px] md:grid-rows-[176px_minmax(0,1fr)] md:min-h-[300px]"
                       >
                         <div className="relative min-h-0 min-w-0 bg-[#1a1a1a]">
                           <Image
@@ -374,7 +374,7 @@ export default function GovernanceClient() {
                             sizes="(max-width: 767px) 100vw, (max-width: 1439px) 50vw, 33vw"
                           />
                         </div>
-                        <div className="relative flex min-h-0 flex-col overflow-hidden p-5 pb-12">
+                        <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-5 pb-12">
                           <div className="mb-3 flex flex-wrap items-center gap-2">
                             <time className="text-sm font-normal leading-[1.5] text-[#bfbfbf]" dateTime={item.isoDate}>
                               {item.dateLabel}
@@ -385,11 +385,11 @@ export default function GovernanceClient() {
                               {getKindLabel(item.kind)}
                             </span>
                           </div>
-                          <div className="min-w-0 h-[130px] shrink-0 overflow-hidden md:h-[126px]">
-                            <h3 className="block min-w-0 w-full truncate text-xl font-bold leading-[1.35] text-white">
+                          <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+                            <h3 className="min-w-0 break-words text-xl font-bold leading-[1.35] text-white">
                               {item.title}
                             </h3>
-                            <p className="mt-2 text-base font-normal leading-[1.5] text-[#bfbfbf] line-clamp-3">
+                            <p className="mt-2 min-h-0 text-base font-normal leading-[1.5] text-[#bfbfbf] line-clamp-3">
                               {item.excerpt}
                             </p>
                           </div>
