@@ -8,6 +8,7 @@ import {
   BlockExplorerIcon,
   BuildIcon,
   StakingIcon,
+  HubIcon,
 } from '@/assets/icons';
 
 export const navItems = [
@@ -45,6 +46,12 @@ export const navItems = [
     href: 'https://docs.hpp.io',
     external: true,
     icon: <BuildIcon />,
+  },
+  {
+    label: 'HPP Hub',
+    href: 'https://hub.hpp.io/',
+    external: true,
+    icon: <HubIcon />,
   },
   {
     label: 'Block Explorer',
