@@ -40,7 +40,7 @@ import { useRouter } from 'next/navigation';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import axios from 'axios';
 import { hppMigrationABI } from './abi';
-import { useEnsureChain } from '@/hooks/useWallet';
+import { useEnsureChain } from '@/lib/wallet';
 
 // Constants
 const AERGO_DECIMAL = 18;

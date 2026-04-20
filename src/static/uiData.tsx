@@ -191,42 +191,6 @@ export const ecosystemData = {
   ],
 };
 
-// Governance Page Data
-export const governanceData = {
-  faq: [
-    {
-      id: 1,
-      question: 'What is HPP Governance?',
-      answer:
-        'HPP Governance is the process where the community creates proposals, discusses changes, and votes on key decisions for the HPP ecosystem. In this portal, governance activity is provided through Agora so users can follow the full proposal lifecycle in one place.',
-    },
-    {
-      id: 2,
-      question: 'Can I create proposals and vote directly in Agora?',
-      answer:
-        'Yes. Connect your wallet in Agora, create or open a proposal, and submit your vote from the same interface. Proposal eligibility, quorum, and voting period are defined by governance rules and shown in each proposal detail.',
-    },
-    {
-      id: 3,
-      question: 'Can I manage proposal drafts in Agora?',
-      answer:
-        'Yes. Agora supports draft workflows so you can save, edit, and refine proposal content before publishing. This helps teams align on scope and wording before opening a formal vote.',
-    },
-    {
-      id: 4,
-      question: 'Where can I check proposal status and vote results?',
-      answer:
-        'Agora shows proposal status (pending, active, passed, failed, cancelled), vote counts, and details for each proposal. You can track progress in real time from the OnGoing Discussions list and each proposal page.',
-    },
-    {
-      id: 5,
-      question: 'How do I stay updated on new governance activity?',
-      answer:
-        'Use Agora as your primary governance dashboard for new proposals, status changes, and voting updates. You can also follow official HPP announcement channels for major governance notices.',
-    },
-  ],
-};
-
 // Bridge Page Data
 export const bridgeData = {
   faq: [
