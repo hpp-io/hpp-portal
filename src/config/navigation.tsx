@@ -42,16 +42,16 @@ export const navItems = [
     icon: <GovernanceIcon />,
   },
   {
-    label: 'HPP Hub',
-    href: 'https://hub.hpp.io/',
-    external: true,
-    icon: <HubIcon />,
-  },
-  {
     label: 'Build',
     href: 'https://docs.hpp.io',
     external: true,
     icon: <BuildIcon />,
+  },
+  {
+    label: 'HPP Hub',
+    href: 'https://hub.hpp.io/',
+    external: true,
+    icon: <HubIcon />,
   },
   {
     label: 'Block Explorer',
