@@ -20,7 +20,7 @@ const getAirdropNameById = cache(async (id: string): Promise<string | null> => {
       // Match AirdropDetailClient detail parsing: data (array or object), raw array, or raw object
       let detailData: any = null;
       if (raw?.data !== undefined) {
-        detailData = Array.isArray(raw.data) ? raw.data[0] ?? null : raw.data;
+        detailData = Array.isArray(raw.data) ? (raw.data[0] ?? null) : raw.data;
       } else if (Array.isArray(raw)) {
         detailData = raw[0] ?? null;
       } else if (raw && typeof raw === 'object') {
@@ -35,11 +35,7 @@ const getAirdropNameById = cache(async (id: string): Promise<string | null> => {
   }
 });
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}): Promise<Metadata> {
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
   const name = await getAirdropNameById(id);
   const title = name ? `${name} | HPP Portal` : 'Airdrop Detail | HPP Portal';

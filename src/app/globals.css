@@ -12,6 +12,23 @@
   --color-primary: #4949b4;
 }
 
+/* Governance — OnGoing Discussions: 1 col mobile, 2 cols tablet, 3 cols ≥1440px (Tailwind arbitrary min-[1440px] was unreliable in some builds) */
+.hpp-governance-discussions-grid {
+  display: grid;
+  gap: 1.25rem; /* gap-5 */
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 768px) {
+  .hpp-governance-discussions-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (min-width: 1440px) {
+  .hpp-governance-discussions-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
