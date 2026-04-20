@@ -8,7 +8,7 @@ import Header from '@/components/ui/Header';
 import Footer from '@/components/ui/Footer';
 import { navItems, legalLinks } from '@/config/navigation';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
-import { Aergo, Aqt, Booost } from '@/assets/icons';
+import { Discourse, Forum, Report, DiscourseThumbnail } from '@/assets/icons';
 import FaqSection from '@/components/ui/Faq';
 import { governanceData } from '@/static/uiData';
 import { useHppChain } from '@/app/staking/hppClient';
@@ -18,33 +18,57 @@ import {
   excerptFromMarkdownBody,
   fetchAgoraProposals,
   firstMarkdownImageUrl,
-  formatProposalStatusLabel,
   getAgoraApiBase,
   getAgoraWebBase,
   makeHipFallbackImageDataUrl,
   proposalDetailHref,
   resolveAgoraAssetUrl,
 } from '@/lib/agora';
+import {
+  discourseTopicHref,
+  fetchDiscourseGeneralTopics,
+  getDiscourseBase,
+  type DiscourseTopic,
+} from '@/lib/discourse';
 
 const DISCUSSIONS_PAGE_SIZE = 6;
 
-function getProposalStatusBadgeClass(status: string): string {
-  switch (status) {
-    case 'active':
-      // Same green tone used across staking/airdrop "on-going" indicators
-      return 'bg-[#5DF23F] text-black';
-    case 'passed':
-      // Keep default governance badge tone
-      return 'bg-[#5651d8] text-white';
-    case 'failed':
-      // Error/failure tone used in form error states
-      return 'bg-[#FF1312] text-white';
-    case 'cancelled':
-      return 'bg-[#9E9E9E] text-black';
-    case 'pending':
-    default:
-      return 'bg-[#5651d8] text-white';
-  }
+type GovernanceFeedKind = 'proposal' | 'discussion' | 'update';
+type GovernanceFilter = 'all' | GovernanceFeedKind;
+
+type GovernanceFeedItem = {
+  id: string;
+  kind: GovernanceFeedKind;
+  title: string;
+  excerpt: string;
+  href: string;
+  imageSrc: string;
+  createdAtMs: number;
+  isoDate: string;
+  dateLabel: string;
+};
+
+function getKindBadgeClass(kind: GovernanceFeedKind): string {
+  if (kind === 'proposal') return 'bg-[#5651d8] text-white';
+  if (kind === 'discussion') return 'bg-[#FAE13E] text-black';
+  return 'bg-[#5DF23F] text-black';
+}
+
+function getKindLabel(kind: GovernanceFeedKind): string {
+  if (kind === 'proposal') return 'Proposal';
+  if (kind === 'discussion') return 'Discussion';
+  return 'Update';
+}
+
+function getFilterButtonClass(filterId: GovernanceFilter, active: boolean): string {
+  if (!active) return 'bg-[#121212] text-white hover:bg-[#1B1B1B]';
+  return 'bg-primary text-white';
+}
+
+function discussionKindFromTitle(title: string): GovernanceFeedKind {
+  const s = title.toLowerCase();
+  if (s.includes('update')) return 'update';
+  return 'discussion';
 }
 
 /** 1-based page numbers with ellipses when there are many pages */
@@ -74,19 +98,19 @@ const governanceCards = [
     title: 'Discourse Forum',
     description: 'Legacy hybrid infrastructure at the core of HPP, now transitioning into an AI-native foundation.',
     href: 'https://forum.hpp.io',
-    icon: Aergo,
+    icon: Discourse,
   },
   {
     title: 'Voting Layer',
     description: 'RWA and NFT valuation layer enabling AI-driven asset discovery, pricing, and strategy execution.',
-    href: 'https://snapshot.box/#/s:hpp.eth',
-    icon: Aqt,
+    href: 'https://agora-sepolia.hpp.io',
+    icon: Forum,
   },
   {
     title: 'HPP Report',
     description: 'Personhood verification and Sybil resistance powered by AI-based deepfake detection and biometrics.',
-    href: 'https://www.booost.live',
-    icon: Booost,
+    href: 'https://medium.com/aergo',
+    icon: Report,
   },
 ];
 
@@ -95,36 +119,88 @@ export default function GovernanceClient() {
   const { id: chainId } = useHppChain();
   const agoraApiBase = useMemo(() => getAgoraApiBase(chainId), [chainId]);
   const agoraWebBase = useMemo(() => getAgoraWebBase(chainId), [chainId]);
+  const discourseBase = useMemo(() => getDiscourseBase(), []);
 
-  const [proposals, setProposals] = useState<AgoraProposal[]>([]);
+  const [feedItems, setFeedItems] = useState<GovernanceFeedItem[]>([]);
+  const [activeFilter, setActiveFilter] = useState<GovernanceFilter>('all');
   const [discussionsLoading, setDiscussionsLoading] = useState(true);
   const [discussionsError, setDiscussionsError] = useState<string | null>(null);
   const [discussionsPage, setDiscussionsPage] = useState(0);
 
-  const loadProposals = useCallback(async () => {
+  const loadGovernanceFeed = useCallback(async () => {
     setDiscussionsLoading(true);
     setDiscussionsError(null);
     try {
-      const list = await fetchAgoraProposals(agoraApiBase);
-      setProposals(list);
+      const [agoraResult, discourseResult] = await Promise.allSettled([
+        fetchAgoraProposals(agoraApiBase),
+        fetchDiscourseGeneralTopics(),
+      ]);
+
+      const agoraItems: GovernanceFeedItem[] =
+        agoraResult.status === 'fulfilled'
+          ? agoraResult.value.map((post: AgoraProposal) => {
+              const imgRef = firstMarkdownImageUrl(post.body);
+              const imageSrc = imgRef
+                ? resolveAgoraAssetUrl(agoraApiBase, imgRef)
+                : makeHipFallbackImageDataUrl(post.id);
+              const createdAtMs = dayjs.unix(post.createdAt).valueOf();
+              return {
+                id: `proposal-${post.id}`,
+                kind: 'proposal',
+                title: post.title,
+                excerpt: excerptFromMarkdownBody(post.body),
+                href: proposalDetailHref(agoraWebBase, post.id),
+                imageSrc,
+                createdAtMs,
+                isoDate: dayjs(createdAtMs).toISOString(),
+                dateLabel: dayjs(createdAtMs).format('MMM D, YYYY'),
+              };
+            })
+          : [];
+
+      const discourseItems: GovernanceFeedItem[] =
+        discourseResult.status === 'fulfilled'
+          ? discourseResult.value.map((topic: DiscourseTopic) => {
+              const createdAtMs = topic.created_at ? dayjs(topic.created_at).valueOf() : Date.now();
+              return {
+                id: `discourse-${topic.id}`,
+                kind: discussionKindFromTitle(topic.title),
+                title: topic.title,
+                excerpt: topic.excerpt || '',
+                href: discourseTopicHref(discourseBase, topic),
+                imageSrc: DiscourseThumbnail.src,
+                createdAtMs,
+                isoDate: dayjs(createdAtMs).toISOString(),
+                dateLabel: dayjs(createdAtMs).format('MMM D, YYYY'),
+              };
+            })
+          : [];
+
+      const merged = [...agoraItems, ...discourseItems].sort((a, b) => b.createdAtMs - a.createdAtMs);
+      setFeedItems(merged);
       setDiscussionsPage(0);
     } catch (e) {
-      setProposals([]);
-      setDiscussionsError(e instanceof Error ? e.message : 'Failed to load proposals');
+      setFeedItems([]);
+      setDiscussionsError(e instanceof Error ? e.message : 'Failed to load governance feed');
     } finally {
       setDiscussionsLoading(false);
     }
-  }, [agoraApiBase]);
+  }, [agoraApiBase, agoraWebBase, discourseBase]);
 
   useEffect(() => {
-    void loadProposals();
-  }, [loadProposals]);
+    void loadGovernanceFeed();
+  }, [loadGovernanceFeed]);
 
-  const totalDiscussionPages = Math.max(1, Math.ceil(proposals.length / DISCUSSIONS_PAGE_SIZE));
-  const pagedProposals = useMemo(() => {
+  const filteredItems = useMemo(() => {
+    if (activeFilter === 'all') return feedItems;
+    return feedItems.filter((item) => item.kind === activeFilter);
+  }, [activeFilter, feedItems]);
+
+  const totalDiscussionPages = Math.max(1, Math.ceil(filteredItems.length / DISCUSSIONS_PAGE_SIZE));
+  const pagedItems = useMemo(() => {
     const start = discussionsPage * DISCUSSIONS_PAGE_SIZE;
-    return proposals.slice(start, start + DISCUSSIONS_PAGE_SIZE);
-  }, [proposals, discussionsPage]);
+    return filteredItems.slice(start, start + DISCUSSIONS_PAGE_SIZE);
+  }, [filteredItems, discussionsPage]);
 
   useEffect(() => {
     if (discussionsPage > 0 && discussionsPage >= totalDiscussionPages) {
@@ -135,6 +211,14 @@ export default function GovernanceClient() {
   const discussionPaginationItems = useMemo(
     () => getPaginationItems(totalDiscussionPages, discussionsPage),
     [totalDiscussionPages, discussionsPage],
+  );
+  const filterCounts = useMemo(
+    () => ({
+      proposal: feedItems.filter((item) => item.kind === 'proposal').length,
+      discussion: feedItems.filter((item) => item.kind === 'discussion').length,
+      update: feedItems.filter((item) => item.kind === 'update').length,
+    }),
+    [feedItems],
   );
 
   return (
@@ -163,7 +247,7 @@ export default function GovernanceClient() {
             <div className="px-5 max-w-6xl mx-auto">
               <div className="w-full flex justify-center">
                 <DotLottieReact
-                  src="/lotties/Ecosystem.lottie"
+                  src="/lotties/DAO.lottie"
                   autoplay
                   loop
                   className="w-[80px] h-[80px]"
@@ -177,22 +261,8 @@ export default function GovernanceClient() {
               </div>
               <h1 className="text-[50px] leading-[1.5] font-[900] text-white text-center">HPP Governance</h1>
               <p className="text-xl text-[#bfbfbf] font-semibold leading-[1.5] max-w-7xl text-center">
-                A place where community and decentralization come together to build the future.
+                HPP Governance isn't a feature. It's the foundation of the AI-native ecosystem.
               </p>
-              <div className="mt-5 flex flex-wrap justify-center gap-3">
-                <Button variant="white" size="md" href="https://forum.hpp.io" external className="cursor-pointer">
-                  💬 Visit Forum
-                </Button>
-                <Button
-                  variant="white"
-                  size="md"
-                  href="https://snapshot.box/#/s:hpp.eth"
-                  external
-                  className="cursor-pointer"
-                >
-                  🗳️ Go to Vote
-                </Button>
-              </div>
             </div>
           </div>
 
@@ -205,17 +275,13 @@ export default function GovernanceClient() {
                   href={item.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="relative block rounded-[5px] p-6 pb-10 border border-transparent bg-primary w-full lg:max-w-[400px] transition-transform duration-200 hover:opacity-95"
+                  className="relative block rounded-[5px] p-5 pb-10 border border-transparent bg-primary w-full lg:max-w-[400px] transition-transform duration-200 hover:opacity-95"
                 >
                   <div className="mb-3 flex items-center">
-                    <div className="w-12.5 h-12.5 bg-white rounded-[5px] flex items-center justify-center">
-                      <Image src={item.icon} alt={item.title} width={28} height={28} />
-                    </div>
+                    <Image src={item.icon} alt={item.title} width={50} height={50} className="rounded-[5px]" />
                   </div>
                   <h3 className="text-xl leading-[24px] tracking-[0] font-semibold text-white mb-2.5">{item.title}</h3>
-                  <p className="text-base text-[#FFED2B] leading-[1.5] font-normal tracking-[0.8px]">
-                    {item.description}
-                  </p>
+                  <p className="text-base text-white leading-[1.5] font-normal tracking-[0.8px]">{item.description}</p>
                   <div className="absolute bottom-5 right-5">
                     <svg className="w-[22px] h-[22px] text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5-5 5M6 12h12" />
@@ -229,6 +295,29 @@ export default function GovernanceClient() {
           {/* OnGoing Discussions — HPP Agora GET /proposals */}
           <div className="px-5 max-w-6xl mx-auto mt-20">
             <h2 className="text-3xl leading-[1.5] font-[900] text-white mb-5">OnGoing Discussions</h2>
+            <div className="mb-5 flex flex-wrap items-center gap-2">
+              {[
+                { id: 'all' as const, label: 'ALL' },
+                { id: 'proposal' as const, label: `Proposal ${filterCounts.proposal}` },
+                { id: 'discussion' as const, label: `Discussion ${filterCounts.discussion}` },
+                { id: 'update' as const, label: `Update ${filterCounts.update}` },
+              ].map((filter) => (
+                <button
+                  key={filter.id}
+                  type="button"
+                  onClick={() => {
+                    setActiveFilter(filter.id);
+                    setDiscussionsPage(0);
+                  }}
+                  className={[
+                    'rounded-full px-5 py-2.5 text-base leading-[1] font-medium transition-colors cursor-pointer',
+                    getFilterButtonClass(filter.id, activeFilter === filter.id),
+                  ].join(' ')}
+                >
+                  {filter.label}
+                </button>
+              ))}
+            </div>
 
             {discussionsLoading && (
               <div className="flex min-h-[200px] flex-col items-center justify-center gap-4 rounded-[5px] bg-[#111111] py-16">
@@ -251,69 +340,59 @@ export default function GovernanceClient() {
               <div className="rounded-[5px] bg-[#111111] px-5 py-10 text-center">
                 <p className="text-base text-[#bfbfbf] mb-4">{discussionsError}</p>
                 <p className="text-sm text-[#888] mb-6 max-w-xl mx-auto">
-                  If this is a local build, the Agora API must allow your origin in CORS (see Workers API docs). You can
-                  set <code className="text-white">NEXT_PUBLIC_HPP_AGORA_API_URL</code> to point to the correct
-                  environment.
+                  Ensure <code className="text-white">NEXT_PUBLIC_HPP_AGORA_API_URL</code> and
+                  <code className="text-white"> NEXT_PUBLIC_HPP_DISCOURSE_PROXY_URL</code> are configured.
                 </p>
-                <Button variant="white" size="md" onClick={() => void loadProposals()} className="cursor-pointer">
+                <Button variant="white" size="md" onClick={() => void loadGovernanceFeed()} className="cursor-pointer">
                   Retry
                 </Button>
               </div>
             )}
 
-            {!discussionsLoading && !discussionsError && proposals.length === 0 && (
-              <div className="rounded-[5px] bg-[#111111] px-5 py-16 text-center text-[#bfbfbf]">
-                No proposals yet. Check back soon or open Agora to create one.
-              </div>
+            {!discussionsLoading && !discussionsError && filteredItems.length === 0 && (
+              <div className="rounded-[5px] bg-[#111111] px-5 py-16 text-center text-[#bfbfbf]">No data available.</div>
             )}
 
-            {!discussionsLoading && !discussionsError && proposals.length > 0 && (
+            {!discussionsLoading && !discussionsError && filteredItems.length > 0 && (
               <>
                 <div className="hpp-governance-discussions-grid">
-                  {pagedProposals.map((post) => {
-                    const imgRef = firstMarkdownImageUrl(post.body);
-                    const imageSrc = imgRef
-                      ? resolveAgoraAssetUrl(agoraApiBase, imgRef)
-                      : makeHipFallbackImageDataUrl(post.id);
-                    const href = proposalDetailHref(agoraWebBase, post.id);
-                    const dateLabel = dayjs.unix(post.createdAt).format('MMM D, YYYY');
-                    const isoDate = dayjs.unix(post.createdAt).toISOString();
-                    const excerpt = excerptFromMarkdownBody(post.body);
-                    const statusLabel = formatProposalStatusLabel(post.status);
-                    const statusBadgeClass = getProposalStatusBadgeClass(post.status);
-
+                  {pagedItems.map((item) => {
                     return (
                       <a
-                        key={post.id}
-                        href={href}
+                        key={item.id}
+                        href={item.href}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="group relative grid h-full w-full grid-rows-[minmax(0,1fr)_minmax(0,1fr)] overflow-hidden rounded-[5px] bg-[#111111] transition-opacity duration-200 hover:opacity-95 aspect-[10/11] md:aspect-auto md:min-h-[300px]"
+                        className="group relative grid h-full w-full grid-rows-[168px_minmax(0,1fr)] overflow-hidden rounded-[5px] bg-[#111111] transition-opacity duration-200 hover:opacity-95 min-h-[340px] md:grid-rows-[176px_minmax(0,1fr)] md:min-h-[300px]"
                       >
                         <div className="relative min-h-0 min-w-0 bg-[#1a1a1a]">
                           <Image
-                            src={imageSrc}
-                            alt={post.title}
+                            src={item.imageSrc}
+                            alt={item.title}
                             fill
                             className="object-cover"
                             sizes="(max-width: 767px) 100vw, (max-width: 1439px) 50vw, 33vw"
                           />
                         </div>
-                        <div className="relative flex min-h-0 flex-col overflow-hidden p-5 pb-12">
+                        <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-5 pb-12">
                           <div className="mb-3 flex flex-wrap items-center gap-2">
-                            <time className="text-sm font-normal leading-[1.5] text-[#bfbfbf]" dateTime={isoDate}>
-                              {dateLabel}
+                            <time className="text-sm font-normal leading-[1.5] text-[#bfbfbf]" dateTime={item.isoDate}>
+                              {item.dateLabel}
                             </time>
                             <span
-                              className={`rounded-full px-2.5 py-1 text-xs font-semibold leading-none ${statusBadgeClass}`}
+                              className={`rounded-[5px] px-3 py-1.5 text-sm font-medium leading-[1] ${getKindBadgeClass(item.kind)}`}
                             >
-                              {statusLabel}
+                              {getKindLabel(item.kind)}
                             </span>
                           </div>
-                          <h3 className="text-xl font-bold leading-[1.35] text-white line-clamp-2">{post.title}</h3>
-                          <p className="mt-2 text-base font-normal leading-[1.5] text-[#bfbfbf] line-clamp-3">
-                            {excerpt}
-                          </p>
+                          <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+                            <h3 className="min-w-0 break-words text-xl font-bold leading-[1.35] text-white">
+                              {item.title}
+                            </h3>
+                            <p className="mt-2 min-h-0 text-base font-normal leading-[1.5] text-[#bfbfbf] line-clamp-3">
+                              {item.excerpt}
+                            </p>
+                          </div>
                           <div className="absolute bottom-5 right-5">
                             <svg
                               className="h-[22px] w-[22px] text-white transition-transform duration-200 group-hover:translate-x-0.5"
@@ -355,10 +434,10 @@ export default function GovernanceClient() {
                           aria-current={item === discussionsPage + 1 ? 'page' : undefined}
                           onClick={() => setDiscussionsPage(item - 1)}
                           className={[
-                            'flex h-10 min-w-10 cursor-pointer items-center justify-center rounded-[5px] px-3 text-sm font-semibold tabular-nums transition-colors ring-1 ring-inset',
+                            'flex h-10 min-w-10 cursor-pointer items-center justify-center rounded-full px-3 text-sm font-semibold tabular-nums transition-colors',
                             item === discussionsPage + 1
-                              ? 'bg-primary text-white ring-transparent'
-                              : 'bg-[#111111] text-[#bfbfbf] ring-white/[0.08] hover:bg-white/[0.06] hover:text-white',
+                              ? 'bg-primary text-white'
+                              : 'bg-[#111111] text-[#bfbfbf] hover:bg-white/[0.06] hover:text-white',
                           ].join(' ')}
                         >
                           {item}
