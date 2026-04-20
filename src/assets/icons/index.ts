@@ -38,7 +38,6 @@ export { default as Wallet2Icon } from './Wallet2.svg';
 export { default as MobileWalletConnectIcon } from './MobileWalletConnect.svg';
 export { default as RightArrowIcon } from './RightArrow.svg';
 export { default as DownIcon } from './Down.svg';
-export { default as HubIcon } from './Hub.svg';
 
 // PNG
 export { default as Aergo } from './Aergo.png';
@@ -69,8 +68,3 @@ export { default as APR_Mobile2 } from './APR_Mobile_Phase 2.png';
 export { default as APR_Web1 } from './APR_Web_Phase 1.png';
 export { default as APR_Web2 } from './APR_Web_Phase 2.png';
 export { default as HPP_Ticker } from './HPP_ticker_white.png';
-export { default as Discourse } from './Discourse.jpg';
-export { default as Forum } from './Forum.jpg';
-export { default as Report } from './Report.jpg';
-export { default as DiscourseThumbnail } from './DiscourseThumbnail.jpg';
-export { default as MediumThumbnail } from './MediumThumbnail.jpg';

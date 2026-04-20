@@ -4,7 +4,6 @@ import '@reown/appkit-ui';
 import React from 'react';
 import { useAppKit } from '@reown/appkit/react';
 import Button from './Button';
-import { MobileWalletConnectIcon } from '@/assets/icons';
 import { useAccount } from 'wagmi';
 
 interface WalletButtonProps {
@@ -58,24 +57,9 @@ export default function WalletButton({
           })}
         </button>
       ) : showConnect ? (
-        <>
-          <button
-            type="button"
-            onClick={() => open({ view: 'Connect' })}
-            className="hidden h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full bg-transparent max-[767px]:inline-flex focus:outline-none focus-visible:outline-none"
-            aria-label={labelOverride || 'Connect Wallet'}
-          >
-            <MobileWalletConnectIcon className="h-9 w-9" aria-hidden />
-          </button>
-          <Button
-            variant={color}
-            size={size}
-            onClick={() => open({ view: 'Connect' })}
-            className={['max-[767px]:hidden', className].filter(Boolean).join(' ')}
-          >
-            {labelOverride || 'Connect Wallet'}
-          </Button>
-        </>
+        <Button variant={color} size={size} onClick={() => open({ view: 'Connect' })} className={className}>
+          {labelOverride || 'Connect Wallet'}
+        </Button>
       ) : (
         <div className={`${boxClass} rounded-full`} aria-hidden />
       )}
