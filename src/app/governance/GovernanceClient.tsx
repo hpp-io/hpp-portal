@@ -65,6 +65,13 @@ function getFilterButtonClass(filterId: GovernanceFilter, active: boolean): stri
   return 'bg-primary text-white';
 }
 
+function getEmptyStateMessage(filterId: GovernanceFilter): string {
+  if (filterId === 'proposal') return 'No proposals yet';
+  if (filterId === 'discussion') return 'No discussions yet';
+  if (filterId === 'update') return 'Updates coming soon';
+  return 'No governance posts yet';
+}
+
 function discussionKindFromTitle(title: string): GovernanceFeedKind {
   const s = title.toLowerCase();
   if (s.includes('update')) return 'update';
@@ -350,7 +357,9 @@ export default function GovernanceClient() {
             )}
 
             {!discussionsLoading && !discussionsError && filteredItems.length === 0 && (
-              <div className="rounded-[5px] bg-[#111111] px-5 py-16 text-center text-[#bfbfbf]">No data available.</div>
+              <div className="rounded-[5px] bg-[#111111] px-5 py-16 text-center text-[#bfbfbf]">
+                {getEmptyStateMessage(activeFilter)}
+              </div>
             )}
 
             {!discussionsLoading && !discussionsError && filteredItems.length > 0 && (
