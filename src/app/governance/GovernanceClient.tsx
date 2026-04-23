@@ -8,7 +8,7 @@ import Header from '@/components/ui/Header';
 import Footer from '@/components/ui/Footer';
 import { navItems, legalLinks } from '@/config/navigation';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
-import { Discourse, Forum, Report, DiscourseThumbnail } from '@/assets/icons';
+import { Discourse, Forum, Report, DiscourseThumbnail, MediumThumbnail } from '@/assets/icons';
 import FaqSection from '@/components/ui/Faq';
 import { governanceData } from '@/static/uiData';
 import { useHppChain } from '@/app/staking/hppClient';
@@ -30,6 +30,7 @@ import {
   getDiscourseBase,
   type DiscourseTopic,
 } from '@/lib/discourse';
+import { fetchMediumFeedItems } from '@/lib/medium';
 
 const DISCUSSIONS_PAGE_SIZE = 6;
 
@@ -65,9 +66,9 @@ function getFilterButtonClass(filterId: GovernanceFilter, active: boolean): stri
   return 'bg-primary text-white';
 }
 
-function discussionKindFromTitle(title: string): GovernanceFeedKind {
-  const s = title.toLowerCase();
-  if (s.includes('update')) return 'update';
+function discussionKindFromTopic(topic: DiscourseTopic): GovernanceFeedKind {
+  const _ = topic;
+  void _;
   return 'discussion';
 }
 
@@ -96,19 +97,19 @@ function getPaginationItems(totalPages: number, currentPageIndex: number): Array
 const governanceCards = [
   {
     title: 'Discourse Forum',
-    description: 'Legacy hybrid infrastructure at the core of HPP, now transitioning into an AI-native foundation.',
+    description: 'Governance discussion hub where proposals are introduced, refined, and aligned before voting.',
     href: 'https://forum.hpp.io',
     icon: Discourse,
   },
   {
     title: 'Voting Layer',
-    description: 'RWA and NFT valuation layer enabling AI-driven asset discovery, pricing, and strategy execution.',
-    href: 'https://agora-sepolia.hpp.io',
+    description: 'Off-chain and on-chain voting infrastructure enabling transparent, stake-based decision making.',
+    href: 'https://agora.hpp.io',
     icon: Forum,
   },
   {
     title: 'HPP Report',
-    description: 'Personhood verification and Sybil resistance powered by AI-based deepfake detection and biometrics.',
+    description: 'Curated governance reports capturing key discussions, decisions, and outcomes across the DAO.',
     href: 'https://medium.com/aergo',
     icon: Report,
   },
@@ -131,9 +132,10 @@ export default function GovernanceClient() {
     setDiscussionsLoading(true);
     setDiscussionsError(null);
     try {
-      const [agoraResult, discourseResult] = await Promise.allSettled([
+      const [agoraResult, discourseResult, mediumResult] = await Promise.allSettled([
         fetchAgoraProposals(agoraApiBase),
         fetchDiscourseGeneralTopics(),
+        fetchMediumFeedItems(),
       ]);
 
       const agoraItems: GovernanceFeedItem[] =
@@ -164,9 +166,9 @@ export default function GovernanceClient() {
               const createdAtMs = topic.created_at ? dayjs(topic.created_at).valueOf() : Date.now();
               return {
                 id: `discourse-${topic.id}`,
-                kind: discussionKindFromTitle(topic.title),
+                kind: discussionKindFromTopic(topic),
                 title: topic.title,
-                excerpt: topic.excerpt || '',
+                excerpt: topic.excerpt || topic.excerpt_text || '',
                 href: discourseTopicHref(discourseBase, topic),
                 imageSrc: DiscourseThumbnail.src,
                 createdAtMs,
@@ -176,7 +178,25 @@ export default function GovernanceClient() {
             })
           : [];
 
-      const merged = [...agoraItems, ...discourseItems].sort((a, b) => b.createdAtMs - a.createdAtMs);
+      const mediumItems: GovernanceFeedItem[] =
+        mediumResult.status === 'fulfilled'
+          ? mediumResult.value.map((post) => {
+              const createdAtMs = dayjs(post.isoDate).valueOf();
+              return {
+                id: `medium-${post.id}`,
+                kind: 'update',
+                title: post.title,
+                excerpt: post.excerpt || '',
+                href: post.href,
+                imageSrc: MediumThumbnail.src,
+                createdAtMs,
+                isoDate: dayjs(createdAtMs).toISOString(),
+                dateLabel: dayjs(createdAtMs).format('MMM D, YYYY'),
+              };
+            })
+          : [];
+
+      const merged = [...agoraItems, ...discourseItems, ...mediumItems].sort((a, b) => b.createdAtMs - a.createdAtMs);
       setFeedItems(merged);
       setDiscussionsPage(0);
     } catch (e) {
@@ -263,6 +283,17 @@ export default function GovernanceClient() {
               <p className="text-xl text-[#bfbfbf] font-semibold leading-[1.5] max-w-7xl text-center">
                 HPP Governance isn't a feature. It's the foundation of the AI-native ecosystem.
               </p>
+              <div className="flex justify-center">
+                <Button
+                  variant="white"
+                  size="lg"
+                  className="mt-5 font-semibold"
+                  href="https://paper.hpp.io/guide/HPP_DAO_Participation_Guide.pdf"
+                  external
+                >
+                  DAO Participation Guideline
+                </Button>
+              </div>
             </div>
           </div>
 
@@ -420,7 +451,7 @@ export default function GovernanceClient() {
                 </div>
 
                 {discussionPaginationItems.length > 0 && (
-                  <nav className="mt-10 flex flex-wrap items-center justify-center gap-2" aria-label="Proposals pages">
+                  <nav className="mt-4 flex flex-wrap items-center justify-center gap-2" aria-label="Proposals pages">
                     {discussionPaginationItems.map((item, idx) =>
                       item === 'ellipsis' ? (
                         <span
