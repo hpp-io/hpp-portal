@@ -26,10 +26,9 @@ import {
 export const homeData = {
   quickActions: [
     {
-      title: 'Pre-Registration',
-      description: 'Pre-register now to secure up to 20% APR!',
-      openDescription: 'Stake your HPP to earn rewards and participate in HPP ecosystem',
-      href: '/staking/pre-registration',
+      title: 'Staking',
+      description: 'Hold your stake longer to earn more Bonus Credits and a higher APR.',
+      href: '/staking',
       openHref: '/staking',
     },
     {
