@@ -54,7 +54,7 @@ export default function OverviewSection() {
 
   // Local state
   const [period, setPeriod] = React.useState<string>('1M');
-  const [aprTab, setAprTab] = React.useState<'pre' | 'whale' | 'hold' | 'dao'>('whale');
+  const [aprTab, setAprTab] = React.useState<'pre' | 'whale' | 'hold' | 'dao'>('hold');
   const [totalPreRegisteredWallets, setTotalPreRegisteredWallets] = React.useState<number>(0);
 
   // Check if screen width is 900px or less
@@ -630,7 +630,77 @@ export default function OverviewSection() {
               </div>
             </div>
           )}
-          {(aprTab === 'hold' || aprTab === 'dao') && (
+          {aprTab === 'hold' && (
+            <div className="px-5 pb-7.5">
+              <div className="text-white text-base leading-[20px] tracking-[0] font-semibold mb-4 flex flex-col min-[600px]:flex-row min-[600px]:items-center min-[600px]:justify-between gap-4">
+                <div className="flex-1">
+                  <div className="text-white">
+                    <span className="mr-1">💰</span>
+                    <span>Hold & Earn: The longer you stake, the higher your APR</span>
+                  </div>
+                  <div className="text-[#BFBFBF] text-base font-normal leading-[1.5]">
+                    Maintain your stake over time to unlock higher tiers and receive Bonus Credits to enhance your
+                    staking rewards. Bonus credits increase by 3% every month.
+                  </div>
+                </div>
+                <div className="flex-shrink-0">
+                  <Button
+                    variant="white"
+                    size="sm"
+                    className="rounded-[5px]"
+                    href="https://docs.hpp.io/community/staking-guide"
+                    external
+                  >
+                    Learn More
+                  </Button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-[1fr_140px] items-center bg-[#2D2D2D] text-[#bfbfbf] rounded-[5px] px-4 py-2 text-base font-semibold">
+                <div className="text-left">Staking Period</div>
+                <div className="text-center">Bonus Credit</div>
+              </div>
+
+              <div className="space-y-1">
+                {[
+                  { period: '1 Month', bonus: 'x103%' },
+                  { period: '2 Months', bonus: 'x106%' },
+                  { period: '3 Months', bonus: 'x109%' },
+                  { period: '5 Months', bonus: 'x112%' },
+                  { period: '6 Months', bonus: 'x115%' },
+                  { period: '⋮', bonus: '⋮' },
+                  { period: '22 Months', bonus: 'x166%' },
+                  { period: '23 Months', bonus: 'x169%' },
+                  { period: '24 Months ≤', bonus: 'x172%' },
+                ].map((r, idx, arr) => (
+                  <div
+                    key={`${r.period}-${idx}`}
+                    className={[
+                      'grid grid-cols-[1fr_140px] items-center px-4 py-3',
+                      idx !== arr.length - 1 ? 'border-b border-[#2D2D2D]' : '',
+                    ].join(' ')}
+                  >
+                    <div className="text-white text-base leading-[1] tracking-[0] font-normal text-left">
+                      {r.period}
+                    </div>
+                    <div className="text-[#5DF23F] text-base font-semibold text-center">
+                      <span className={r.bonus === '⋮' ? 'inline-block text-white' : ''}>{r.bonus}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-5">
+                <div className="text-[#5DF23F] text-base leading-[1.5] tracking-[0.8px] font-semibold">Important</div>
+                <ul className="text-base text-white leading-[1.5] tracking-[0.8px] list-disc pl-5">
+                  <li>Bonus Credit can increase your APR.</li>
+                  <li>Your final APR is calculated as Bonus Credit Multiplier = 100% + (3% x Nth Month).</li>
+                </ul>
+              </div>
+            </div>
+          )}
+
+          {aprTab === 'dao' && (
             <div className="px-5 pb-7.5">
               <div className="rounded-[5px] bg-[#1c1c1c] px-5 py-7.5">
                 <div className="text-[#9c9c9c] text-base leading-[20px] tracking-[0] font-semibold">Coming Soon</div>
