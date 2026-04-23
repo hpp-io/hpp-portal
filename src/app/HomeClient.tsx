@@ -18,7 +18,6 @@ import dayjs from '@/lib/dayjs';
 export default function HomeClient() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const router = useRouter();
-
   // Pre-registration countdown (initialize from base API)
   const [preRemainingSec, setPreRemainingSec] = useState<number | null>(null);
 
@@ -106,9 +105,9 @@ export default function HomeClient() {
             <h2 className="text-3xl leading-[1.5] font-[900] text-white mb-5">Quick Actions</h2>
             {/* Pre-Registration banner (1-col full width) */}
             {(() => {
-              const pre = (homeData.quickActions as any[]).find((a) => a.title === 'Pre-Registration');
+              const pre = (homeData.quickActions as any[]).find((a) => a.title === 'Staking');
               if (!pre) return null;
-              
+
               // Loading state
               if (preRemainingSec === null) {
                 return (
@@ -130,7 +129,7 @@ export default function HomeClient() {
                   </div>
                 );
               }
-              
+
               const href: string | undefined = preRemainingSec === 0 ? pre.openHref : pre.href;
               const external = href ? /^https?:\/\//.test(href) : false;
               return (
@@ -152,7 +151,7 @@ export default function HomeClient() {
                       <div className="mb-2 flex justify-start">
                         <span className="inline-flex items-center gap-2 bg-white text-black rounded-[5px] px-2.5 py-1.25 text-sm font-semibold leading-[1]">
                           <span>🔥</span>
-                          <span>Up to 20% APR</span>
+                          <span>Up to 31% APR</span>
                         </span>
                       </div>
                       <div className="flex gap-3 justify-start">
@@ -161,23 +160,18 @@ export default function HomeClient() {
                           {preRemainingSec === 0 ? (
                             <>
                               <br className="hidden max-[900px]:block" />
-                              <span className="text-[#5DF23F] whitespace-nowrap inline">
-                                Season 1
-                              </span>
-                              {' '}
-                              <span className="text-white whitespace-nowrap inline">
-                                is now open!
-                              </span>
+                              <span className="text-[#5DF23F] whitespace-nowrap inline">Season 2</span>{' '}
+                              <span className="text-white whitespace-nowrap inline">is now open!</span>
                             </>
                           ) : (
-                          <span className="text-[#5DF23F] whitespace-nowrap inline max-[600px]:block max-[600px]:mt-1">
-                            Pre-Registration
-                          </span>
+                            <span className="text-[#5DF23F] whitespace-nowrap inline max-[600px]:block max-[600px]:mt-1">
+                              Pre-Registration
+                            </span>
                           )}
                         </h3>
                       </div>
                       <p className="text-base text-white font-normal leading-[1.2] mt-2.5">
-                        <span>{preRemainingSec === 0 ? pre.openDescription : pre.description} </span>
+                        <span>{pre.description} </span>
                         {preRemainingSec !== null && preRemainingSec !== 0 && (
                           <span className="text-[#5DF23F] inline whitespace-nowrap max-[600px]:block max-[600px]:mt-1">
                             {formatRemaining(preRemainingSec)}
@@ -206,7 +200,7 @@ export default function HomeClient() {
 
             <div className="grid grid-cols-1 min-[810px]:grid-cols-3 gap-5 justify-items-center">
               {(homeData.quickActions as any[])
-                .filter((a) => a.title !== 'Pre-Registration')
+                .filter((a) => a.title !== 'Staking')
                 .map((action: any, index) => {
                   const href: string | undefined = action.href;
                   const external = href ? /^https?:\/\//.test(href) : false;
@@ -214,8 +208,8 @@ export default function HomeClient() {
                     action.title === 'Migration'
                       ? '/lotties/Migration.lottie'
                       : action.title === 'Bridge'
-                      ? '/lotties/Bridge.lottie'
-                      : '/lotties/StartBuilding.lottie';
+                        ? '/lotties/Bridge.lottie'
+                        : '/lotties/StartBuilding.lottie';
 
                   const CardContent = (
                     <>
