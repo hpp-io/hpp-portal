@@ -134,7 +134,8 @@ export default function StakingClient() {
     // Allow both:
     // - tab=staking (generic Staking entry)
     // - tab=stake|unstake|claim (specific sub-tab)
-    const desiredParam: string = nextTopTab === 'staking' ? (tabParam === 'staking' ? 'staking' : nextActiveTab) : nextTopTab;
+    const desiredParam: string =
+      nextTopTab === 'staking' ? (tabParam === 'staking' ? 'staking' : nextActiveTab) : nextTopTab;
     if (tabParam !== desiredParam || window.location.pathname !== STAKING_PATH) {
       sp.set(STAKING_TAB_PARAM, desiredParam);
       window.history.replaceState(null, '', `${STAKING_PATH}?${sp.toString()}`);
@@ -1427,12 +1428,12 @@ export default function StakingClient() {
                 </div>
                 <div className="text-[50px] leading-[1.5] font-[900] text-white text-center">HPP Staking</div>
                 <p className="text-xl text-[#bfbfbf] font-semibold leading-[1.5] max-w-5xl text-center">
-                  Stake your HPP to earn rewards and participate in HPP ecosystem
+                  Hold your stake longer to earn more Bonus Credits and a higher APR.
                 </p>
                 <Button
                   variant="white"
                   size="lg"
-                  className="mt-5"
+                  className="mt-5 font-semibold"
                   href="https://paper.hpp.io/guide/HPP_Staking_Guideline.pdf"
                   external
                 >
@@ -1452,9 +1453,10 @@ export default function StakingClient() {
                       key={id}
                       size="sm"
                       variant={isActive ? 'primary' : 'black'}
-                      className={['!rounded-full px-4 py-2 text-sm font-semibold', !isActive ? '!bg-[#121212]' : ''].join(
-                        ' ',
-                      )}
+                      className={[
+                        '!rounded-full px-4 py-2 text-sm font-semibold',
+                        !isActive ? '!bg-[#121212]' : '',
+                      ].join(' ')}
                       aria-pressed={isActive}
                       onClick={() => handleTopTabChange(id)}
                     >
