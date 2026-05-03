@@ -38,7 +38,10 @@ export { default as Wallet2Icon } from './Wallet2.svg';
 export { default as MobileWalletConnectIcon } from './MobileWalletConnect.svg';
 export { default as RightArrowIcon } from './RightArrow.svg';
 export { default as DownIcon } from './Down.svg';
-export { default as HubIcon } from './Hub.svg';
+export { default as EthereumIcon } from './Ethereum.svg';
+export { default as SepoliaIcon } from './Sepolia.svg';
+export { default as USDCIcon } from './USDC.svg';
+export { default as USDCEIcon } from './USDCE.svg';
 
 // PNG
 export { default as Aergo } from './Aergo.png';

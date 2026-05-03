@@ -45,6 +45,42 @@ import { useEnsureChain } from '@/hooks/useWallet';
 // Constants
 const AERGO_DECIMAL = 18;
 
+/** Human-readable fraction digits shown for AERGO (must match Max / validation cap; floor, never round up). */
+const AERGO_BALANCE_DISPLAY_DECIMALS = 2;
+
+/**
+ * Floors token amount in wei so the human-readable value has at most `fractionDigits` decimal places.
+ * Avoids toLocaleString/parseFloat rounding the displayed balance above the wallet balance.
+ */
+function floorBalanceWei(wei: bigint, tokenDecimals: number, fractionDigits: number): bigint {
+  const fd = Math.min(Math.max(0, fractionDigits), tokenDecimals);
+  if (fd === 0) {
+    const step = BigInt(10) ** BigInt(tokenDecimals);
+    return (wei / step) * step;
+  }
+  const step = BigInt(10) ** BigInt(tokenDecimals - fd);
+  return (wei / step) * step;
+}
+
+function addThousands(intStr: string): string {
+  return intStr.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+/** Formats floored wei for UI (grouped integer part; viem human string is canonical, no extra rounding). */
+function formatBalanceUiFromWei(wei: bigint, tokenDecimals: number, fractionDigits: number): string {
+  const floored = floorBalanceWei(wei, tokenDecimals, fractionDigits);
+  const human = formatUnits(floored, tokenDecimals);
+  if (fractionDigits === 0) {
+    const whole = human.includes('.') ? human.split('.')[0]! : human;
+    return addThousands(whole);
+  }
+  if (!human.includes('.')) {
+    return addThousands(human);
+  }
+  const [intPart, fracPart] = human.split('.') as [string, string];
+  return `${addThousands(intPart)}.${fracPart}`;
+}
+
 // AQT fixed rate: 1 AQT = 7.43026 HPP (no decimals allowed for AQT input)
 const AQT_TO_HPP_RATE = new Big('7.43026');
 const AERGO_TO_HPP_RATE = new Big('1');
@@ -251,26 +287,17 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
   // Update HPP balance when data changes
   useEffect(() => {
     if (hppBalanceData) {
-      const balance = formatUnits(hppBalanceData, AERGO_DECIMAL);
-      const formattedBalance = parseFloat(balance).toLocaleString('en-US', {
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 2,
-      });
-      setHppBalance(formattedBalance);
+      setHppBalance(formatBalanceUiFromWei(hppBalanceData, AERGO_DECIMAL, AERGO_BALANCE_DISPLAY_DECIMALS));
     }
   }, [hppBalanceData, address, isConnected]);
 
   // Update from-token balance when data changes
   useEffect(() => {
     if (balanceData) {
-      const balance = formatUnits(balanceData, AERGO_DECIMAL);
-      const formattedBalance = parseFloat(balance).toLocaleString('en-US', {
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 2,
-      });
-      setBalance(formattedBalance);
+      const fractionDigits = token === 'AERGO' ? AERGO_BALANCE_DISPLAY_DECIMALS : 0;
+      setBalance(formatBalanceUiFromWei(balanceData, AERGO_DECIMAL, fractionDigits));
     }
-  }, [balanceData]);
+  }, [balanceData, token]);
 
   // Update allowance when address or contract changes
   useEffect(() => {
@@ -998,8 +1025,14 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                             <button
                               className="px-[10px] py-[3px] min-[810px]:px-[15px] min-[810px]:py-[5px] text-[10px] min-[810px]:text-xs bg-[#d9d9d9] text-black rounded-[5px] cursor-pointer hover:bg-[#d0d0d0] transition-colors"
                               onClick={() => {
-                                const cleanBalance = (balance || '0').replace(/,/g, '');
-                                handleFromAmountChange(cleanBalance);
+                                if (balanceData == null) {
+                                  const cleanBalance = (balance || '0').replace(/,/g, '');
+                                  handleFromAmountChange(cleanBalance);
+                                  return;
+                                }
+                                const fd = token === 'AERGO' ? AERGO_BALANCE_DISPLAY_DECIMALS : 0;
+                                const floored = floorBalanceWei(balanceData, AERGO_DECIMAL, fd);
+                                handleFromAmountChange(formatUnits(floored, AERGO_DECIMAL));
                               }}
                             >
                               Max
@@ -1391,7 +1424,7 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                     <Button
                       variant="primary"
                       size="lg"
-                      href="https://bridge.arbitrum.io/?destinationChain=190415&sourceChain=ethereum&token=0xe33fbe7584eb79e2673abe576b7ac8c0de62565c"
+                      href="https://portal.arbitrum.io/bridge/embed?destinationChain=hpp-mainnet&sanitized=true&sourceChain=ethereum&tab=bridge&token=0xe33fbe7584eb79e2673abe576b7ac8c0de62565c"
                       external={true}
                       className="flex items-center justify-center space-x-2 whitespace-nowrap"
                     >

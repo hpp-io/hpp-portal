@@ -9,8 +9,15 @@ import React, { type ReactNode } from 'react';
 import { cookieToInitialState, WagmiProvider, type Config } from 'wagmi';
 import { legalLinks } from '@/config/navigation';
 
-// Set up queryClient
-const queryClient = new QueryClient();
+// Set up queryClient (explicit refetch defaults; used by wagmi + any useQuery)
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: true,
+      refetchOnReconnect: true,
+    },
+  },
+});
 
 if (!projectId) {
   throw new Error('Project ID is not defined');

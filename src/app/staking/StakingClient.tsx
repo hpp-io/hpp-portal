@@ -17,6 +17,7 @@ import Big from 'big.js';
 import { navItems, legalLinks } from '@/config/navigation';
 import { standardArbErc20Abi, hppStakingAbi } from './abi';
 import { formatDisplayAmount, PERCENTS, computePercentAmount, formatTokenBalance } from '@/lib/helpers';
+import { getHppExplorerTxUrl } from '@/lib/hppExplorer';
 import { useHppPublicClient, useHppChain } from './hppClient';
 import { useToast } from '@/hooks/useToast';
 import { useEnsureChain } from '@/hooks/useWallet';
@@ -919,8 +920,7 @@ export default function StakingClient() {
       const receipt = await publicClient.waitForTransactionReceipt({ hash: stakeHash as `0x${string}` });
       if (receipt.status === 'success') {
         // Build explorer URL and show persistent success toast with link
-        const explorerBase = HPP_CHAIN_ID === 190415 ? 'https://explorer.hpp.io' : 'https://sepolia-explorer.hpp.io';
-        const txUrl = `${explorerBase}/tx/${stakeHash}`;
+        const txUrl = getHppExplorerTxUrl(stakeHash);
         showToast('Stake confirmed', 'Your HPP has been staked successfully.', 'success', {
           text: 'View on Explorer',
           url: txUrl,
@@ -1013,8 +1013,7 @@ export default function StakingClient() {
       });
       const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash as `0x${string}` });
       if (receipt.status === 'success') {
-        const explorerBase = HPP_CHAIN_ID === 190415 ? 'https://explorer.hpp.io' : 'https://sepolia-explorer.hpp.io';
-        const txUrl = `${explorerBase}/tx/${txHash}`;
+        const txUrl = getHppExplorerTxUrl(txHash);
         showToast('Unstake requested', 'Cooldown started.\nYou can withdraw after it ends.', 'success', {
           text: 'View on Explorer',
           url: txUrl,
@@ -1089,8 +1088,7 @@ export default function StakingClient() {
 
       const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash as `0x${string}` });
       if (receipt.status === 'success') {
-        const explorerBase = HPP_CHAIN_ID === 190415 ? 'https://explorer.hpp.io' : 'https://sepolia-explorer.hpp.io';
-        const txUrl = `${explorerBase}/tx/${txHash}`;
+        const txUrl = getHppExplorerTxUrl(txHash);
         showToast('Claim confirmed', 'Your HPP has been claimed successfully.', 'success', {
           text: 'View on Explorer',
           url: txUrl,

@@ -9,7 +9,6 @@ import Header from '@/components/ui/Header';
 import Footer from '@/components/ui/Footer';
 import { navItems, legalLinks } from '@/config/navigation';
 import { homeData } from '@/static/uiData';
-import { formatRemaining } from '@/lib/helpers';
 import Image from 'next/image';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import axios from 'axios';
@@ -19,22 +18,22 @@ export default function HomeClient() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const router = useRouter();
 
-  // Pre-registration countdown (initialize from base API)
-  const [preRemainingSec, setPreRemainingSec] = useState<number | null>(null);
+  // Season open state (initialize from base API endDate)
+  const [isSeason2Open, setIsSeason2Open] = useState<boolean | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     let intervalId: ReturnType<typeof setInterval> | null = null;
     const init = async () => {
-      // Fetch preRegistrationDate from base API
+      // Fetch season date from base API
       let endAt: ReturnType<typeof dayjs> | null = null;
       try {
         const apiBaseUrl = process.env.NEXT_PUBLIC_HPP_STAKING_API_URL;
-        const resp = await axios.get(`${apiBaseUrl}/pre-registration/base`, {
+        const resp = await axios.get(`${apiBaseUrl}/season/2/base`, {
           headers: { accept: 'application/json' },
         });
         const data: any = resp?.data ?? {};
-        const s: string | undefined = data?.data?.preRegistrationDate;
+        const s: string | undefined = data?.data?.endDate;
         if (s && typeof s === 'string') {
           let d = dayjs(s);
           if (!d.isValid()) d = dayjs(s.replace(' ', 'T'));
@@ -43,20 +42,26 @@ export default function HomeClient() {
         }
       } catch {}
       if (!endAt || !endAt.isValid()) return;
-      const calc = () => Math.max(0, endAt!.diff(dayjs(), 'second'));
       if (cancelled) return;
-      const first = calc();
-      setPreRemainingSec(first);
-      if (first === 0) return;
+      const remainingMs = endAt.valueOf() - Date.now();
+      if (remainingMs <= 0) {
+        setIsSeason2Open(true);
+        return;
+      }
+
+      setIsSeason2Open(false);
+      // Do not rely on a single long timeout (it overflows around 24.8 days in browsers).
+      // Re-check periodically and flip exactly when endAt passes.
       intervalId = setInterval(() => {
         if (cancelled) return;
-        const next = calc();
-        setPreRemainingSec(next);
-        if (next === 0 && intervalId) {
-          clearInterval(intervalId);
-          intervalId = null;
+        if (Date.now() >= endAt!.valueOf()) {
+          setIsSeason2Open(true);
+          if (intervalId) {
+            clearInterval(intervalId);
+            intervalId = null;
+          }
         }
-      }, 1000);
+      }, 60_000);
     };
     void init();
     return () => {
@@ -104,13 +109,13 @@ export default function HomeClient() {
           {/* Quick Actions */}
           <div className="px-5 max-w-6xl mx-auto mt-20">
             <h2 className="text-3xl leading-[1.5] font-[900] text-white mb-5">Quick Actions</h2>
-            {/* Pre-Registration banner (1-col full width) */}
+            {/* Staking season banner (1-col full width) */}
             {(() => {
-              const pre = (homeData.quickActions as any[]).find((a) => a.title === 'Pre-Registration');
-              if (!pre) return null;
-              
+              const seasonAction = (homeData.quickActions as any[]).find((a) => a.title === 'Staking');
+              if (!seasonAction) return null;
+
               // Loading state
-              if (preRemainingSec === null) {
+              if (isSeason2Open === null) {
                 return (
                   <div className="mb-5">
                     <div className="rounded-[5px] p-6 min-[1200px]:p-8 bg-[#4b4ab0] text-white flex flex-col items-center justify-center">
@@ -130,9 +135,14 @@ export default function HomeClient() {
                   </div>
                 );
               }
-              
-              const href: string | undefined = preRemainingSec === 0 ? pre.openHref : pre.href;
+
+              const href: string | undefined = isSeason2Open ? seasonAction.openHref : seasonAction.href;
               const external = href ? /^https?:\/\//.test(href) : false;
+              const aprLabel = isSeason2Open ? 'Up to 31% APR' : 'Up to 23% APR';
+              const titleSeason = isSeason2Open ? 'Season 2' : 'Season 1';
+              const descriptionText = isSeason2Open
+                ? 'Hold your stake longer to earn more Bonus Credits and a higher APR.'
+                : 'Stake your HPP to earn rewards and participate in HPP ecosystem.';
               return (
                 <div className="mb-5">
                   <div className="rounded-[5px] p-6 min-[1200px]:p-8 bg-[#4b4ab0] text-white flex flex-col items-center justify-center text-center min-[600px]:flex-row min-[600px]:items-center min-[600px]:justify-between min-[600px]:text-left">
@@ -152,42 +162,26 @@ export default function HomeClient() {
                       <div className="mb-2 flex justify-start">
                         <span className="inline-flex items-center gap-2 bg-white text-black rounded-[5px] px-2.5 py-1.25 text-sm font-semibold leading-[1]">
                           <span>🔥</span>
-                          <span>Up to 20% APR</span>
+                          <span>{aprLabel}</span>
                         </span>
                       </div>
                       <div className="flex gap-3 justify-start">
                         <h3 className="text-3xl font-[900] leading-[1.2]">
                           HPP Staking{' '}
-                          {preRemainingSec === 0 ? (
-                            <>
-                              <br className="hidden max-[900px]:block" />
-                              <span className="text-[#5DF23F] whitespace-nowrap inline">
-                                Season 1
-                              </span>
-                              {' '}
-                              <span className="text-white whitespace-nowrap inline">
-                                is now open!
-                              </span>
-                            </>
-                          ) : (
-                          <span className="text-[#5DF23F] whitespace-nowrap inline max-[600px]:block max-[600px]:mt-1">
-                            Pre-Registration
-                          </span>
-                          )}
+                          <>
+                            <br className="hidden max-[900px]:block" />
+                            <span className="text-[#5DF23F] whitespace-nowrap inline">{titleSeason}</span>{' '}
+                            <span className="text-white whitespace-nowrap inline">is now open!</span>
+                          </>
                         </h3>
                       </div>
                       <p className="text-base text-white font-normal leading-[1.2] mt-2.5">
-                        <span>{preRemainingSec === 0 ? pre.openDescription : pre.description} </span>
-                        {preRemainingSec !== null && preRemainingSec !== 0 && (
-                          <span className="text-[#5DF23F] inline whitespace-nowrap max-[600px]:block max-[600px]:mt-1">
-                            {formatRemaining(preRemainingSec)}
-                          </span>
-                        )}
+                        <span>{descriptionText}</span>
                       </p>
                       {href && (
                         <div className="mt-4 self-center hidden max-[810px]:block max-[599px]:flex max-[599px]:justify-center max-[599px]:ml-0">
                           <Button variant="black" size="md" href={href} external={external} className="cursor-pointer">
-                            {preRemainingSec === 0 ? 'Go to Stake' : 'Register Now'}
+                            Go to Stake
                           </Button>
                         </div>
                       )}
@@ -195,7 +189,7 @@ export default function HomeClient() {
                     {href && (
                       <div className="mt-4 self-center hidden min-[810px]:block min-[810px]:mt-0 min-[810px]:ml-6">
                         <Button variant="black" size="md" href={href} external={external} className="cursor-pointer">
-                          {preRemainingSec === 0 ? 'Go to Stake' : 'Register Now'}
+                          Go to Stake
                         </Button>
                       </div>
                     )}
@@ -214,8 +208,8 @@ export default function HomeClient() {
                     action.title === 'Migration'
                       ? '/lotties/Migration.lottie'
                       : action.title === 'Bridge'
-                      ? '/lotties/Bridge.lottie'
-                      : '/lotties/StartBuilding.lottie';
+                        ? '/lotties/Bridge.lottie'
+                        : '/lotties/StartBuilding.lottie';
 
                   const CardContent = (
                     <>

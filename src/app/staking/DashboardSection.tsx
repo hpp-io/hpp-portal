@@ -21,7 +21,7 @@ import { formatUnits, parseUnits } from 'viem';
 import Big from 'big.js';
 import { formatTokenBalance } from '@/lib/helpers';
 import axios from 'axios';
-import { useHppChain } from './hppClient';
+import { getHppExplorerTxUrl } from '@/lib/hppExplorer';
 
 type CooldownItem = {
   date: string;
@@ -33,8 +33,6 @@ export default function DashboardSection() {
   const dispatch = useAppDispatch();
   const { address, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
-  const { id: HPP_CHAIN_ID } = useHppChain();
-
   // Redux state
   const stakedTotal = useAppSelector((state) => state.balance.stakedTotal);
   const walletBaseApr = useAppSelector((state) => state.wallet.walletBaseApr);
@@ -350,9 +348,7 @@ export default function DashboardSection() {
                 {activities
                   .slice(Math.max(0, (activityPage - 1) * 10), Math.max(0, activityPage * 10))
                   .map((tx: { id: string; date: string; action: string; amount?: string; status?: string }) => {
-                    const explorerBase =
-                      HPP_CHAIN_ID === 190415 ? 'https://explorer.hpp.io' : 'https://sepolia-explorer.hpp.io';
-                    const txUrl = `${explorerBase}/tx/${tx.id}`;
+                    const txUrl = getHppExplorerTxUrl(tx.id);
                     return (
                       <div
                         key={tx.id}

@@ -28,6 +28,7 @@ import { setAirdropDetailLoading, setAirdropDetail, type AirdropDetailData } fro
 import { useToast } from '@/hooks/useToast';
 import { useEnsureChain } from '@/hooks/useWallet';
 import { config as wagmiConfig } from '@/config/walletConfig';
+import { getHppExplorerBaseUrl } from '@/lib/hppExplorer';
 
 export default function AirdropDetailClient({ id }: { id: string }) {
   const router = useRouter();
@@ -79,10 +80,7 @@ export default function AirdropDetailClient({ id }: { id: string }) {
   const publicClient = useHppPublicClient();
   const { id: HPP_CHAIN_ID, chain: hppChain, rpcUrl } = useHppChain();
   const HPP_TOKEN_ADDRESS = process.env.NEXT_PUBLIC_HPP_TOKEN_CONTRACT as `0x${string}`;
-  const explorerBase = useMemo(
-    () => (HPP_CHAIN_ID === 190415 ? 'https://explorer.hpp.io' : 'https://sepolia-explorer.hpp.io'),
-    [HPP_CHAIN_ID],
-  );
+  const explorerBase = getHppExplorerBaseUrl();
 
   // Ensure wallet is connected to HPP network for writes
   const ensureHppChain = React.useCallback(async () => {
