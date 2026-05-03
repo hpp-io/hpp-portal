@@ -399,15 +399,34 @@ export default function BridgeClient() {
   const selectedChainEnv = (process.env.NEXT_PUBLIC_CHAIN || 'mainnet').toLowerCase();
   const isSepoliaEnv = selectedChainEnv === 'sepolia';
   const bridgeTrackingApiBase = process.env.NEXT_PUBLIC_BRIDGE_TRACKING_API_BASE;
-  // Use /bridge/embed for iframe + portal routing; full /bridge is the standalone page (different shell).
-  const arbitrumBridgeHref = isSepoliaEnv
-    ? `https://portal.arbitrum.io/bridge/embed?destinationChain=hpp-sepolia&sanitized=true&sourceChain=sepolia&tab=bridge&token=0xb34e0d1fee60e078d611d4218afb004b639c7b76&${ARBITRUM_EMBED_THEME_QUERY}`
-    : `https://portal.arbitrum.io/bridge/embed?destinationChain=hpp-mainnet&sanitized=true&sourceChain=ethereum&tab=bridge&token=0xe33fbe7584eb79e2673abe576b7ac8c0de62565c&${ARBITRUM_EMBED_THEME_QUERY}`;
+  const L1_HPP_ADDRESS = process.env.NEXT_PUBLIC_ETH_HPP_TOKEN_CONTRACT as `0x${string}` | undefined;
+  const L2_HPP_ADDRESS = process.env.NEXT_PUBLIC_HPP_TOKEN_CONTRACT as `0x${string}` | undefined;
+  // Same L1 HPP token as NEXT_PUBLIC_ETH_HPP_TOKEN_CONTRACT (.env): Arbitrum `token=` is the bridged Ethereum address.
+  const arbitrumBridgeHref = (() => {
+    const base = isSepoliaEnv
+      ? 'https://portal.arbitrum.io/bridge/embed?destinationChain=hpp-sepolia&sanitized=true&sourceChain=sepolia&tab=bridge'
+      : 'https://portal.arbitrum.io/bridge/embed?destinationChain=hpp-mainnet&sanitized=true&sourceChain=ethereum&tab=bridge';
+    const tokenQs = L1_HPP_ADDRESS?.trim()
+      ? `&token=${encodeURIComponent(L1_HPP_ADDRESS.trim().toLowerCase())}`
+      : '';
+    return `${base}${tokenQs}&${ARBITRUM_EMBED_THEME_QUERY}`;
+  })();
+  /**
+   * Deep link sets both contracts: `from` = Ethereum L1 HPP, `to` = HPP L2 HPP (env). UI may shorten the visible URL later.
+   */
+  const orbiterBridgeHref =
+    process.env.NEXT_PUBLIC_ORBITER_BRIDGE_URL?.trim() ||
+    (() => {
+      if (!L1_HPP_ADDRESS || !L2_HPP_ADDRESS) {
+        return 'https://www.orbiter.finance/';
+      }
+      const from = encodeURIComponent(L1_HPP_ADDRESS.trim().toLowerCase());
+      const to = encodeURIComponent(L2_HPP_ADDRESS.trim().toLowerCase());
+      return `https://www.orbiter.finance/trade/Ethereum/HPP?from=${from}&to=${to}`;
+    })();
   const activeRoute = routeConfig[selectedRoute];
   const l1NetworkLabel = isSepoliaEnv ? 'Sepolia' : 'Ethereum';
   const hppNetworkLabel = isSepoliaEnv ? 'HPP Sepolia' : 'HPP Mainnet';
-  const L1_HPP_ADDRESS = process.env.NEXT_PUBLIC_ETH_HPP_TOKEN_CONTRACT as `0x${string}` | undefined;
-  const L2_HPP_ADDRESS = process.env.NEXT_PUBLIC_HPP_TOKEN_CONTRACT as `0x${string}` | undefined;
   const hppBridgeTokensConfigured = Boolean(L1_HPP_ADDRESS && L2_HPP_ADDRESS);
   const l1ExplorerBaseUrl = isSepoliaEnv ? 'https://sepolia.etherscan.io' : 'https://etherscan.io';
   const hppScannerBaseUrl = getHppExplorerBaseUrl();
@@ -2451,13 +2470,7 @@ export default function BridgeClient() {
                     </p>
                   </div>
                   <div className="pt-6">
-                    <Button
-                      variant="white"
-                      size="lg"
-                      href="https://www.orbiter.finance/bridge/Ethereum/HPP?token=ETH"
-                      external
-                      className="cursor-pointer"
-                    >
+                    <Button variant="white" size="lg" href={orbiterBridgeHref} external className="cursor-pointer">
                       Go to Bridge
                     </Button>
                   </div>
