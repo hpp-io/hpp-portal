@@ -117,6 +117,13 @@ interface Transaction {
 
 type MigrationToken = 'AERGO' | 'AQT';
 
+function arbitrumMainnetHppBridgeEmbedHref(): string {
+  const base =
+    'https://portal.arbitrum.io/bridge/embed?destinationChain=hpp-mainnet&sanitized=true&sourceChain=ethereum&tab=bridge';
+  const l1 = process.env.NEXT_PUBLIC_ETH_HPP_TOKEN_CONTRACT?.trim();
+  return l1 ? `${base}&token=${encodeURIComponent(l1.toLowerCase())}` : base;
+}
+
 export default function MigrationClient({ token = 'AERGO' }: { token?: MigrationToken }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [fromAmount, setFromAmount] = useState('');
@@ -1424,7 +1431,7 @@ export default function MigrationClient({ token = 'AERGO' }: { token?: Migration
                     <Button
                       variant="primary"
                       size="lg"
-                      href="https://portal.arbitrum.io/bridge/embed?destinationChain=hpp-mainnet&sanitized=true&sourceChain=ethereum&tab=bridge&token=0xe33fbe7584eb79e2673abe576b7ac8c0de62565c"
+                      href={arbitrumMainnetHppBridgeEmbedHref()}
                       external={true}
                       className="flex items-center justify-center space-x-2 whitespace-nowrap"
                     >
