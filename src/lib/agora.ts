@@ -151,8 +151,13 @@ export function formatProposalStatusLabel(status: string): string {
  * Build an on-the-fly default cover image for proposals with no image.
  * Uses a data URL SVG so no backend/image asset is required.
  */
-export function makeHipFallbackImageDataUrl(proposalId: number): string {
-  const label = `HIP-${proposalId}`;
+export function makeHipFallbackImageDataUrl(
+  proposalId: number,
+  labelPrefix = 'HIP',
+  subtitle = 'HPP Improvement Proposal',
+  accentColor = '#5651d8',
+): string {
+  const label = `${labelPrefix}-${proposalId}`;
   const svg = `
 <svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" viewBox="0 0 800 450">
   <defs>
@@ -161,8 +166,8 @@ export function makeHipFallbackImageDataUrl(proposalId: number): string {
       <stop offset="100%" stop-color="#1A1A1A"/>
     </linearGradient>
     <radialGradient id="accent" cx="0.2" cy="0.1" r="1">
-      <stop offset="0%" stop-color="#5651d8" stop-opacity="0.35"/>
-      <stop offset="100%" stop-color="#5651d8" stop-opacity="0"/>
+      <stop offset="0%" stop-color="${accentColor}" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="${accentColor}" stop-opacity="0"/>
     </radialGradient>
   </defs>
   <rect width="800" height="450" fill="url(#bg)"/>
@@ -173,7 +178,7 @@ export function makeHipFallbackImageDataUrl(proposalId: number): string {
     font-size="72" font-weight="800" letter-spacing="1">${label}</text>
   <text x="400" y="268" text-anchor="middle" fill="#bfbfbf"
     font-family="'Pretendard Variable','Pretendard',system-ui,-apple-system,'Segoe UI',sans-serif"
-    font-size="24" font-weight="500">HPP Improvement Proposal</text>
+    font-size="24" font-weight="500">${subtitle}</text>
 </svg>`.trim();
 
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
