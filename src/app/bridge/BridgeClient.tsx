@@ -7,8 +7,7 @@ import Button from '@/components/ui/Button';
 import Header from '@/components/ui/Header';
 import Footer from '@/components/ui/Footer';
 import { navItems, legalLinks } from '@/config/navigation';
-import { ARB, Orbiter } from '@/assets/icons';
-import { EthereumIcon, SepoliaIcon, USDCIcon, USDCEIcon, HPPTickerIcon } from '@/assets/icons';
+import { ARB, Orbiter, EthereumIcon, SepoliaIcon, USDCIcon, USDCEIcon, HPPTickerIcon } from '@/assets/icons';
 import { bridgeData } from '@/static/uiData';
 import FaqSection from '@/components/ui/Faq';
 import { useHppChain, useHppPublicClient } from '@/app/staking/hppClient';
@@ -48,6 +47,16 @@ const BRIDGE_L2_SDK_POLL_MS = 10_000;
 /** Persists a JSON array of `PendingBridgeTransfer`. Legacy single-object saves are migrated on read. */
 const BRIDGE_PENDING_STORAGE_KEY = 'hpp_bridge_pending_transfer_v1';
 const BRIDGE_L2_ETA_COPY = 'L2 arrival estimate will update in the status card.';
+
+/** Portal embed `theme` — double-encoded JSON per Arbitrum iframe (5px radius). */
+const ARBITRUM_EMBED_THEME_QUERY = `theme=${encodeURIComponent(
+  encodeURIComponent(
+    JSON.stringify({
+      borderRadius: '5px',
+    }),
+  ),
+)}`;
+
 const bridgeL2EtaTooltip = (startedAt: number, nowTs: number, etaMaxMs: number) => {
   const elapsedMs = Math.max(0, nowTs - startedAt);
   const remainingMaxMs = Math.max(0, etaMaxMs - elapsedMs);
@@ -344,6 +353,7 @@ function BridgeTransferHeaderSummary({
 
 export default function BridgeClient() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const showNativeBridge = false;
   const [amount, setAmount] = useState('');
   const [isSubmittingBridge, setIsSubmittingBridge] = useState(false);
   const [selectedRoute, setSelectedRoute] = useState<NativeBridgeRoute>('usdc_usdce');
@@ -389,9 +399,10 @@ export default function BridgeClient() {
   const selectedChainEnv = (process.env.NEXT_PUBLIC_CHAIN || 'mainnet').toLowerCase();
   const isSepoliaEnv = selectedChainEnv === 'sepolia';
   const bridgeTrackingApiBase = process.env.NEXT_PUBLIC_BRIDGE_TRACKING_API_BASE;
+  // Use /bridge/embed for iframe + portal routing; full /bridge is the standalone page (different shell).
   const arbitrumBridgeHref = isSepoliaEnv
-    ? 'https://portal.arbitrum.io/bridge?destinationChain=hpp-sepolia&sanitized=true&sourceChain=sepolia&tab=bridge&token=0xb34e0d1fee60e078d611d4218afb004b639c7b76'
-    : 'https://bridge.arbitrum.io/?destinationChain=190415&sourceChain=ethereum&token=0xe33fbe7584eb79e2673abe576b7ac8c0de62565c';
+    ? `https://portal.arbitrum.io/bridge/embed?destinationChain=hpp-sepolia&sanitized=true&sourceChain=sepolia&tab=bridge&token=0xb34e0d1fee60e078d611d4218afb004b639c7b76&${ARBITRUM_EMBED_THEME_QUERY}`
+    : `https://portal.arbitrum.io/bridge/embed?destinationChain=hpp-mainnet&sanitized=true&sourceChain=ethereum&tab=bridge&token=0xe33fbe7584eb79e2673abe576b7ac8c0de62565c&${ARBITRUM_EMBED_THEME_QUERY}`;
   const activeRoute = routeConfig[selectedRoute];
   const l1NetworkLabel = isSepoliaEnv ? 'Sepolia' : 'Ethereum';
   const hppNetworkLabel = isSepoliaEnv ? 'HPP Sepolia' : 'HPP Mainnet';
@@ -417,8 +428,7 @@ export default function BridgeClient() {
   const toNetworkLabel = isReverse ? l1NetworkLabel : hppNetworkLabel;
   const fromTokenLabel = selectedRoute === 'usdc_usdce' && isReverse ? 'USDC.e' : activeRoute.fromToken;
   const toTokenLabel = selectedRoute === 'usdc_usdce' && isReverse ? 'USDC' : activeRoute.toToken;
-  const isComingSoonRoute =
-    isReverse || (selectedRoute === 'hpp_hpp' && !hppBridgeTokensConfigured);
+  const isComingSoonRoute = isReverse || (selectedRoute === 'hpp_hpp' && !hppBridgeTokensConfigured);
 
   const routeOptionLabel = (route: NativeBridgeRoute) => {
     if (route === 'usdc_usdce') return isReverse ? 'USDC.e' : 'USDC';
@@ -557,8 +567,7 @@ export default function BridgeClient() {
         functionName: 'getGateway',
         args: [l1TokenAddress],
       })) as `0x${string}`;
-      const spender =
-        gatewayFromRouter && gatewayFromRouter !== zeroAddress ? gatewayFromRouter : null;
+      const spender = gatewayFromRouter && gatewayFromRouter !== zeroAddress ? gatewayFromRouter : null;
       if (!spender) return null;
       const allowance = (await publicClient.readContract({
         address: l1TokenAddress,
@@ -1554,8 +1563,10 @@ export default function BridgeClient() {
     () =>
       pendingBridgeTransfers.some(
         (t) =>
-          (t.l1GasFeeWei == null || t.l1GasFeeWei === '') ||
-          (t.l1MaxSubmissionCostWei == null || t.l1MaxSubmissionCostWei === '') ||
+          t.l1GasFeeWei == null ||
+          t.l1GasFeeWei === '' ||
+          t.l1MaxSubmissionCostWei == null ||
+          t.l1MaxSubmissionCostWei === '' ||
           (t.status === 'success' && t.l2TxHash && (t.l2GasFeeWei == null || t.l2GasFeeWei === '')),
       ),
     [pendingBridgeTransfers],
@@ -1870,7 +1881,9 @@ export default function BridgeClient() {
                   aria-label={protocolFeeTooltipText(pendingTransfer)}
                 >
                   <span className="text-[#6b6b6b]">Protocol fee </span>
-                  <span className="ml-0.5 text-[#cfcfcf]">{formatWeiAsEthCompact(pendingTransfer.l1MaxSubmissionCostWei)}</span>
+                  <span className="ml-0.5 text-[#cfcfcf]">
+                    {formatWeiAsEthCompact(pendingTransfer.l1MaxSubmissionCostWei)}
+                  </span>
                   <span
                     className="pointer-events-none absolute left-0 top-full z-30 mt-1.5 w-max max-w-[min(18rem,calc(100vw-2rem))] whitespace-pre-line rounded-[6px] border border-[#2D2D2D] bg-[#111111] px-2.5 py-2 text-left text-[11px] font-medium leading-snug text-[#cfcfcf] opacity-0 shadow-[0_4px_12px_rgba(0,0,0,0.45)] transition-opacity duration-150 group-hover/proto:opacity-100 group-focus-within/proto:opacity-100"
                     role="tooltip"
@@ -2088,12 +2101,12 @@ export default function BridgeClient() {
           <div className="px-5 max-w-6xl mx-auto mt-20">
             <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
               <div>
-                <h2 className="text-3xl leading-[1.5] font-[900] text-white">Native Bridge</h2>
+                <h2 className="text-3xl leading-[1.5] font-[900] text-white">Arbitrum Official Bridge Widget</h2>
                 <p className="text-base text-[#bfbfbf] leading-[1.5]">
-                  Official HPP bridge interface for ETH, HPP, and USDC routes.
+                  Embedded bridge interface for HPP Mainnet transfers.
                 </p>
               </div>
-              {isConnected && address ? (
+              {showNativeBridge && isConnected && address ? (
                 <button
                   type="button"
                   onClick={openBridgeHistoryDrawer}
@@ -2113,272 +2126,304 @@ export default function BridgeClient() {
               ) : null}
             </div>
 
-            {/* HPP Native Bridge */}
-            <div className="rounded-[5px] bg-[#121212] border border-[#2D2D2D] p-6 min-[810px]:p-7.5">
-              <div>
-                <div className="rounded-[8px] bg-[#1c1c1c] border border-[#2D2D2D] p-4">
-                  <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                    <div className="relative inline-block" ref={directionDropdownRef}>
-                      <button
-                        type="button"
-                        onClick={() => setIsDirectionDropdownOpen((prev) => !prev)}
-                        className="inline-flex items-center gap-2 rounded-[14px] border border-[#2D2D2D] bg-[#111111] px-4 py-2 text-white cursor-pointer"
-                      >
-                        <span className="text-[#bfbfbf]">From:</span>
-                        {renderIconBadge(fromNetworkLabel)}
-                        <span>{fromNetworkLabel}</span>
-                        <svg className="w-4 h-4 text-[#bfbfbf]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </button>
-                      {isDirectionDropdownOpen && (
-                        <div className="absolute z-20 mt-2 right-0 w-fit min-w-[120px] bg-[#111111] border border-[#2D2D2D] rounded-[5px] overflow-hidden">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setBridgeDirection('eth_to_hpp');
-                              setIsDirectionDropdownOpen(false);
-                            }}
-                            className={`flex w-full items-center gap-2 text-left px-3 py-2.5 text-sm cursor-pointer transition-colors ${
-                              bridgeDirection === 'eth_to_hpp'
-                                ? 'bg-primary text-white'
-                                : 'text-[#bfbfbf] hover:bg-[#1a1a1a] hover:text-white'
-                            }`}
-                          >
-                            {renderIconBadge(l1NetworkLabel)}
-                            {l1NetworkLabel}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setBridgeDirection('hpp_to_eth');
-                              setIsDirectionDropdownOpen(false);
-                            }}
-                            className={`flex w-full items-center gap-2 text-left px-3 py-2.5 text-sm cursor-pointer transition-colors ${
-                              bridgeDirection === 'hpp_to_eth'
-                                ? 'bg-primary text-white'
-                                : 'text-[#bfbfbf] hover:bg-[#1a1a1a] hover:text-white'
-                            }`}
-                          >
-                            {renderIconBadge(hppNetworkLabel)}
-                            {hppNetworkLabel}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                    {showUnlimitedApprovalOption ? (
-                      <label
-                        className="group/approve relative inline-flex items-center gap-2 text-sm text-[#bfbfbf]"
-                        aria-label="Unlimited approval (recommended)"
-                      >
-                        <input
-                          type="checkbox"
-                          className="peer h-4 w-4 accent-[var(--color-primary)]"
-                          checked={approveMax}
-                          onChange={(e) => setApproveMax(e.target.checked)}
-                          disabled={isSubmittingBridge}
-                        />
-                        Unlimited approval (recommended)
-                        <span
-                          className="pointer-events-none absolute left-0 top-full z-30 mt-2 w-max max-w-[min(22rem,calc(100vw-2rem))] whitespace-pre-line rounded-[6px] border border-[#2D2D2D] bg-[#111111] px-2.5 py-2 text-left text-[11px] font-medium leading-snug text-[#cfcfcf] opacity-0 shadow-[0_4px_12px_rgba(0,0,0,0.45)] transition-opacity duration-150 group-hover/approve:opacity-100 peer-focus-visible:opacity-100"
-                          role="tooltip"
-                        >
-                          Standard ERC-20 approval.
-                          {`\nApprove unlimited ${fromTokenLabel} for this bridge once.`}
-                          {'\n'}No extra approval needed next time.
-                          {'\n'}Uncheck to approve only the exact amount.
-                        </span>
-                      </label>
-                    ) : null}
-                  </div>
+            {/* Arbitrum Bridge Widget — fills up to 840px wide so it matches the embed layout better than fixed 540 */}
+            <div className="mb-5 rounded-[5px] p-4 sm:p-5 overflow-x-auto scrollbar-hide">
+              <div
+                className="relative mx-auto w-full max-w-[840px] overflow-hidden rounded-[4px]"
+                style={{ height: 920 }}
+              >
+                <iframe
+                  title="Arbitrum Bridge Widget"
+                  src={arbitrumBridgeHref}
+                  width={840}
+                  height={920}
+                  allow="clipboard-write"
+                  allowFullScreen
+                  className="absolute inset-0 h-full w-full border-0"
+                  style={{ backgroundColor: 'transparent' }}
+                />
+              </div>
+            </div>
 
-                  <div className="rounded-[10px] bg-[#111111] border border-[#2D2D2D] px-5 py-6 min-[810px]:py-7">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="min-w-0 flex-1 relative">
-                        <input
-                          type="text"
-                          inputMode="decimal"
-                          pattern="\\d*\\.?\\d*"
-                          min="0"
-                          value={formatDisplayAmount(amount)}
-                          onChange={(e) => handleBridgeAmountChange(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
-                          }}
-                          onWheel={(e) => {
-                            (e.target as HTMLInputElement).blur();
-                          }}
-                          placeholder="0.00"
-                          className={`w-full bg-transparent text-[40px] font-semibold leading-[1.2] tracking-[0.8px] outline-none placeholder:text-white/60 ${
-                            inputError ? 'text-[#FF1312]' : 'text-white'
-                          }`}
-                        />
-                        <span className="pointer-events-none absolute top-0 left-0 invisible whitespace-pre text-[40px] font-semibold leading-[1.2] tracking-[0.8px]">
-                          {formatDisplayAmount(amount || '0.00')}
-                        </span>
-                      </div>
-                      <div className="relative shrink-0" ref={fromDropdownRef}>
+            {/* HPP Native Bridge (temporarily hidden) */}
+            {showNativeBridge && (
+              <div className="rounded-[5px] bg-[#121212] border border-[#2D2D2D] p-6 min-[810px]:p-7.5">
+                <div>
+                  <div className="rounded-[8px] bg-[#1c1c1c] border border-[#2D2D2D] p-4">
+                    <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                      <div className="relative inline-block" ref={directionDropdownRef}>
                         <button
                           type="button"
-                          onClick={() => setIsFromDropdownOpen((prev) => !prev)}
-                          className="inline-flex items-center gap-2 rounded-[14px] border border-[#2D2D2D] bg-[#1c1c1c] px-3 py-2 text-white text-xl leading-none whitespace-nowrap cursor-pointer"
+                          onClick={() => setIsDirectionDropdownOpen((prev) => !prev)}
+                          className="inline-flex items-center gap-2 rounded-[14px] border border-[#2D2D2D] bg-[#111111] px-4 py-2 text-white cursor-pointer"
                         >
-                          {renderIconBadge(fromTokenLabel)}
-                          <span>{fromTokenLabel}</span>
+                          <span className="text-[#bfbfbf]">From:</span>
+                          {renderIconBadge(fromNetworkLabel)}
+                          <span>{fromNetworkLabel}</span>
                           <svg className="w-4 h-4 text-[#bfbfbf]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                           </svg>
                         </button>
-                        {isFromDropdownOpen && (
-                          <div className="absolute z-20 right-0 mt-2 w-fit min-w-full bg-[#111111] border border-[#2D2D2D] rounded-[5px] overflow-hidden">
-                            {(Object.keys(routeConfig) as NativeBridgeRoute[]).map((route) => (
-                              <button
-                                key={route}
-                                type="button"
-                                onClick={() => {
-                                  setSelectedRoute(route);
-                                  setIsFromDropdownOpen(false);
-                                }}
-                                className={`flex w-full items-center gap-2 text-left px-3 py-2.5 text-sm cursor-pointer transition-colors ${
-                                  selectedRoute === route
-                                    ? 'bg-primary text-white'
-                                    : 'text-[#bfbfbf] hover:bg-[#1a1a1a] hover:text-white'
-                                }`}
-                              >
-                                {renderIconBadge(routeOptionLabel(route))}
-                                {routeOptionLabel(route)}
-                              </button>
-                            ))}
+                        {isDirectionDropdownOpen && (
+                          <div className="absolute z-20 mt-2 right-0 w-fit min-w-[120px] bg-[#111111] border border-[#2D2D2D] rounded-[5px] overflow-hidden">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setBridgeDirection('eth_to_hpp');
+                                setIsDirectionDropdownOpen(false);
+                              }}
+                              className={`flex w-full items-center gap-2 text-left px-3 py-2.5 text-sm cursor-pointer transition-colors ${
+                                bridgeDirection === 'eth_to_hpp'
+                                  ? 'bg-primary text-white'
+                                  : 'text-[#bfbfbf] hover:bg-[#1a1a1a] hover:text-white'
+                              }`}
+                            >
+                              {renderIconBadge(l1NetworkLabel)}
+                              {l1NetworkLabel}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setBridgeDirection('hpp_to_eth');
+                                setIsDirectionDropdownOpen(false);
+                              }}
+                              className={`flex w-full items-center gap-2 text-left px-3 py-2.5 text-sm cursor-pointer transition-colors ${
+                                bridgeDirection === 'hpp_to_eth'
+                                  ? 'bg-primary text-white'
+                                  : 'text-[#bfbfbf] hover:bg-[#1a1a1a] hover:text-white'
+                              }`}
+                            >
+                              {renderIconBadge(hppNetworkLabel)}
+                              {hppNetworkLabel}
+                            </button>
                           </div>
                         )}
                       </div>
-                    </div>
-                    <div className="mt-4 flex w-full items-center justify-end text-base font-semibold leading-[1.2] tracking-[0.8px] text-[#bfbfbf]">
-                      <span>
-                        Balance:{' '}
-                        {isConnected
-                          ? isBalanceLoading || fromBalance === '--'
-                            ? '—'
-                            : `${fromBalance} ${fromTokenLabel}`
-                          : `— ${fromTokenLabel}`}
-                      </span>
-                    </div>
-                    <div className="mt-4 flex flex-wrap items-center gap-2.5">
-                      {PERCENTS.map((p) => {
-                        const label = p === 1 ? 'Max' : `${Math.round(p * 100)}%`;
-                        return (
-                          <button
-                            key={p}
-                            type="button"
-                            onClick={() => setBridgePercent(p)}
-                            disabled={isBalanceLoading || isComingSoonRoute || !isConnected}
-                            className="cursor-pointer rounded-full border border-[#2D2D2D] bg-[#1c1c1c] px-5 py-2 text-base font-normal leading-none text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40 focus:outline-none focus-visible:outline-none"
+                      {showUnlimitedApprovalOption ? (
+                        <label
+                          className="group/approve relative inline-flex items-center gap-2 text-sm text-[#bfbfbf]"
+                          aria-label="Unlimited approval (recommended)"
+                        >
+                          <input
+                            type="checkbox"
+                            className="peer h-4 w-4 accent-[var(--color-primary)]"
+                            checked={approveMax}
+                            onChange={(e) => setApproveMax(e.target.checked)}
+                            disabled={isSubmittingBridge}
+                          />
+                          Unlimited approval (recommended)
+                          <span
+                            className="pointer-events-none absolute left-0 top-full z-30 mt-2 w-max max-w-[min(22rem,calc(100vw-2rem))] whitespace-pre-line rounded-[6px] border border-[#2D2D2D] bg-[#111111] px-2.5 py-2 text-left text-[11px] font-medium leading-snug text-[#cfcfcf] opacity-0 shadow-[0_4px_12px_rgba(0,0,0,0.45)] transition-opacity duration-150 group-hover/approve:opacity-100 peer-focus-visible:opacity-100"
+                            role="tooltip"
                           >
-                            {label}
+                            Standard ERC-20 approval.
+                            {`\nApprove unlimited ${fromTokenLabel} for this bridge once.`}
+                            {'\n'}No extra approval needed next time.
+                            {'\n'}Uncheck to approve only the exact amount.
+                          </span>
+                        </label>
+                      ) : null}
+                    </div>
+
+                    <div className="rounded-[10px] bg-[#111111] border border-[#2D2D2D] px-5 py-6 min-[810px]:py-7">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0 flex-1 relative">
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            pattern="\\d*\\.?\\d*"
+                            min="0"
+                            value={formatDisplayAmount(amount)}
+                            onChange={(e) => handleBridgeAmountChange(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                            }}
+                            onWheel={(e) => {
+                              (e.target as HTMLInputElement).blur();
+                            }}
+                            placeholder="0.00"
+                            className={`w-full bg-transparent text-[40px] font-semibold leading-[1.2] tracking-[0.8px] outline-none placeholder:text-white/60 ${
+                              inputError ? 'text-[#FF1312]' : 'text-white'
+                            }`}
+                          />
+                          <span className="pointer-events-none absolute top-0 left-0 invisible whitespace-pre text-[40px] font-semibold leading-[1.2] tracking-[0.8px]">
+                            {formatDisplayAmount(amount || '0.00')}
+                          </span>
+                        </div>
+                        <div className="relative shrink-0" ref={fromDropdownRef}>
+                          <button
+                            type="button"
+                            onClick={() => setIsFromDropdownOpen((prev) => !prev)}
+                            className="inline-flex items-center gap-2 rounded-[14px] border border-[#2D2D2D] bg-[#1c1c1c] px-3 py-2 text-white text-xl leading-none whitespace-nowrap cursor-pointer"
+                          >
+                            {renderIconBadge(fromTokenLabel)}
+                            <span>{fromTokenLabel}</span>
+                            <svg
+                              className="w-4 h-4 text-[#bfbfbf]"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
                           </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="relative z-10 -my-3 flex justify-center">
-                  <div className="group relative flex items-center justify-center">
-                    <button
-                      type="button"
-                      onClick={onBridge}
-                      disabled={isBridgeActionDisabled}
-                      className="w-14 h-14 rounded-full bg-[#121212] border border-primary flex items-center justify-center text-primary shadow-[0_0_12px_rgba(73,73,180,0.25)] cursor-pointer transition-all duration-200 hover:scale-105 hover:shadow-[0_0_18px_rgba(73,73,180,0.4)] active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-[0_0_12px_rgba(73,73,180,0.25)]"
-                      aria-label={bridgeTooltipLabel}
-                    >
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2.2}
-                          d="M12 5v14M7 14l5 5 5-5"
-                        />
-                      </svg>
-                    </button>
-                    <span className="pointer-events-none absolute top-[calc(100%+8px)] left-1/2 -translate-x-1/2 whitespace-nowrap rounded-[6px] border border-[#2D2D2D] bg-[#111111] px-2.5 py-1 text-xs font-semibold text-white opacity-0 transition-opacity duration-150 group-hover:opacity-100">
-                      {bridgeTooltipLabel}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="rounded-[8px] bg-[#1c1c1c] border border-[#2D2D2D] p-4">
-                  <div className="mb-4">
-                    <div className="inline-flex items-center gap-2 rounded-[14px] border border-[#2D2D2D] bg-[#111111] px-4 py-2 text-white">
-                      <span className="text-[#bfbfbf]">To:</span>
-                      {renderIconBadge(toNetworkLabel)}
-                      <span>{toNetworkLabel}</span>
-                    </div>
-                  </div>
-                  <div className="rounded-[10px] bg-[#111111] border border-[#2D2D2D] px-5 py-6 min-[810px]:py-7">
-                    <div className="flex items-start justify-between gap-4">
-                      <div
-                        className={`min-w-0 flex-1 truncate text-[40px] font-semibold leading-[1.2] tracking-[0.8px] ${
-                          amount.trim() ? 'text-white' : 'text-white/60'
-                        }`}
-                        aria-live="polite"
-                      >
-                        {formatDisplayAmount(amount) || '0.00'}
+                          {isFromDropdownOpen && (
+                            <div className="absolute z-20 right-0 mt-2 w-fit min-w-full bg-[#111111] border border-[#2D2D2D] rounded-[5px] overflow-hidden">
+                              {(Object.keys(routeConfig) as NativeBridgeRoute[]).map((route) => (
+                                <button
+                                  key={route}
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedRoute(route);
+                                    setIsFromDropdownOpen(false);
+                                  }}
+                                  className={`flex w-full items-center gap-2 text-left px-3 py-2.5 text-sm cursor-pointer transition-colors ${
+                                    selectedRoute === route
+                                      ? 'bg-primary text-white'
+                                      : 'text-[#bfbfbf] hover:bg-[#1a1a1a] hover:text-white'
+                                  }`}
+                                >
+                                  {renderIconBadge(routeOptionLabel(route))}
+                                  {routeOptionLabel(route)}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <span className="inline-flex shrink-0 items-center gap-2 rounded-[14px] border border-[#2D2D2D] bg-[#1c1c1c] px-3 py-2 text-white text-xl leading-none whitespace-nowrap">
-                        {renderIconBadge(toTokenLabel)}
-                        {toTokenLabel}
-                      </span>
+                      <div className="mt-4 flex w-full items-center justify-end text-base font-semibold leading-[1.2] tracking-[0.8px] text-[#bfbfbf]">
+                        <span>
+                          Balance:{' '}
+                          {isConnected
+                            ? isBalanceLoading || fromBalance === '--'
+                              ? '—'
+                              : `${fromBalance} ${fromTokenLabel}`
+                            : `— ${fromTokenLabel}`}
+                        </span>
+                      </div>
+                      <div className="mt-4 flex flex-wrap items-center gap-2.5">
+                        {PERCENTS.map((p) => {
+                          const label = p === 1 ? 'Max' : `${Math.round(p * 100)}%`;
+                          return (
+                            <button
+                              key={p}
+                              type="button"
+                              onClick={() => setBridgePercent(p)}
+                              disabled={isBalanceLoading || isComingSoonRoute || !isConnected}
+                              className="cursor-pointer rounded-full border border-[#2D2D2D] bg-[#1c1c1c] px-5 py-2 text-base font-normal leading-none text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40 focus:outline-none focus-visible:outline-none"
+                            >
+                              {label}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
-                    <div className="mt-3 flex w-full items-center justify-end text-base font-semibold leading-[1.2] tracking-[0.8px] text-[#bfbfbf]">
-                      <span>
-                        Balance:{' '}
-                        {isConnected
-                          ? isBalanceLoading || toBalance === '--'
-                            ? '—'
-                            : `${toBalance} ${toTokenLabel}`
-                          : `— ${toTokenLabel}`}
+                  </div>
+
+                  <div className="relative z-10 -my-3 flex justify-center">
+                    <div className="group relative flex items-center justify-center">
+                      <button
+                        type="button"
+                        onClick={onBridge}
+                        disabled={isBridgeActionDisabled}
+                        className="w-14 h-14 rounded-full bg-[#121212] border border-primary flex items-center justify-center text-primary shadow-[0_0_12px_rgba(73,73,180,0.25)] cursor-pointer transition-all duration-200 hover:scale-105 hover:shadow-[0_0_18px_rgba(73,73,180,0.4)] active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-[0_0_12px_rgba(73,73,180,0.25)]"
+                        aria-label={bridgeTooltipLabel}
+                      >
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2.2}
+                            d="M12 5v14M7 14l5 5 5-5"
+                          />
+                        </svg>
+                      </button>
+                      <span className="pointer-events-none absolute top-[calc(100%+8px)] left-1/2 -translate-x-1/2 whitespace-nowrap rounded-[6px] border border-[#2D2D2D] bg-[#111111] px-2.5 py-1 text-xs font-semibold text-white opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+                        {bridgeTooltipLabel}
                       </span>
                     </div>
                   </div>
+
+                  <div className="rounded-[8px] bg-[#1c1c1c] border border-[#2D2D2D] p-4">
+                    <div className="mb-4">
+                      <div className="inline-flex items-center gap-2 rounded-[14px] border border-[#2D2D2D] bg-[#111111] px-4 py-2 text-white">
+                        <span className="text-[#bfbfbf]">To:</span>
+                        {renderIconBadge(toNetworkLabel)}
+                        <span>{toNetworkLabel}</span>
+                      </div>
+                    </div>
+                    <div className="rounded-[10px] bg-[#111111] border border-[#2D2D2D] px-5 py-6 min-[810px]:py-7">
+                      <div className="flex items-start justify-between gap-4">
+                        <div
+                          className={`min-w-0 flex-1 truncate text-[40px] font-semibold leading-[1.2] tracking-[0.8px] ${
+                            amount.trim() ? 'text-white' : 'text-white/60'
+                          }`}
+                          aria-live="polite"
+                        >
+                          {formatDisplayAmount(amount) || '0.00'}
+                        </div>
+                        <span className="inline-flex shrink-0 items-center gap-2 rounded-[14px] border border-[#2D2D2D] bg-[#1c1c1c] px-3 py-2 text-white text-xl leading-none whitespace-nowrap">
+                          {renderIconBadge(toTokenLabel)}
+                          {toTokenLabel}
+                        </span>
+                      </div>
+                      <div className="mt-3 flex w-full items-center justify-end text-base font-semibold leading-[1.2] tracking-[0.8px] text-[#bfbfbf]">
+                        <span>
+                          Balance:{' '}
+                          {isConnected
+                            ? isBalanceLoading || toBalance === '--'
+                              ? '—'
+                              : `${toBalance} ${toTokenLabel}`
+                            : `— ${toTokenLabel}`}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
 
-              <div className="mt-5">
-                {/* Wallet connect is handled by the sticky header; avoid duplicate CTA here. */}
-              </div>
-
-              {isConnected && pendingBridgeTransfers.length > 0 && (
                 <div className="mt-5">
-                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                    <h3 className="text-sm font-semibold text-white">Bridging status</h3>
-                    {pendingBridgeTransfers.length > 1 ? (
-                      <span className="text-xs font-normal text-[#8f8f8f]">
-                        {pendingBridgeTransfers.length} transfers
-                      </span>
-                    ) : null}
-                  </div>
-                  <div className="space-y-4">
-                    {pendingBridgeTransfers.map((pendingTransfer) => (
-                      <Fragment key={pendingTransfer.l1TxHash}>
-                        {renderBridgeTransferStatusCard(pendingTransfer)}
-                      </Fragment>
-                    ))}
-                  </div>
+                  {/* Wallet connect is handled by the sticky header; avoid duplicate CTA here. */}
                 </div>
-              )}
-            </div>
 
-            {/* Bridge Cards */}
+                {isConnected && pendingBridgeTransfers.length > 0 && (
+                  <div className="mt-5">
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                      <h3 className="text-sm font-semibold text-white">Bridging status</h3>
+                      {pendingBridgeTransfers.length > 1 ? (
+                        <span className="text-xs font-normal text-[#8f8f8f]">
+                          {pendingBridgeTransfers.length} transfers
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="space-y-4">
+                      {pendingBridgeTransfers.map((pendingTransfer) => (
+                        <Fragment key={pendingTransfer.l1TxHash}>
+                          {renderBridgeTransferStatusCard(pendingTransfer)}
+                        </Fragment>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Bridge links (same Arbitrum URL as embedded widget) */}
             <div className="mt-16 pt-10 border-t border-[#2D2D2D]">
               <div className="mb-5">
-                <h2 className="text-3xl leading-[1.5] font-[900] text-white">External Bridges</h2>
-                <p className="text-base text-[#bfbfbf] leading-[1.5]">Third-party bridges linked for convenience.</p>
+                <h2 className="text-3xl leading-[1.5] font-[900] text-white">External Bridge Links</h2>
+                <p className="text-base text-[#bfbfbf] leading-[1.5]">
+                  Direct links to bridge interfaces. The Arbitrum entry opens the same official bridge as the Bridge
+                  Widget above, in a new tab.
+                </p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {/* Arbitrum Official Bridge */}
-                <div className="rounded-[5px] p-6 bg-primary flex flex-col">
-                  <div className="flex flex-col items-start gap-2.5 flex-1">
+                {/* Arbitrum Official Bridge — same URL as embedded widget */}
+                <div className="relative rounded-[5px] p-6 bg-primary flex flex-col">
+                  <span className="absolute top-5 right-5 shrink-0 rounded-full border border-[#1f3f2a] bg-[#0f2a1b] px-2.5 py-1 text-xs font-semibold leading-none text-[#4ade80]">
+                    Canonical Bridge
+                  </span>
+                  <div className="flex flex-col items-start gap-2.5 flex-1 pr-24 md:pr-0">
                     <Image src={ARB} alt="Arbitrum" width={30} height={30} />
                     <h3 className="text-white text-xl font-semibold leading-[1.5]">Arbitrum Official Bridge</h3>
                     <p className="text-white/90 text-base text-normal leading-[1.5] max-w-md">
@@ -2394,8 +2439,11 @@ export default function BridgeClient() {
                 </div>
 
                 {/* Orbiter Bridge */}
-                <div className="rounded-[5px] p-6 bg-primary flex flex-col">
-                  <div className="flex flex-col items-start gap-2.5 flex-1">
+                <div className="relative rounded-[5px] p-6 bg-primary flex flex-col">
+                  <span className="absolute top-5 right-5 shrink-0 rounded-full border border-[#0784C3]/50 bg-[#0b1720] px-2.5 py-1 text-xs font-semibold leading-none text-[#93c5fd]">
+                    Liquidity Bridge
+                  </span>
+                  <div className="flex flex-col items-start gap-2.5 flex-1 pr-24 md:pr-0">
                     <Image src={Orbiter} alt="Orbiter" width={30} height={30} />
                     <h3 className="text-white text-xl font-semibold leading-[1.5]">Orbiter Bridge</h3>
                     <p className="text-white/90 text-base text-normal leading-[1.5] max-w-md">
@@ -2416,10 +2464,11 @@ export default function BridgeClient() {
                 </div>
               </div>
 
-              {/* Disclaimer (External only) */}
+              {/* Disclaimer */}
               <p className="text-[#bfbfbf] text-base leading-[1.5] tracking-[0.8px] mt-5 mb-25">
-                These are independent third-party services that HPP links to for your convenience. HPP is not
-                responsible for their operations, security, or any potential loss incurred when using them.
+                The Arbitrum link goes to Arbitrum’s official bridge (same URL as the embedded widget). Orbiter is an
+                independent third-party service. HPP does not operate these interfaces and is not responsible for their
+                security or for any loss from using them.
               </p>
             </div>
 
