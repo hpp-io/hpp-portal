@@ -8,6 +8,8 @@ export interface DiscourseTopic {
   slug: string;
   created_at?: string;
   excerpt?: string;
+  /** Present on many Discourse API responses; merged into `excerpt` when normalizing. */
+  excerpt_text?: string;
   image_url?: string | null;
 }
 
@@ -60,34 +62,51 @@ function parseRateLimitWaitMs(errorBody: string): number {
   return 6000;
 }
 
+function normalizeTopic(t: DiscourseTopic): DiscourseTopic {
+  const excerpt = (t.excerpt || t.excerpt_text || '').trim();
+  return { ...t, excerpt };
+}
+
+/** Lambda / proxy `{ error, detail }` payloads must not become a silent empty list when status is wrongly 200. */
+function throwIfDiscourseProxyErrorPayload(json: unknown): void {
+  if (!json || typeof json !== 'object') return;
+  const o = json as Record<string, unknown>;
+  if (typeof o.error === 'string' && !Array.isArray((o as { topics?: unknown }).topics)) {
+    const detail = typeof o.detail === 'string' ? o.detail.slice(0, 300) : '';
+    throw new Error(`Discourse proxy: ${o.error}${detail ? ` (${detail})` : ''}`);
+  }
+}
+
 function topicsFromJson(json: unknown): DiscourseTopic[] {
-  return (
+  const raw = (
     json && typeof json === 'object' && 'topics' in json && Array.isArray((json as { topics?: unknown }).topics)
       ? ((json as { topics: DiscourseTopic[] }).topics ?? [])
       : Array.isArray((json as DiscourseCategoryResponse).topic_list?.topics)
         ? ((json as DiscourseCategoryResponse).topic_list?.topics ?? [])
         : []
   ) as DiscourseTopic[];
+  return raw.map(normalizeTopic);
 }
+
+/**
+ * forum.hpp.io category slugs/ids (see /categories.json). Used for Governance Discussion feed.
+ */
+/** `general` first — same as legacy single-call default; other categories merge if the proxy allows. */
+export const DISCOURSE_GOVERNANCE_CATEGORIES: Array<{ categorySlug: string; categoryId: number }> = [
+  { categorySlug: 'general', categoryId: 4 },
+  { categorySlug: 'announcements', categoryId: 5 },
+  { categorySlug: 'category-1', categoryId: 6 },
+  { categorySlug: 'category-3', categoryId: 7 },
+];
 
 const DISCOURSE_429_MAX_ATTEMPTS = 5;
 
-export async function fetchDiscourseGeneralTopics(params?: {
-  categorySlug?: string;
-  categoryId?: number;
-  init?: RequestInit;
-}): Promise<DiscourseTopic[]> {
-  const categorySlug = params?.categorySlug || 'general';
-  const categoryId = params?.categoryId ?? 4;
-  const proxyUrl = getDiscourseProxyUrl();
-  const sep = proxyUrl.includes('?') ? '&' : '?';
-  const url = `${proxyUrl}${sep}categorySlug=${encodeURIComponent(categorySlug)}&categoryId=${encodeURIComponent(String(categoryId))}`;
-
+async function discourseProxyFetchTopics(fullUrl: string, init?: RequestInit): Promise<DiscourseTopic[]> {
   const fetchOpts: RequestInit = {
-    ...params?.init,
+    ...init,
     headers: {
       accept: 'application/json',
-      ...(params?.init?.headers as Record<string, string>),
+      ...(init?.headers as Record<string, string>),
     },
     cache: 'no-store',
   };
@@ -95,7 +114,7 @@ export async function fetchDiscourseGeneralTopics(params?: {
   let last429Body = '';
 
   for (let attempt = 1; attempt <= DISCOURSE_429_MAX_ATTEMPTS; attempt++) {
-    const res = await fetch(url, fetchOpts);
+    const res = await fetch(fullUrl, fetchOpts);
 
     if (res.status === 429) {
       last429Body = await res.text().catch(() => '');
@@ -115,15 +134,48 @@ export async function fetchDiscourseGeneralTopics(params?: {
     }
 
     const json = (await res.json()) as unknown;
+    throwIfDiscourseProxyErrorPayload(json);
     return topicsFromJson(json);
   }
 
   throw new Error(`Discourse proxy failed (429): ${last429Body.slice(0, 220)}`);
 }
 
+/** One proxy round-trip: `categories=slug:id,...` + `enrich=0`. Fallback: sequential per-category fetch if batch fails (e.g. old proxy). */
+export async function fetchDiscourseGovernanceMergedTopics(init?: RequestInit): Promise<DiscourseTopic[]> {
+  const proxyUrl = getDiscourseProxyUrl();
+  const categoriesParam = DISCOURSE_GOVERNANCE_CATEGORIES.map((c) => `${c.categorySlug}:${c.categoryId}`).join(',');
+  const sep = proxyUrl.includes('?') ? '&' : '?';
+  const batchUrl = `${proxyUrl}${sep}categories=${encodeURIComponent(categoriesParam)}&enrich=0`;
+
+  try {
+    return await discourseProxyFetchTopics(batchUrl, init);
+  } catch {
+    console.warn('[discourse] governance batch fetch failed — falling back to sequential category requests');
+    return fetchDiscourseTopicsMergedSequential(DISCOURSE_GOVERNANCE_CATEGORIES, { gapMs: 280, init });
+  }
+}
+
+export async function fetchDiscourseGeneralTopics(params?: {
+  categorySlug?: string;
+  categoryId?: number;
+  init?: RequestInit;
+}): Promise<DiscourseTopic[]> {
+  const categorySlug = params?.categorySlug || 'general';
+  const categoryId = params?.categoryId ?? 4;
+  const proxyUrl = getDiscourseProxyUrl();
+  const sep = proxyUrl.includes('?') ? '&' : '?';
+  const url = `${proxyUrl}${sep}categorySlug=${encodeURIComponent(categorySlug)}&categoryId=${encodeURIComponent(String(categoryId))}`;
+
+  return discourseProxyFetchTopics(url, params?.init);
+}
+
 /**
  * Fetches multiple categories one after another with a small gap to avoid Discourse rate_limit (429)
  * when the proxy forwards each call to the forum API.
+ *
+ * Failures are **per category**: one bad slug/503 does not discard topics from other categories.
+ * If every category fails (or yields nothing) and there were errors, the last error is thrown so the UI can show it.
  */
 export async function fetchDiscourseTopicsMergedSequential(
   categories: Array<{ categorySlug: string; categoryId: number }>,
@@ -133,19 +185,25 @@ export async function fetchDiscourseTopicsMergedSequential(
   const init = options?.init;
   const merged: DiscourseTopic[] = [];
   const seen = new Set<number>();
+  const failures: Error[] = [];
 
   for (let i = 0; i < categories.length; i++) {
     const c = categories[i]!;
-    const topics = await fetchDiscourseGeneralTopics({
-      categorySlug: c.categorySlug,
-      categoryId: c.categoryId,
-      init,
-    });
-    for (const t of topics) {
-      if (!seen.has(t.id)) {
-        seen.add(t.id);
-        merged.push(t);
+    try {
+      const topics = await fetchDiscourseGeneralTopics({
+        categorySlug: c.categorySlug,
+        categoryId: c.categoryId,
+        init,
+      });
+      for (const t of topics) {
+        if (!seen.has(t.id)) {
+          seen.add(t.id);
+          merged.push(t);
+        }
       }
+    } catch (e) {
+      const err = e instanceof Error ? e : new Error(String(e));
+      failures.push(err);
     }
     if (i < categories.length - 1) {
       await sleep(gapMs);
@@ -157,6 +215,10 @@ export async function fetchDiscourseTopicsMergedSequential(
     const tb = b.created_at ? new Date(b.created_at).getTime() : 0;
     return tb - ta;
   });
+
+  if (merged.length === 0 && failures.length > 0) {
+    throw new Error(failures.map((f) => f.message).join(' · '));
+  }
 
   return merged;
 }
