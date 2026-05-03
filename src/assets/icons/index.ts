@@ -17,6 +17,7 @@ export { default as BridgeIcon } from './Bridge.svg';
 export { default as EcosystemIcon } from './Ecosystem.svg';
 export { default as GovernanceIcon } from './Governance.svg';
 export { default as BuildIcon } from './Build.svg';
+export { default as HubIcon } from './Hub.svg';
 export { default as BlockExplorerIcon } from './Block Explorer.svg';
 export { default as FaqCloseIcon } from './FaqClose.svg';
 export { default as FaqOpenIcon } from './FaqOpen.svg';
