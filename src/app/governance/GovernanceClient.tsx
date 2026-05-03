@@ -8,7 +8,7 @@ import Header from '@/components/ui/Header';
 import Footer from '@/components/ui/Footer';
 import { navItems, legalLinks } from '@/config/navigation';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
-import { Discourse, Forum, Report, DiscourseThumbnail } from '@/assets/icons';
+import { Discourse, Forum, Report, DiscourseThumbnail, MediumThumbnail } from '@/assets/icons';
 import FaqSection from '@/components/ui/Faq';
 import { governanceData } from '@/static/uiData';
 import { useHppChain } from '@/app/staking/hppClient';
@@ -26,10 +26,11 @@ import {
 } from '@/lib/agora';
 import {
   discourseTopicHref,
-  fetchDiscourseGeneralTopics,
+  fetchDiscourseGovernanceMergedTopics,
   getDiscourseBase,
   type DiscourseTopic,
 } from '@/lib/discourse';
+import { fetchMediumFeedItems } from '@/lib/medium';
 
 const DISCUSSIONS_PAGE_SIZE = 6;
 
@@ -131,9 +132,10 @@ export default function GovernanceClient() {
     setDiscussionsLoading(true);
     setDiscussionsError(null);
     try {
-      const [agoraResult, discourseResult] = await Promise.allSettled([
+      const [agoraResult, discourseResult, mediumResult] = await Promise.allSettled([
         fetchAgoraProposals(agoraApiBase),
-        fetchDiscourseGeneralTopics(),
+        fetchDiscourseGovernanceMergedTopics(),
+        fetchMediumFeedItems(),
       ]);
 
       const agoraItems: GovernanceFeedItem[] =
@@ -166,7 +168,7 @@ export default function GovernanceClient() {
                 id: `discourse-${topic.id}`,
                 kind: discussionKindFromTitle(topic.title),
                 title: topic.title,
-                excerpt: topic.excerpt || '',
+                excerpt: topic.excerpt || topic.excerpt_text || '',
                 href: discourseTopicHref(discourseBase, topic),
                 imageSrc: DiscourseThumbnail.src,
                 createdAtMs,
@@ -176,9 +178,40 @@ export default function GovernanceClient() {
             })
           : [];
 
-      const merged = [...agoraItems, ...discourseItems].sort((a, b) => b.createdAtMs - a.createdAtMs);
+      const mediumItems: GovernanceFeedItem[] =
+        mediumResult.status === 'fulfilled'
+          ? mediumResult.value.map((post) => {
+              const createdAtMs = dayjs(post.isoDate).valueOf();
+              return {
+                id: `medium-${post.id}`,
+                kind: 'update' as const,
+                title: post.title,
+                excerpt: post.excerpt || '',
+                href: post.href,
+                imageSrc: MediumThumbnail.src,
+                createdAtMs,
+                isoDate: dayjs(createdAtMs).toISOString(),
+                dateLabel: dayjs(createdAtMs).format('MMM D, YYYY'),
+              };
+            })
+          : [];
+
+      const merged = [...agoraItems, ...discourseItems, ...mediumItems].sort((a, b) => b.createdAtMs - a.createdAtMs);
       setFeedItems(merged);
       setDiscussionsPage(0);
+
+      if (merged.length === 0) {
+        const parts: string[] = [];
+        if (agoraResult.status === 'rejected') {
+          const r = agoraResult.reason;
+          parts.push(`Agora: ${r instanceof Error ? r.message : String(r)}`);
+        }
+        if (discourseResult.status === 'rejected') {
+          const r = discourseResult.reason;
+          parts.push(`Discourse: ${r instanceof Error ? r.message : String(r)}`);
+        }
+        setDiscussionsError(parts.length ? parts.join(' · ') : null);
+      }
     } catch (e) {
       setFeedItems([]);
       setDiscussionsError(e instanceof Error ? e.message : 'Failed to load governance feed');
