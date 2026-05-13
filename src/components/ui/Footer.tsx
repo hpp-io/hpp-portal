@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { legalLinks } from '@/config/navigation';
-import { TwitterIcon, MediumIcon, TelegramIcon, FooterHPPLogo } from '@/assets/icons';
+import { TwitterIcon, BlogIcon, TelegramIcon, FooterHPPLogo } from '@/assets/icons';
 import Image from 'next/image';
 
 export default function Footer() {
@@ -23,13 +23,13 @@ export default function Footer() {
                 <TwitterIcon className="w-7.5 h-7.5" />
               </a>
               <a
-                href="https://medium.com/aergo"
-                aria-label="Medium"
+                href="https://blog.hpp.io"
+                aria-label="HPP Blog"
                 className="cursor-pointer"
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <MediumIcon className="w-7.5 h-7.5" />
+                <BlogIcon className="w-7.5 h-7.5" />
               </a>
               <a
                 href="https://t.me/aergoofficial"
