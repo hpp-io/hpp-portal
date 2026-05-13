@@ -47,6 +47,7 @@ export default function PreRegistrationClient() {
   // APR Calculator controls
   const calcPreRegYes = useAppSelector((state) => state.apr.calcPreRegYes);
   const calcWhaleTier = useAppSelector((state) => state.apr.calcWhaleTier);
+  const calcHoldMonths = useAppSelector((state) => state.apr.calcHoldMonths);
 
   useEffect(() => {
     let cancelled = false;
@@ -102,6 +103,10 @@ export default function PreRegistrationClient() {
   // Fetch APR Calculator data
   useEffect(() => {
     let cancelled = false;
+    const toPositiveNumber = (v: unknown): number | undefined => {
+      const n = Number(v);
+      return Number.isFinite(n) && n > 0 ? n : undefined;
+    };
     const run = async () => {
       try {
         dispatch(setAprLoading(true));
@@ -113,7 +118,15 @@ export default function PreRegistrationClient() {
           return;
         }
         const resp = await axios.get(`${apiBaseUrl}/apr/calculate`, {
-          params: { tier: tierNum, preRegistered: calcPreRegYes === 'yes' },
+          params: {
+            tier: tierNum,
+            preRegistered: calcPreRegYes === 'yes',
+            holdEarnMonths: calcHoldMonths ? Number(calcHoldMonths) : undefined,
+            holdMonths: calcHoldMonths ? Number(calcHoldMonths) : undefined,
+            holdMonth: calcHoldMonths ? Number(calcHoldMonths) : undefined,
+            months: calcHoldMonths ? Number(calcHoldMonths) : undefined,
+            stakingMonths: calcHoldMonths ? Number(calcHoldMonths) : undefined,
+          },
           headers: { accept: 'application/json' },
         });
         const data: any = resp?.data ?? {};
@@ -122,10 +135,27 @@ export default function PreRegistrationClient() {
           if (typeof d.baseAPR === 'number') dispatch(setAprBase(d.baseAPR));
           if (typeof d.bonusAPR === 'number') dispatch(setAprBonus(d.bonusAPR));
           if (typeof d.whaleBoostCredit === 'number') dispatch(setAprWhaleCredit(d.whaleBoostCredit));
-          const holdC = d.holdCredit ?? d.holdBoostCredit ?? d.holdAPR;
-          if (typeof holdC === 'number') dispatch(setAprHoldCredit(holdC));
-          const daoC = d.daoCredit ?? d.daoBoostCredit ?? d.governanceCredit;
-          if (typeof daoC === 'number') dispatch(setAprDaoCredit(daoC));
+          const holdNum =
+            toPositiveNumber(d.holdCredit) ??
+            toPositiveNumber(d.holdBoostCredit) ??
+            toPositiveNumber(d.holdAPR) ??
+            toPositiveNumber(d.holdEarnCredit) ??
+            toPositiveNumber(d.holdEarnCreditPercent) ??
+            toPositiveNumber(d.holdAndEarnCredit) ??
+            toPositiveNumber(d.holdAndEarnAPR) ??
+            toPositiveNumber(d.hold?.credit) ??
+            toPositiveNumber(d.holdAndEarn?.credit) ??
+            toPositiveNumber(d.bonusCredit?.hold) ??
+            toPositiveNumber(d.bonusCredits?.hold);
+          dispatch(setAprHoldCredit(holdNum));
+          const daoNum =
+            toPositiveNumber(d.daoCredit) ??
+            toPositiveNumber(d.daoBoostCredit) ??
+            toPositiveNumber(d.governanceCredit) ??
+            toPositiveNumber(d.dao?.credit) ??
+            toPositiveNumber(d.bonusCredit?.dao) ??
+            toPositiveNumber(d.bonusCredits?.dao);
+          dispatch(setAprDaoCredit(daoNum));
           if (typeof d.totalAPR === 'number') dispatch(setAprTotal(d.totalAPR));
           // Always use finalAPR if available, otherwise calculate or use totalAPR
           if (typeof d.finalAPR === 'number') {
@@ -142,7 +172,7 @@ export default function PreRegistrationClient() {
     return () => {
       cancelled = true;
     };
-  }, [calcWhaleTier, calcPreRegYes, dispatch]);
+  }, [calcWhaleTier, calcPreRegYes, calcHoldMonths, dispatch]);
 
   // Local form state (UI only)
   const [ethAddress, setEthAddress] = useState('');
