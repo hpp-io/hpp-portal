@@ -8,16 +8,15 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Staking | HPP Portal',
     description: 'Stake your HPP to earn rewards and gain governance voting power across the HPP ecosystem.',
-    images: ['/staking_s1_og.jpg'],
+    images: ['/staking_s2_og.jpg'],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Staking | HPP Portal',
     description: 'Stake your HPP to earn rewards and gain governance voting power across the HPP ecosystem.',
-    images: ['/staking_s1_og.jpg'],
+    images: ['/staking_s2_og.jpg'],
   },
 };
-
 
 export default function StakingPage() {
   return <StakingClient />;
