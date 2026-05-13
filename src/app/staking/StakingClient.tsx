@@ -82,6 +82,44 @@ function formatHppClaimWeiDisplay(wei: bigint, decimals: number): string {
   return formatTokenBalance(val, 2);
 }
 
+/** Blockscout v2 list pagination: stable cursor fields + any extra *primitive* keys from `next_page_params` (never stringify objects). */
+function blockscoutTxListNextUrl(
+  pathWithoutQuery: string,
+  np: unknown,
+  forcedIfMissing?: Record<string, string>,
+): string | null {
+  if (np == null || typeof np !== 'object' || Array.isArray(np)) return null;
+  const o = np as Record<string, unknown>;
+  if (Object.keys(o).length === 0) return null;
+  const qs = new URLSearchParams();
+  const setKnown = (key: string) => {
+    const v = o[key];
+    if (v === undefined || v === null) return;
+    qs.set(key, String(v));
+  };
+  setKnown('index');
+  setKnown('value');
+  setKnown('hash');
+  setKnown('inserted_at');
+  setKnown('block_number');
+  setKnown('fee');
+  setKnown('items_count');
+  const known = new Set(['index', 'value', 'hash', 'inserted_at', 'block_number', 'fee', 'items_count']);
+  for (const [k, v] of Object.entries(o)) {
+    if (known.has(k)) continue;
+    if (v === undefined || v === null) continue;
+    const t = typeof v;
+    if (t === 'string' || t === 'number' || t === 'boolean') qs.set(k, String(v));
+  }
+  if (forcedIfMissing) {
+    for (const [k, v] of Object.entries(forcedIfMissing)) {
+      if (!qs.has(k)) qs.set(k, v);
+    }
+  }
+  const s = qs.toString();
+  return s ? `${pathWithoutQuery}?${s}` : null;
+}
+
 type StakingTab = 'stake' | 'unstake' | 'claim';
 const VALID_TOP_TABS = ['overview', 'staking', 'dashboard'] as const;
 type TopTab = (typeof VALID_TOP_TABS)[number];
@@ -466,19 +504,12 @@ export default function StakingClient() {
             const pageItems: any[] = resp?.data?.items ?? [];
             if (Array.isArray(pageItems) && pageItems.length > 0) items.push(...pageItems);
             const np = resp?.data?.next_page_params;
-            if (!np || pageItems.length === 0) {
+            const next = blockscoutTxListNextUrl(baseUrl, np);
+            if (!next || pageItems.length === 0) {
               nextUrl = null;
               break;
             }
-            const qs = new URLSearchParams();
-            if (np.index !== undefined) qs.set('index', String(np.index));
-            if (np.value !== undefined) qs.set('value', String(np.value));
-            if (np.hash !== undefined) qs.set('hash', String(np.hash));
-            if (np.inserted_at !== undefined) qs.set('inserted_at', String(np.inserted_at));
-            if (np.block_number !== undefined) qs.set('block_number', String(np.block_number));
-            if (np.fee !== undefined) qs.set('fee', String(np.fee));
-            if (np.items_count !== undefined) qs.set('items_count', String(np.items_count));
-            nextUrl = `${baseUrl}?${qs.toString()}`;
+            nextUrl = next;
             guard += 1;
           }
         } catch {}
@@ -506,23 +537,40 @@ export default function StakingClient() {
                 }
               }
               const np = resp?.data?.next_page_params;
-              if (!np || pageItems.length === 0) {
+              const next = blockscoutTxListNextUrl(rewardBaseUrl, np);
+              if (!next || pageItems.length === 0) {
                 nextRewardUrl = null;
                 break;
               }
-              const qs = new URLSearchParams();
-              if (np.index !== undefined) qs.set('index', String(np.index));
-              if (np.value !== undefined) qs.set('value', String(np.value));
-              if (np.hash !== undefined) qs.set('hash', String(np.hash));
-              if (np.inserted_at !== undefined) qs.set('inserted_at', String(np.inserted_at));
-              if (np.block_number !== undefined) qs.set('block_number', String(np.block_number));
-              if (np.fee !== undefined) qs.set('fee', String(np.fee));
-              if (np.items_count !== undefined) qs.set('items_count', String(np.items_count));
-              nextRewardUrl = `${rewardBaseUrl}?${qs.toString()}`;
+              nextRewardUrl = next;
               rewardGuard += 1;
             }
           }
         } catch {}
+
+        const rewardAddrLc = String(HPP_STAKING_REWARD_ADDRESS || '').trim().toLowerCase();
+        const normalizeTxMethod = (it: any) => {
+          const raw = String(it?.method || it?.decoded_input?.method_call || '').trim().toLowerCase();
+          const p = raw.indexOf('(');
+          return p >= 0 ? raw.slice(0, p) : raw;
+        };
+        // Exclude contract-deployment txs (Blockscout sets `created_contract` / method label)
+        items = items.filter((it: any) => {
+          if (normalizeTxMethod(it) === 'created_contract') return false;
+          const cc = it?.created_contract;
+          if (cc == null || cc === false) return true;
+          if (typeof cc === 'object' && (cc as { hash?: string }).hash) return false;
+          if (typeof cc === 'string' && /^0x[a-fA-F0-9]{40}$/i.test(cc.trim())) return false;
+          return true;
+        });
+        // Reward contract: only show user txs whose top-level call is `claim` (hide approve, transfer, etc.)
+        if (rewardAddrLc && /^0x[a-f0-9]{40}$/.test(rewardAddrLc)) {
+          items = items.filter((it: any) => {
+            const toLc = String(it?.to?.hash || '').toLowerCase();
+            if (toLc !== rewardAddrLc) return true;
+            return normalizeTxMethod(it) === 'claim';
+          });
+        }
 
         const walletLc = address.toLowerCase();
         let mapped = Array.isArray(items)
@@ -569,48 +617,63 @@ export default function StakingClient() {
           if (needAmount.length > 0 && tokenAddr) {
             // 1) Fast path: address-level token transfers (single request; includes withdraw amounts)
             try {
-              const addrTUrl = `${lambdaBase}/blockscout/${network}/api/v2/addresses/${address}/token-transfers?type=`;
-              const addrTResp = await retryApiCall(() =>
-                axios.get(addrTUrl, { headers: { accept: 'application/json' } }),
-              );
-              const addrTItems: any[] = addrTResp?.data?.items ?? [];
-              if (Array.isArray(addrTItems) && addrTItems.length > 0) {
-                const walletLc = address.toLowerCase();
-                const rewardLc = String(HPP_STAKING_REWARD_ADDRESS || '').toLowerCase();
-                const byHashQuick = new Map<string, string>();
-                for (const tr of addrTItems) {
-                  const tokenLc = String(tr?.token?.address_hash || '').toLowerCase();
-                  if (tokenLc !== tokenAddr) continue;
-                  const method = String(tr?.method || '').toLowerCase();
-                  // withdraw transfers: to wallet (from may not always equal staking on explorer)
-                  const toLc = String(tr?.to?.hash || '').toLowerCase();
-                  const fromLc = String(tr?.from?.hash || '').toLowerCase();
-                  const isWithdrawIn = method === 'withdraw' && toLc === walletLc;
-                  const isClaimIn =
-                    !!rewardLc &&
-                    toLc === walletLc &&
-                    fromLc === rewardLc &&
-                    (method === 'claim' || method === 'transfer');
-                  if (!isWithdrawIn && !isClaimIn) continue;
-                  const txHash = String(tr?.transaction_hash || tr?.tx_hash || tr?.hash || '');
-                  if (!txHash) continue;
-                  const dec =
-                    Number(tr?.token?.decimals) || Number(tr?.total?.decimals) || Number(tr?.token_decimals) || 18;
-                  const raw = String(tr?.total?.value ?? tr?.value ?? tr?.amount ?? '0');
-                  try {
-                    const units = formatUnits(BigInt(raw), Number.isFinite(dec) ? dec : 18);
-                    byHashQuick.set(txHash.toLowerCase(), `${formatTokenBalance(units, 3)} HPP`);
-                  } catch {}
+              const tokenTransfersPath = `${lambdaBase}/blockscout/${network}/api/v2/addresses/${address}/token-transfers`;
+              let nextTokUrl: string | null = `${tokenTransfersPath}?type=`;
+              let tokGuard = 0;
+              const stakingLc = String(HPP_STAKING_ADDRESS || '').toLowerCase();
+              const rewardLc = String(HPP_STAKING_REWARD_ADDRESS || '').toLowerCase();
+              const byHashQuick = new Map<string, string>();
+              while (nextTokUrl && tokGuard < 200) {
+                const addrTResp = await retryApiCall(() =>
+                  axios.get(nextTokUrl!, { headers: { accept: 'application/json' } }),
+                );
+                const addrTItems: any[] = addrTResp?.data?.items ?? [];
+                if (Array.isArray(addrTItems) && addrTItems.length > 0) {
+                  for (const tr of addrTItems) {
+                    const tokenLc = String(tr?.token?.address_hash || '').toLowerCase();
+                    if (tokenLc !== tokenAddr) continue;
+                    const method = String(tr?.method || '').toLowerCase();
+                    const toLc = String(tr?.to?.hash || '').toLowerCase();
+                    const fromLc = String(tr?.from?.hash || '').toLowerCase();
+                    // withdraw(): no amount in calldata — match legacy Blockscout rows OR staking→wallet HPP transfer
+                    const isWithdrawIn =
+                      (tokenLc === tokenAddr && method === 'withdraw' && toLc === walletLc) ||
+                      (tokenLc === tokenAddr &&
+                        toLc === walletLc &&
+                        !!stakingLc &&
+                        fromLc === stakingLc &&
+                        (method === 'transfer' || method === 'withdraw' || method === ''));
+                    const isClaimIn =
+                      !!rewardLc &&
+                      toLc === walletLc &&
+                      fromLc === rewardLc &&
+                      (method === 'claim' || method === 'transfer' || method === '');
+                    if (!isWithdrawIn && !isClaimIn) continue;
+                    const txHash = String(tr?.transaction_hash || tr?.tx_hash || tr?.hash || '');
+                    if (!txHash) continue;
+                    const dec =
+                      Number(tr?.token?.decimals) || Number(tr?.total?.decimals) || Number(tr?.token_decimals) || 18;
+                    const raw = String(tr?.total?.value ?? tr?.value ?? tr?.amount ?? '0');
+                    try {
+                      const units = formatUnits(BigInt(raw), Number.isFinite(dec) ? dec : 18);
+                      byHashQuick.set(txHash.toLowerCase(), `${formatTokenBalance(units, 3)} HPP`);
+                    } catch {}
+                  }
                 }
-                if (byHashQuick.size > 0) {
-                  mapped = mapped.map((m: any) => {
-                    if (!m.amount) {
-                      const v = byHashQuick.get(String(m.id).toLowerCase());
-                      if (v) return { ...m, amount: v };
-                    }
-                    return m;
-                  });
-                }
+                const np = addrTResp?.data?.next_page_params;
+                const next = blockscoutTxListNextUrl(tokenTransfersPath, np, { type: '' });
+                if (!next || addrTItems.length === 0) break;
+                nextTokUrl = next;
+                tokGuard += 1;
+              }
+              if (byHashQuick.size > 0) {
+                mapped = mapped.map((m: any) => {
+                  if (!m.amount) {
+                    const v = byHashQuick.get(String(m.id).toLowerCase());
+                    if (v) return { ...m, amount: v };
+                  }
+                  return m;
+                });
               }
             } catch {}
           }
