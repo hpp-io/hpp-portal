@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { startTransition, useCallback, useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import Sidebar from '@/components/ui/Sidebar';
 import Button from '@/components/ui/Button';
@@ -8,7 +8,7 @@ import Header from '@/components/ui/Header';
 import Footer from '@/components/ui/Footer';
 import { navItems, legalLinks } from '@/config/navigation';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
-import { Discourse, Forum, Report, DiscourseThumbnail, MediumThumbnail } from '@/assets/icons';
+import { Discourse, Forum, Blog, DiscourseThumbnail, GhostThumbnail } from '@/assets/icons';
 import FaqSection from '@/components/ui/Faq';
 import { governanceData } from '@/static/uiData';
 import { useHppChain } from '@/app/staking/hppClient';
@@ -30,7 +30,7 @@ import {
   getDiscourseBase,
   type DiscourseTopic,
 } from '@/lib/discourse';
-import { fetchMediumFeedItems } from '@/lib/medium';
+import { fetchGhostFeedItems } from '@/lib/ghost';
 
 const DISCUSSIONS_PAGE_SIZE = 6;
 
@@ -94,24 +94,98 @@ function getPaginationItems(totalPages: number, currentPageIndex: number): Array
   return out;
 }
 
+type GovernanceFeedGridProps = {
+  items: GovernanceFeedItem[];
+};
+
+const GovernanceFeedGrid = React.memo(function GovernanceFeedGrid({ items }: GovernanceFeedGridProps) {
+  return (
+    <div className="hpp-governance-discussions-grid">
+      {items.map((item) => {
+        const isGif = /\.gif($|\?)/i.test(item.imageSrc);
+        return (
+          <a
+            key={item.id}
+            href={item.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group relative grid h-full w-full grid-rows-[168px_minmax(0,1fr)] overflow-hidden rounded-[5px] bg-[#111111] transition-opacity duration-200 hover:opacity-95 min-h-[340px] md:grid-rows-[176px_minmax(0,1fr)] md:min-h-[300px]"
+          >
+            <div className="relative min-h-0 min-w-0 bg-[#1a1a1a]">
+              {isGif ? (
+                <img
+                  src={item.imageSrc}
+                  alt={item.title}
+                  className="h-full w-full object-cover"
+                  loading="eager"
+                  decoding="sync"
+                  fetchPriority="high"
+                />
+              ) : (
+                <Image
+                  src={item.imageSrc}
+                  alt={item.title}
+                  fill
+                  className="object-cover"
+                  quality={95}
+                  sizes="(max-width: 767px) 100vw, (max-width: 1439px) 50vw, 33vw"
+                />
+              )}
+            </div>
+            <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-5 pb-12">
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                <time className="text-sm font-normal leading-[1.5] text-[#bfbfbf]" dateTime={item.isoDate}>
+                  {item.dateLabel}
+                </time>
+                <span
+                  className={`rounded-[5px] px-3 py-1.5 text-sm font-medium leading-[1] ${getKindBadgeClass(item.kind)}`}
+                >
+                  {getKindLabel(item.kind)}
+                </span>
+              </div>
+              <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+                <h3 className="min-w-0 break-words text-xl font-bold leading-[1.35] text-white">{item.title}</h3>
+                <p className="mt-2 min-h-0 text-base font-normal leading-[1.5] text-[#bfbfbf] line-clamp-3">
+                  {item.excerpt}
+                </p>
+              </div>
+              <div className="absolute bottom-5 right-5">
+                <svg
+                  className="h-[22px] w-[22px] text-white transition-transform duration-200 group-hover:translate-x-0.5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5-5 5M6 12h12" />
+                </svg>
+              </div>
+            </div>
+          </a>
+        );
+      })}
+    </div>
+  );
+});
+
 const governanceCards = [
   {
     title: 'Discourse Forum',
-    description: 'Legacy hybrid infrastructure at the core of HPP, now transitioning into an AI-native foundation.',
+    description: 'Governance discussion hub where proposals are introduced, refined, and aligned before voting.',
     href: 'https://forum.hpp.io',
     icon: Discourse,
   },
   {
     title: 'Voting Layer',
-    description: 'RWA and NFT valuation layer enabling AI-driven asset discovery, pricing, and strategy execution.',
-    href: 'https://agora-sepolia.hpp.io',
+    description: 'Off-chain and on-chain voting infrastructure enabling transparent, stake-based decision making.',
+    href: 'https://agora.hpp.io',
     icon: Forum,
   },
   {
     title: 'HPP Report',
-    description: 'Personhood verification and Sybil resistance powered by AI-based deepfake detection and biometrics.',
-    href: 'https://medium.com/aergo',
-    icon: Report,
+    description: 'Curated governance reports capturing key discussions, decisions, and outcomes across the DAO.',
+    href: 'https://hppio.ghost.io',
+    icon: Blog,
   },
 ];
 
@@ -132,84 +206,125 @@ export default function GovernanceClient() {
     setDiscussionsLoading(true);
     setDiscussionsError(null);
     try {
-      const [agoraResult, discourseResult, mediumResult] = await Promise.allSettled([
-        fetchAgoraProposals(agoraApiBase),
-        fetchDiscourseGovernanceMergedTopics(),
-        fetchMediumFeedItems(),
-      ]);
+      const collected: Record<'agora' | 'discourse' | 'ghost', GovernanceFeedItem[]> = {
+        agora: [],
+        discourse: [],
+        ghost: [],
+      };
+      const parts: string[] = [];
+      let hasFirstPaint = false;
+      let stagedAfterFirstPaint = false;
+      let settledCount = 0;
 
-      const agoraItems: GovernanceFeedItem[] =
-        agoraResult.status === 'fulfilled'
-          ? agoraResult.value.map((post: AgoraProposal) => {
-              const imgRef = firstMarkdownImageUrl(post.body);
-              const imageSrc = imgRef
-                ? resolveAgoraAssetUrl(agoraApiBase, imgRef)
-                : makeHipFallbackImageDataUrl(post.id);
-              const createdAtMs = dayjs.unix(post.createdAt).valueOf();
-              return {
-                id: `proposal-${post.id}`,
-                kind: 'proposal',
-                title: post.title,
-                excerpt: excerptFromMarkdownBody(post.body),
-                href: proposalDetailHref(agoraWebBase, post.id),
-                imageSrc,
-                createdAtMs,
-                isoDate: dayjs(createdAtMs).toISOString(),
-                dateLabel: dayjs(createdAtMs).format('MMM D, YYYY'),
-              };
-            })
-          : [];
+      const flushMerged = () => {
+        const merged = [...collected.agora, ...collected.discourse, ...collected.ghost].sort(
+          (a, b) => b.createdAtMs - a.createdAtMs,
+        );
+        startTransition(() => {
+          setFeedItems(merged);
+          if (merged.length > 0) setDiscussionsError(null);
+        });
+      };
 
-      const discourseItems: GovernanceFeedItem[] =
-        discourseResult.status === 'fulfilled'
-          ? discourseResult.value.map((topic: DiscourseTopic) => {
-              const createdAtMs = topic.created_at ? dayjs(topic.created_at).valueOf() : Date.now();
-              return {
-                id: `discourse-${topic.id}`,
-                kind: discussionKindFromTitle(topic.title),
-                title: topic.title,
-                excerpt: topic.excerpt || topic.excerpt_text || '',
-                href: discourseTopicHref(discourseBase, topic),
-                imageSrc: DiscourseThumbnail.src,
-                createdAtMs,
-                isoDate: dayjs(createdAtMs).toISOString(),
-                dateLabel: dayjs(createdAtMs).format('MMM D, YYYY'),
-              };
-            })
-          : [];
+      const markSettled = () => {
+        settledCount += 1;
+        const currentMergedLength = collected.agora.length + collected.discourse.length + collected.ghost.length;
 
-      const mediumItems: GovernanceFeedItem[] =
-        mediumResult.status === 'fulfilled'
-          ? mediumResult.value.map((post) => {
-              const createdAtMs = dayjs(post.isoDate).valueOf();
-              return {
-                id: `medium-${post.id}`,
-                kind: 'update' as const,
-                title: post.title,
-                excerpt: post.excerpt || '',
-                href: post.href,
-                imageSrc: MediumThumbnail.src,
-                createdAtMs,
-                isoDate: dayjs(createdAtMs).toISOString(),
-                dateLabel: dayjs(createdAtMs).format('MMM D, YYYY'),
-              };
-            })
-          : [];
-
-      const merged = [...agoraItems, ...discourseItems, ...mediumItems].sort((a, b) => b.createdAtMs - a.createdAtMs);
-      setFeedItems(merged);
-      setDiscussionsPage(0);
-
-      if (merged.length === 0) {
-        const parts: string[] = [];
-        if (agoraResult.status === 'rejected') {
-          const r = agoraResult.reason;
-          parts.push(`Agora: ${r instanceof Error ? r.message : String(r)}`);
+        // First paint: render as soon as first data source arrives.
+        if (!hasFirstPaint && currentMergedLength > 0) {
+          hasFirstPaint = true;
+          flushMerged();
+        } else if (hasFirstPaint) {
+          // After first paint, stage updates and commit once at the end.
+          stagedAfterFirstPaint = true;
         }
-        if (discourseResult.status === 'rejected') {
-          const r = discourseResult.reason;
-          parts.push(`Discourse: ${r instanceof Error ? r.message : String(r)}`);
+
+        if (settledCount === 3) {
+          if (!hasFirstPaint) {
+            // No source succeeded with data: still commit empty state once.
+            flushMerged();
+          } else if (stagedAfterFirstPaint) {
+            // Commit remaining 2-source batch in one shot.
+            flushMerged();
+          }
         }
+      };
+
+      const agoraTask = fetchAgoraProposals(agoraApiBase)
+        .then((posts: AgoraProposal[]) => {
+          collected.agora = posts.map((post: AgoraProposal) => {
+            const imgRef = firstMarkdownImageUrl(post.body);
+            const imageSrc = imgRef ? resolveAgoraAssetUrl(agoraApiBase, imgRef) : makeHipFallbackImageDataUrl(post.id);
+            const createdAtMs = dayjs.unix(post.createdAt).valueOf();
+            return {
+              id: `proposal-${post.id}`,
+              kind: 'proposal',
+              title: post.title,
+              excerpt: excerptFromMarkdownBody(post.body),
+              href: proposalDetailHref(agoraWebBase, post.id),
+              imageSrc,
+              createdAtMs,
+              isoDate: dayjs(createdAtMs).toISOString(),
+              dateLabel: dayjs(createdAtMs).format('MMM D, YYYY'),
+            };
+          });
+          markSettled();
+        })
+        .catch((e) => {
+          parts.push(`Agora: ${e instanceof Error ? e.message : String(e)}`);
+          markSettled();
+        });
+
+      const discourseTask = fetchDiscourseGovernanceMergedTopics()
+        .then((topics: DiscourseTopic[]) => {
+          collected.discourse = topics.map((topic: DiscourseTopic) => {
+            const createdAtMs = topic.created_at ? dayjs(topic.created_at).valueOf() : Date.now();
+            return {
+              id: `discourse-${topic.id}`,
+              kind: discussionKindFromTitle(topic.title),
+              title: topic.title,
+              excerpt: topic.excerpt || topic.excerpt_text || '',
+              href: discourseTopicHref(discourseBase, topic),
+              imageSrc: DiscourseThumbnail.src,
+              createdAtMs,
+              isoDate: dayjs(createdAtMs).toISOString(),
+              dateLabel: dayjs(createdAtMs).format('MMM D, YYYY'),
+            };
+          });
+          markSettled();
+        })
+        .catch((e) => {
+          parts.push(`Discourse: ${e instanceof Error ? e.message : String(e)}`);
+          markSettled();
+        });
+
+      const ghostTask = fetchGhostFeedItems()
+        .then((posts) => {
+          collected.ghost = posts.map((post) => {
+            const createdAtMs = dayjs(post.isoDate).valueOf();
+            return {
+              id: `ghost-${post.id}`,
+              kind: 'update' as const,
+              title: post.title,
+              excerpt: post.excerpt || '',
+              href: post.href,
+              imageSrc: post.imageSrc || GhostThumbnail.src,
+              createdAtMs,
+              isoDate: dayjs(createdAtMs).toISOString(),
+              dateLabel: dayjs(createdAtMs).format('MMM D, YYYY'),
+            };
+          });
+          markSettled();
+        })
+        .catch((e) => {
+          parts.push(`Ghost: ${e instanceof Error ? e.message : String(e)}`);
+          markSettled();
+        });
+
+      await Promise.allSettled([agoraTask, discourseTask, ghostTask]);
+
+      const finalMerged = [...collected.agora, ...collected.discourse, ...collected.ghost];
+      if (finalMerged.length === 0) {
         setDiscussionsError(parts.length ? parts.join(' · ') : null);
       }
     } catch (e) {
@@ -352,7 +467,7 @@ export default function GovernanceClient() {
               ))}
             </div>
 
-            {discussionsLoading && (
+            {discussionsLoading && filteredItems.length === 0 && (
               <div className="flex min-h-[200px] flex-col items-center justify-center gap-4 rounded-[5px] bg-[#111111] py-16">
                 <DotLottieReact
                   src="/lotties/Loading.lottie"
@@ -369,7 +484,7 @@ export default function GovernanceClient() {
               </div>
             )}
 
-            {!discussionsLoading && discussionsError && (
+            {!discussionsLoading && discussionsError && filteredItems.length === 0 && (
               <div className="rounded-[5px] bg-[#111111] px-5 py-10 text-center">
                 <p className="text-base text-[#bfbfbf] mb-4">{discussionsError}</p>
                 <p className="text-sm text-[#888] mb-6 max-w-xl mx-auto">
@@ -390,67 +505,9 @@ export default function GovernanceClient() {
               </div>
             )}
 
-            {!discussionsLoading && !discussionsError && filteredItems.length > 0 && (
+            {filteredItems.length > 0 && (
               <>
-                <div className="hpp-governance-discussions-grid">
-                  {pagedItems.map((item) => {
-                    return (
-                      <a
-                        key={item.id}
-                        href={item.href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="group relative grid h-full w-full grid-rows-[168px_minmax(0,1fr)] overflow-hidden rounded-[5px] bg-[#111111] transition-opacity duration-200 hover:opacity-95 min-h-[340px] md:grid-rows-[176px_minmax(0,1fr)] md:min-h-[300px]"
-                      >
-                        <div className="relative min-h-0 min-w-0 bg-[#1a1a1a]">
-                          <Image
-                            src={item.imageSrc}
-                            alt={item.title}
-                            fill
-                            className="object-cover"
-                            sizes="(max-width: 767px) 100vw, (max-width: 1439px) 50vw, 33vw"
-                          />
-                        </div>
-                        <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-5 pb-12">
-                          <div className="mb-3 flex flex-wrap items-center gap-2">
-                            <time className="text-sm font-normal leading-[1.5] text-[#bfbfbf]" dateTime={item.isoDate}>
-                              {item.dateLabel}
-                            </time>
-                            <span
-                              className={`rounded-[5px] px-3 py-1.5 text-sm font-medium leading-[1] ${getKindBadgeClass(item.kind)}`}
-                            >
-                              {getKindLabel(item.kind)}
-                            </span>
-                          </div>
-                          <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-                            <h3 className="min-w-0 break-words text-xl font-bold leading-[1.35] text-white">
-                              {item.title}
-                            </h3>
-                            <p className="mt-2 min-h-0 text-base font-normal leading-[1.5] text-[#bfbfbf] line-clamp-3">
-                              {item.excerpt}
-                            </p>
-                          </div>
-                          <div className="absolute bottom-5 right-5">
-                            <svg
-                              className="h-[22px] w-[22px] text-white transition-transform duration-200 group-hover:translate-x-0.5"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                              aria-hidden
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M13 7l5 5-5 5M6 12h12"
-                              />
-                            </svg>
-                          </div>
-                        </div>
-                      </a>
-                    );
-                  })}
-                </div>
+                <GovernanceFeedGrid items={pagedItems} />
 
                 {discussionPaginationItems.length > 0 && (
                   <nav className="mt-10 flex flex-wrap items-center justify-center gap-2" aria-label="Proposals pages">
