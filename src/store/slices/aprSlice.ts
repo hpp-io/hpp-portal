@@ -4,6 +4,7 @@ interface AprState {
   // APR Calculator controls
   calcPreRegYes: 'yes' | 'no';
   calcWhaleTier: string;
+  calcHoldMonths: string;
   // APR API state
   aprLoading: boolean;
   aprBase: number;
@@ -18,6 +19,7 @@ interface AprState {
 const initialState: AprState = {
   calcPreRegYes: 'yes',
   calcWhaleTier: 'T1',
+  calcHoldMonths: '',
   aprLoading: false,
   aprBase: 10,
   aprBonus: 0,
@@ -37,6 +39,9 @@ const aprSlice = createSlice({
     },
     setCalcWhaleTier: (state, action: PayloadAction<string>) => {
       state.calcWhaleTier = action.payload;
+    },
+    setCalcHoldMonths: (state, action: PayloadAction<string>) => {
+      state.calcHoldMonths = action.payload;
     },
     setAprLoading: (state, action: PayloadAction<boolean>) => {
       state.aprLoading = action.payload;
@@ -68,6 +73,7 @@ const aprSlice = createSlice({
 export const {
   setCalcPreRegYes,
   setCalcWhaleTier,
+  setCalcHoldMonths,
   setAprLoading,
   setAprBase,
   setAprBonus,
