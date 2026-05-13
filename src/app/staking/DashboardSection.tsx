@@ -119,10 +119,12 @@ export default function DashboardSection() {
         if (typeof d.bonusAPR === 'number') dispatch(setWalletBonusApr(d.bonusAPR));
         // Set credit values for Bonus Credit display
         if (typeof d.whaleBoostCredit === 'number') dispatch(setWalletWhaleCredit(d.whaleBoostCredit));
-        const holdC = d.holdCredit ?? d.holdBoostCredit ?? d.holdAPR ?? null;
-        const daoC = d.daoCredit ?? d.daoBoostCredit ?? d.governanceCredit ?? null;
-        dispatch(setWalletHoldCredit(typeof holdC === 'number' ? (holdC as number) : null));
-        dispatch(setWalletDaoCredit(typeof daoC === 'number' ? (daoC as number) : null));
+        const holdC = d.holdEarnCredit;
+        const daoC = d.daoCredit;
+        const holdNum = Number(holdC);
+        const daoNum = Number(daoC);
+        dispatch(setWalletHoldCredit(Number.isFinite(holdNum) && holdNum > 0 ? holdNum : null));
+        dispatch(setWalletDaoCredit(Number.isFinite(daoNum) && daoNum > 0 ? daoNum : null));
       } else {
         dispatch(setWalletFinalApr(null));
       }
