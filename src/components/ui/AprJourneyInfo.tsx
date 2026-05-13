@@ -45,10 +45,9 @@ export default function AprJourneyInfo() {
           </p>
         </div>
       </div>,
-      'custom'
+      'custom',
     );
   };
 
   return <InfoIcon className="w-5 h-5 cursor-pointer" onClick={handleClick} />;
 }
-
