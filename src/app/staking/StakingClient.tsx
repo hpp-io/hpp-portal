@@ -15,7 +15,7 @@ import { getWalletClient } from '@wagmi/core';
 import { formatUnits, parseUnits } from 'viem';
 import Big from 'big.js';
 import { navItems, legalLinks } from '@/config/navigation';
-import { standardArbErc20Abi, hppStakingAbi } from './abi';
+import { standardArbErc20Abi, hppStakingAbi, hppStakingRewardAbi } from './abi';
 import { formatDisplayAmount, PERCENTS, computePercentAmount, formatTokenBalance } from '@/lib/helpers';
 import { getHppExplorerTxUrl } from '@/lib/hppExplorer';
 import { useHppPublicClient, useHppChain } from './hppClient';
@@ -72,6 +72,16 @@ import {
   setChartAnimKey,
 } from '@/store/slices';
 
+function formatHppClaimWeiDisplay(wei: bigint, decimals: number): string {
+  if (wei <= BigInt(0)) return '0';
+  const val = formatUnits(wei, decimals);
+  try {
+    const v = new Big(val);
+    if (v.gt(0) && v.lt(new Big('0.01'))) return '≈0.01';
+  } catch {}
+  return formatTokenBalance(val, 2);
+}
+
 type StakingTab = 'stake' | 'unstake' | 'claim';
 const VALID_TOP_TABS = ['overview', 'staking', 'dashboard'] as const;
 type TopTab = (typeof VALID_TOP_TABS)[number];
@@ -101,6 +111,7 @@ export default function StakingClient() {
   // APR Calculator controls
   const calcPreRegYes = useAppSelector((state) => state.apr.calcPreRegYes);
   const calcWhaleTier = useAppSelector((state) => state.apr.calcWhaleTier);
+  const calcHoldMonths = useAppSelector((state) => state.apr.calcHoldMonths);
   const aprTotal = useAppSelector((state) => state.apr.aprTotal);
   const finalAPR = useAppSelector((state) => state.apr.finalAPR);
   // Staking state
@@ -135,7 +146,8 @@ export default function StakingClient() {
     // Allow both:
     // - tab=staking (generic Staking entry)
     // - tab=stake|unstake|claim (specific sub-tab)
-    const desiredParam: string = nextTopTab === 'staking' ? (tabParam === 'staking' ? 'staking' : nextActiveTab) : nextTopTab;
+    const desiredParam: string =
+      nextTopTab === 'staking' ? (tabParam === 'staking' ? 'staking' : nextActiveTab) : nextTopTab;
     if (tabParam !== desiredParam || window.location.pathname !== STAKING_PATH) {
       sp.set(STAKING_TAB_PARAM, desiredParam);
       window.history.replaceState(null, '', `${STAKING_PATH}?${sp.toString()}`);
@@ -213,6 +225,10 @@ export default function StakingClient() {
   // Only refetch when inputs change
   useEffect(() => {
     let cancelled = false;
+    const toPositiveNumber = (v: unknown): number | undefined => {
+      const n = Number(v);
+      return Number.isFinite(n) && n > 0 ? n : undefined;
+    };
     const run = async () => {
       try {
         dispatch(setAprLoading(true));
@@ -223,7 +239,15 @@ export default function StakingClient() {
           return;
         }
         const resp = await axios.get(`${apiBaseUrl}/apr/calculate`, {
-          params: { tier: tierNum, preRegistered: calcPreRegYes === 'yes' },
+          params: {
+            tier: tierNum,
+            preRegistered: calcPreRegYes === 'yes',
+            holdEarnMonths: calcHoldMonths ? Number(calcHoldMonths) : undefined,
+            holdMonths: calcHoldMonths ? Number(calcHoldMonths) : undefined,
+            holdMonth: calcHoldMonths ? Number(calcHoldMonths) : undefined,
+            months: calcHoldMonths ? Number(calcHoldMonths) : undefined,
+            stakingMonths: calcHoldMonths ? Number(calcHoldMonths) : undefined,
+          },
           headers: { accept: 'application/json' },
         });
         const data: any = resp?.data ?? {};
@@ -232,10 +256,10 @@ export default function StakingClient() {
           if (typeof d.baseAPR === 'number') dispatch(setAprBase(d.baseAPR));
           if (typeof d.bonusAPR === 'number') dispatch(setAprBonus(d.bonusAPR));
           if (typeof d.whaleBoostCredit === 'number') dispatch(setAprWhaleCredit(d.whaleBoostCredit));
-          const holdC = d.holdCredit ?? d.holdBoostCredit ?? d.holdAPR;
-          if (typeof holdC === 'number') dispatch(setAprHoldCredit(holdC));
-          const daoC = d.daoCredit ?? d.daoBoostCredit ?? d.governanceCredit;
-          if (typeof daoC === 'number') dispatch(setAprDaoCredit(daoC));
+          const holdNum = toPositiveNumber(d.holdEarnCredit);
+          dispatch(setAprHoldCredit(holdNum));
+          const daoNum = toPositiveNumber(d.daoCredit);
+          dispatch(setAprDaoCredit(daoNum));
           if (typeof d.totalAPR === 'number') dispatch(setAprTotal(d.totalAPR));
           // Always use finalAPR if available, otherwise calculate or use totalAPR
           if (typeof d.finalAPR === 'number') {
@@ -252,7 +276,7 @@ export default function StakingClient() {
     return () => {
       cancelled = true;
     };
-  }, [calcWhaleTier, calcPreRegYes, dispatch]);
+  }, [calcWhaleTier, calcPreRegYes, calcHoldMonths, dispatch]);
   const { address, isConnected } = useAccount();
   const bannerAvatarRef = React.useRef<any>(null);
   React.useEffect(() => {
@@ -274,6 +298,7 @@ export default function StakingClient() {
   const cooldownSeconds = useAppSelector((state) => state.cooldown.cooldownSeconds);
   const HPP_TOKEN_ADDRESS = process.env.NEXT_PUBLIC_HPP_TOKEN_CONTRACT as `0x${string}`;
   const HPP_STAKING_ADDRESS = process.env.NEXT_PUBLIC_HPP_STAKING_CONTRACT as `0x${string}`;
+  const HPP_STAKING_REWARD_ADDRESS = process.env.NEXT_PUBLIC_HPP_STAKING_REWARD_CONTRACT;
   const DECIMALS = 18;
 
   // Overview chart states (TVL history)
@@ -360,9 +385,18 @@ export default function StakingClient() {
         if (typeof d.baseAPR === 'number') dispatch(setWalletBaseApr(d.baseAPR));
         if (typeof d.bonusAPR === 'number') dispatch(setWalletBonusApr(d.bonusAPR));
         if (typeof d.whaleBoostCredit === 'number') dispatch(setWalletWhaleCredit(d.whaleBoostCredit));
-        const holdC = (d as any).holdCredit ?? (d as any).holdBoostCredit ?? (d as any).holdAPR ?? null;
+        const holdC =
+          (d as any).holdCredit ??
+          (d as any).holdBoostCredit ??
+          (d as any).holdAPR ??
+          (d as any).holdEarnCredit ??
+          (d as any).holdEarnCreditPercent ??
+          (d as any).holdAndEarnCredit ??
+          (d as any).holdAndEarnAPR ??
+          null;
         const daoC = (d as any).daoCredit ?? (d as any).daoBoostCredit ?? (d as any).governanceCredit ?? null;
-        dispatch(setWalletHoldCredit(typeof holdC === 'number' ? (holdC as number) : null));
+        const holdNum = Number(holdC);
+        dispatch(setWalletHoldCredit(Number.isFinite(holdNum) && holdNum > 0 ? holdNum : null));
         dispatch(setWalletDaoCredit(typeof daoC === 'number' ? (daoC as number) : null));
         // Convert big strings (18 decimals) to display
         try {
@@ -461,6 +495,48 @@ export default function StakingClient() {
             guard += 1;
           }
         } catch {}
+
+        // Season 1 reward `claim()` hits the reward contract, not staking — merge those txs so local Pending can resolve.
+        try {
+          const rewardAddr = String(HPP_STAKING_REWARD_ADDRESS || '').trim();
+          if (rewardAddr && /^0x[a-fA-F0-9]{40}$/i.test(rewardAddr)) {
+            const rewardBaseUrl = `${lambdaBase}/blockscout/${network}/api/v2/addresses/${rewardAddr}/transactions`;
+            let nextRewardUrl: string | null = rewardBaseUrl;
+            let rewardGuard = 0;
+            const seenHashes = new Set(items.map((it: any) => String(it?.hash || '').toLowerCase()).filter(Boolean));
+            while (nextRewardUrl && rewardGuard < 200) {
+              const resp = await retryApiCall(() =>
+                axios.get(nextRewardUrl!, { headers: { accept: 'application/json' } }),
+              );
+              const pageItems: any[] = resp?.data?.items ?? [];
+              if (Array.isArray(pageItems) && pageItems.length > 0) {
+                for (const it of pageItems) {
+                  const h = String(it?.hash || '').toLowerCase();
+                  if (h && !seenHashes.has(h)) {
+                    items.push(it);
+                    seenHashes.add(h);
+                  }
+                }
+              }
+              const np = resp?.data?.next_page_params;
+              if (!np || pageItems.length === 0) {
+                nextRewardUrl = null;
+                break;
+              }
+              const qs = new URLSearchParams();
+              if (np.index !== undefined) qs.set('index', String(np.index));
+              if (np.value !== undefined) qs.set('value', String(np.value));
+              if (np.hash !== undefined) qs.set('hash', String(np.hash));
+              if (np.inserted_at !== undefined) qs.set('inserted_at', String(np.inserted_at));
+              if (np.block_number !== undefined) qs.set('block_number', String(np.block_number));
+              if (np.fee !== undefined) qs.set('fee', String(np.fee));
+              if (np.items_count !== undefined) qs.set('items_count', String(np.items_count));
+              nextRewardUrl = `${rewardBaseUrl}?${qs.toString()}`;
+              rewardGuard += 1;
+            }
+          }
+        } catch {}
+
         const walletLc = address.toLowerCase();
         let mapped = Array.isArray(items)
           ? items
@@ -483,11 +559,7 @@ export default function StakingClient() {
                     amountDisplay = `${formatTokenBalance(units, 3)} HPP`;
                   }
                 } catch {}
-                const actionDisplay = method
-                  ? method.toLowerCase() === 'withdraw'
-                    ? 'Claim'
-                    : method.charAt(0).toUpperCase() + method.slice(1)
-                  : 'Contract Call';
+                const actionDisplay = method ? method.charAt(0).toUpperCase() + method.slice(1) : 'Contract Call';
                 return {
                   id: String(it.hash),
                   date: dayjs(new Date(String(it.timestamp)).getTime()).format('YYYY-MM-DD HH:mm'),
@@ -516,8 +588,8 @@ export default function StakingClient() {
               );
               const addrTItems: any[] = addrTResp?.data?.items ?? [];
               if (Array.isArray(addrTItems) && addrTItems.length > 0) {
-                const stakingLc = HPP_STAKING_ADDRESS.toLowerCase();
                 const walletLc = address.toLowerCase();
+                const rewardLc = String(HPP_STAKING_REWARD_ADDRESS || '').toLowerCase();
                 const byHashQuick = new Map<string, string>();
                 for (const tr of addrTItems) {
                   const tokenLc = String(tr?.token?.address_hash || '').toLowerCase();
@@ -526,7 +598,13 @@ export default function StakingClient() {
                   // withdraw transfers: to wallet (from may not always equal staking on explorer)
                   const toLc = String(tr?.to?.hash || '').toLowerCase();
                   const fromLc = String(tr?.from?.hash || '').toLowerCase();
-                  if (!(method === 'withdraw' && toLc === walletLc)) continue;
+                  const isWithdrawIn = method === 'withdraw' && toLc === walletLc;
+                  const isClaimIn =
+                    !!rewardLc &&
+                    toLc === walletLc &&
+                    fromLc === rewardLc &&
+                    (method === 'claim' || method === 'transfer');
+                  if (!isWithdrawIn && !isClaimIn) continue;
                   const txHash = String(tr?.transaction_hash || tr?.tx_hash || tr?.hash || '');
                   if (!txHash) continue;
                   const dec =
@@ -563,7 +641,7 @@ export default function StakingClient() {
         dispatch(setActivitiesLoading(false));
       }
     },
-    [isConnected, address, HPP_STAKING_ADDRESS, HPP_CHAIN_ID, dispatch],
+    [isConnected, address, HPP_STAKING_ADDRESS, HPP_STAKING_REWARD_ADDRESS, HPP_CHAIN_ID, dispatch],
   );
 
   // Fetch activities on mount and when wallet connection changes
@@ -704,6 +782,9 @@ export default function StakingClient() {
 
   // Writes are handled via viem wallet client
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [claimableWei, setClaimableWei] = useState<bigint>(BigInt(0));
+  const [isClaimableLoading, setIsClaimableLoading] = useState(false);
+  const [claimableInitialized, setClaimableInitialized] = useState(false);
   // Ensure wallet is on HPP network (mainnet or sepolia) for staking writes
 
   // Ensure wallet is connected to HPP network for writes
@@ -858,6 +939,36 @@ export default function StakingClient() {
       dispatch(setCooldownsInitialized(true));
     }
   }, [publicClient, address, isConnected, HPP_STAKING_ADDRESS, hppStakingAbi, DECIMALS, cooldownSeconds]);
+
+  const fetchClaimable = useCallback(async () => {
+    if (!isConnected || !address) {
+      setClaimableWei(BigInt(0));
+      setIsClaimableLoading(false);
+      setClaimableInitialized(true);
+      return;
+    }
+    if (!HPP_STAKING_REWARD_ADDRESS) {
+      setClaimableWei(BigInt(0));
+      setIsClaimableLoading(false);
+      setClaimableInitialized(true);
+      return;
+    }
+    try {
+      setIsClaimableLoading(true);
+      const amount = (await publicClient.readContract({
+        address: HPP_STAKING_REWARD_ADDRESS as `0x${string}`,
+        abi: hppStakingRewardAbi,
+        functionName: 'getClaimableAmount',
+        args: [address as `0x${string}`],
+      })) as bigint;
+      setClaimableWei(typeof amount === 'bigint' && amount > BigInt(0) ? amount : BigInt(0));
+    } catch {
+      setClaimableWei(BigInt(0));
+    } finally {
+      setIsClaimableLoading(false);
+      setClaimableInitialized(true);
+    }
+  }, [publicClient, address, isConnected, HPP_STAKING_REWARD_ADDRESS]);
 
   const onStake = async () => {
     try {
@@ -1049,11 +1160,10 @@ export default function StakingClient() {
     }
   };
 
-  // Claim withdrawable HPP
-  const onClaim = async () => {
+  const onWithdrawUnstakedTokens = async () => {
     try {
       if (!address || !isConnected) return;
-      // Ensure HPP chain
+      if (derivedWithdrawableWei <= BigInt(0)) return;
       try {
         await ensureHppChain();
       } catch {
@@ -1064,9 +1174,7 @@ export default function StakingClient() {
         walletClient ?? (await getWalletClient(wagmiConfig, { account: address, chainId: HPP_CHAIN_ID }));
 
       setIsSubmitting(true);
-      showToast('Waiting for claim...', 'Please confirm in your wallet.', 'loading');
-
-      // minimal ABI for withdraw()
+      showToast('Waiting for Withdraw Tokens...', 'Please confirm in your wallet.', 'loading');
       const withdrawAbi = [
         {
           type: 'function',
@@ -1087,34 +1195,109 @@ export default function StakingClient() {
       });
 
       const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash as `0x${string}` });
-      if (receipt.status === 'success') {
-        const txUrl = getHppExplorerTxUrl(txHash);
-        showToast('Claim confirmed', 'Your HPP has been claimed successfully.', 'success', {
+      if (receipt.status !== 'success') {
+        showToast('Claim failed', 'Transaction was rejected or failed.', 'error');
+        return;
+      }
+
+      const txUrl = getHppExplorerTxUrl(txHash);
+      showToast('Claim confirmed', 'Your unstaked HPP has been claimed successfully.', 'success', {
+        text: 'View on Explorer',
+        url: txUrl,
+      });
+      const claimAmount = formatUnits(derivedWithdrawableWei, DECIMALS);
+      const amountDisplay = `${formatTokenBalance(claimAmount, 3)} HPP`;
+      dispatch(
+        addLocalActivity({
+          id: txHash,
+          date: dayjs().format('YYYY-MM-DD HH:mm'),
+          action: 'Withdraw',
+          amount: amountDisplay,
+          status: 'Pending',
+          isLocal: true,
+        }),
+      );
+      setTimeout(() => fetchActivities(), 2000);
+      await fetchHppBalance();
+      await fetchStakedTotal();
+      await fetchWalletApr();
+      await fetchCooldowns();
+      await fetchClaimable();
+    } catch (_e) {
+      showToast('Error', 'Failed to process withdraw request.', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const onClaimRewards = async () => {
+    try {
+      if (!address || !isConnected) return;
+      if (!HPP_STAKING_REWARD_ADDRESS) {
+        showToast('Error', 'Reward contract is not configured.', 'error');
+        return;
+      }
+      try {
+        await ensureHppChain();
+      } catch {
+        showToast('Switch network', 'Please switch to HPP Network in your wallet and try again.', 'error');
+        return;
+      }
+
+      let rewardWei = BigInt(0);
+      try {
+        const amount = (await publicClient.readContract({
+          address: HPP_STAKING_REWARD_ADDRESS as `0x${string}`,
+          abi: hppStakingRewardAbi,
+          functionName: 'getClaimableAmount',
+          args: [address as `0x${string}`],
+        })) as bigint;
+        rewardWei = typeof amount === 'bigint' && amount > BigInt(0) ? amount : BigInt(0);
+      } catch {
+        rewardWei = BigInt(0);
+      }
+      if (rewardWei <= BigInt(0)) {
+        return;
+      }
+
+      const hppWalletClient =
+        walletClient ?? (await getWalletClient(wagmiConfig, { account: address, chainId: HPP_CHAIN_ID }));
+
+      setIsSubmitting(true);
+      showToast('Waiting for Claim Rewards...', 'Please confirm in your wallet.', 'loading');
+      const txHashReward = await hppWalletClient.writeContract({
+        address: HPP_STAKING_REWARD_ADDRESS as `0x${string}`,
+        abi: hppStakingRewardAbi,
+        functionName: 'claim',
+        args: [],
+        account: address as `0x${string}`,
+        chain: hppChain,
+      });
+
+      const receiptReward = await publicClient.waitForTransactionReceipt({
+        hash: txHashReward as `0x${string}`,
+      });
+      if (receiptReward.status === 'success') {
+        const txUrlReward = getHppExplorerTxUrl(txHashReward);
+        showToast('Claim confirmed', 'Your reward has been claimed successfully.', 'success', {
           text: 'View on Explorer',
-          url: txUrl,
+          url: txUrlReward,
         });
-        // Add local activity immediately (Pending status)
-        // Calculate claim amount from derivedWithdrawableWei
-        const claimAmount = formatUnits(derivedWithdrawableWei, 18);
-        const amountDisplay = `${formatTokenBalance(claimAmount, 3)} HPP`;
+        const claimAmountReward = formatUnits(rewardWei, DECIMALS);
+        const amountDisplayReward = `${formatTokenBalance(claimAmountReward, 3)} HPP`;
         dispatch(
           addLocalActivity({
-            id: txHash,
+            id: txHashReward,
             date: dayjs().format('YYYY-MM-DD HH:mm'),
             action: 'Claim',
-            amount: amountDisplay,
+            amount: amountDisplayReward,
             status: 'Pending',
             isLocal: true,
           }),
         );
-        // Refresh activities to merge local activity with Blockscout data
-        // Polling will handle checking Blockscout automatically
-        setTimeout(() => fetchActivities(), 2000); // Initial check after 2 seconds
-        // Refresh amounts relevant to claim
+        setTimeout(() => fetchActivities(), 2000);
         await fetchHppBalance();
-        await fetchStakedTotal();
-        await fetchWalletApr();
-        await fetchCooldowns();
+        await fetchClaimable();
       } else {
         showToast('Claim failed', 'Transaction was rejected or failed.', 'error');
       }
@@ -1134,11 +1317,39 @@ export default function StakingClient() {
     dispatch(setCooldowns([]));
     if (activeTab === 'claim') {
       dispatch(setCooldownsInitialized(false));
+      setClaimableInitialized(false);
       fetchCooldownDuration().finally(() => {
         fetchCooldowns();
       });
+      void fetchClaimable();
     }
-  }, [activeTab, fetchHppBalance, fetchStakedTotal, fetchCooldowns, fetchCooldownDuration, dispatch]);
+  }, [activeTab, fetchHppBalance, fetchStakedTotal, fetchCooldowns, fetchCooldownDuration, fetchClaimable, dispatch]);
+
+  // Refetch balances when returning to this browser tab/window.
+  React.useEffect(() => {
+    const refetchOnForeground = () => {
+      if (document.visibilityState === 'visible') {
+        fetchHppBalance();
+        fetchStakedTotal();
+        void fetchClaimable();
+      }
+    };
+    const refetchOnWindowFocus = () => {
+      fetchHppBalance();
+      fetchStakedTotal();
+      void fetchClaimable();
+    };
+    document.addEventListener('visibilitychange', refetchOnForeground);
+    window.addEventListener('focus', refetchOnWindowFocus);
+    return () => {
+      document.removeEventListener('visibilitychange', refetchOnForeground);
+      window.removeEventListener('focus', refetchOnWindowFocus);
+    };
+  }, [fetchHppBalance, fetchStakedTotal, fetchClaimable]);
+
+  React.useEffect(() => {
+    void fetchClaimable();
+  }, [fetchClaimable]);
 
   // Fetch cooldowns when Dashboard tab is active (for Unclaimed Reward display)
   React.useEffect(() => {
@@ -1184,6 +1395,8 @@ export default function StakingClient() {
       dispatch(setStakingFinalAPR(10));
       dispatch(setStakingExpectedReward('≈0 HPP'));
       dispatch(setStakingExpectedRewardLoading(false));
+      setClaimableWei(BigInt(0));
+      setClaimableInitialized(false);
     }
   }, [isConnected, dispatch]);
   // Local date formatter (YYYY-MM-DD HH:mm) in user's timezone via dayjs
@@ -1204,16 +1417,12 @@ export default function StakingClient() {
       BigInt(0),
     );
   }, [cooldowns, nowSecTick]);
-  const derivedWithdrawable = useMemo(() => {
-    const val = formatUnits(derivedWithdrawableWei, DECIMALS);
-    try {
-      const v = new Big(val);
-      if (v.gt(0) && v.lt(new Big('0.01'))) {
-        return '≈0.01';
-      }
-    } catch {}
-    return formatTokenBalance(val, 2);
-  }, [derivedWithdrawableWei]);
+
+  const unstakeClaimableDisplay = useMemo(
+    () => formatHppClaimWeiDisplay(derivedWithdrawableWei, DECIMALS),
+    [derivedWithdrawableWei],
+  );
+  const rewardClaimableDisplay = useMemo(() => formatHppClaimWeiDisplay(claimableWei, DECIMALS), [claimableWei]);
 
   // Calculate staking-specific finalAPR and expectedReward based on amount + stakedTotal (debounced)
   useEffect(() => {
@@ -1450,9 +1659,10 @@ export default function StakingClient() {
                       key={id}
                       size="sm"
                       variant={isActive ? 'primary' : 'black'}
-                      className={['!rounded-full px-4 py-2 text-sm font-semibold', !isActive ? '!bg-[#121212]' : ''].join(
-                        ' ',
-                      )}
+                      className={[
+                        '!rounded-full px-4 py-2 text-sm font-semibold',
+                        !isActive ? '!bg-[#121212]' : '',
+                      ].join(' ')}
                       aria-pressed={isActive}
                       onClick={() => handleTopTabChange(id)}
                     >
@@ -1669,59 +1879,142 @@ export default function StakingClient() {
 
                       {activeTab === 'claim' && (
                         <>
-                          {/* Claim Available Card */}
-                          <div className="flex rounded-[5px] items-center gap-2.5">
-                            <h3 className="text-white text-base font-normal leading-[1.2] tracking-[0.8px]">
-                              Claim Available
-                            </h3>
-                          </div>
-                          <div className="flex items-center justify-center gap-2.5 mt-4 mb-4">
-                            <HPPTickerIcon className="w-8 h-8" />
-                            <span className="text-white text-[40px] font-semibold leading-[1.2] tracking-[0.8px]">
-                              {isConnected ? derivedWithdrawable : '-'}
-                            </span>
-                          </div>
-
-                          <div className="mt-5">
-                            <div className="text-[#5DF23F] font-semibold">Caution</div>
-                            <ul className="text-base text-white leading-[1.5] tracking-[0.8px]">
-                              <li>
-                                • HPP will be available to withdraw {formatCooldownDuration(cooldownSeconds)} after
-                                unstaking.
-                              </li>
-                              <li>
-                                • When the cooldown is over, your tokens will be accumulated to ‘Claim Available.’
-                              </li>
-                              <li>
-                                • Your APR and rewards may vary depending on overall participation and ecosystem
-                                activity.
-                              </li>
-                            </ul>
-                          </div>
-
-                          <div className="mt-5">
-                            {!isConnected ? (
-                              <div className="w-full flex justify-center">
-                                <WalletButton color="black" size="lg" />
+                          <div className="grid grid-cols-1 gap-4 min-[640px]:grid-cols-2 min-[640px]:gap-5">
+                            <div className="flex flex-col items-center rounded-[5px] bg-white/10 px-5 py-7.5">
+                              <div className="text-center text-white text-base font-normal leading-[1.2] tracking-[0.8px]">
+                                Unstaked Amount
                               </div>
-                            ) : (
-                              <Button
-                                variant="black"
-                                size="lg"
-                                fullWidth
-                                disabled={isSubmitting || derivedWithdrawableWei <= BigInt(0)}
-                                className={`${
-                                  isSubmitting || derivedWithdrawableWei <= BigInt(0) ? '!bg-[#9E9E9E] !text-white' : ''
-                                } !rounded-[5px] disabled:!opacity-100 disabled:!text-white`}
-                                onClick={onClaim}
-                              >
-                                {isSubmitting ? 'Processing...' : 'Claim'}
-                              </Button>
-                            )}
+                              <div className="mt-3 flex min-h-[48px] items-center justify-center gap-2.5">
+                                {isConnected && (isCooldownsLoading || !cooldownsInitialized) ? (
+                                  <DotLottieReact
+                                    src="/lotties/Loading.lottie"
+                                    autoplay
+                                    loop
+                                    style={{ width: 48, height: 48 }}
+                                    renderConfig={{
+                                      autoResize: true,
+                                      devicePixelRatio: typeof window !== 'undefined' ? window.devicePixelRatio : 2,
+                                      freezeOnOffscreen: true,
+                                    }}
+                                    layout={{ fit: 'contain', align: [0.5, 0.5] }}
+                                  />
+                                ) : (
+                                  <>
+                                    <HPPTickerIcon className="h-8 w-8 shrink-0" />
+                                    <span className="text-[40px] font-semibold leading-[1.2] tracking-[0.8px] text-white">
+                                      {isConnected ? unstakeClaimableDisplay : '-'}
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                              <div className="mt-6 w-full">
+                                <Button
+                                  variant="black"
+                                  size="lg"
+                                  fullWidth
+                                  disabled={
+                                    !isConnected ||
+                                    isSubmitting ||
+                                    isCooldownsLoading ||
+                                    !cooldownsInitialized ||
+                                    derivedWithdrawableWei <= BigInt(0)
+                                  }
+                                  className={`!rounded-[5px] disabled:!opacity-100 ${
+                                    !isConnected ||
+                                    isSubmitting ||
+                                    isCooldownsLoading ||
+                                    !cooldownsInitialized ||
+                                    derivedWithdrawableWei <= BigInt(0)
+                                      ? '!bg-black/50 !text-white/50'
+                                      : '!text-[#FFDE0A]'
+                                  }`}
+                                  onClick={() => void onWithdrawUnstakedTokens()}
+                                >
+                                  {isSubmitting ? 'Processing...' : 'Withdraw Tokens'}
+                                </Button>
+                              </div>
+                            </div>
+                            <div className="flex flex-col items-center rounded-[5px] bg-white/10 px-5 py-7.5">
+                              <div className="text-center text-white text-base font-normal leading-[1.2] tracking-[0.8px]">
+                                Rewards Available
+                              </div>
+                              <div className="mt-3 flex min-h-[48px] items-center justify-center gap-2.5">
+                                {isConnected && (isClaimableLoading || !claimableInitialized) ? (
+                                  <DotLottieReact
+                                    src="/lotties/Loading.lottie"
+                                    autoplay
+                                    loop
+                                    style={{ width: 48, height: 48 }}
+                                    renderConfig={{
+                                      autoResize: true,
+                                      devicePixelRatio: typeof window !== 'undefined' ? window.devicePixelRatio : 2,
+                                      freezeOnOffscreen: true,
+                                    }}
+                                    layout={{ fit: 'contain', align: [0.5, 0.5] }}
+                                  />
+                                ) : (
+                                  <>
+                                    <HPPTickerIcon className="h-8 w-8 shrink-0" />
+                                    <span className="text-[40px] font-semibold leading-[1.2] tracking-[0.8px] text-white">
+                                      {isConnected ? rewardClaimableDisplay : '-'}
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                              <div className="mt-6 w-full">
+                                <Button
+                                  variant="black"
+                                  size="lg"
+                                  fullWidth
+                                  disabled={
+                                    !isConnected ||
+                                    isSubmitting ||
+                                    isClaimableLoading ||
+                                    !claimableInitialized ||
+                                    claimableWei <= BigInt(0) ||
+                                    !HPP_STAKING_REWARD_ADDRESS
+                                  }
+                                  className={`!rounded-[5px] disabled:!opacity-100 ${
+                                    !isConnected ||
+                                    isSubmitting ||
+                                    isClaimableLoading ||
+                                    !claimableInitialized ||
+                                    claimableWei <= BigInt(0) ||
+                                    !HPP_STAKING_REWARD_ADDRESS
+                                      ? '!bg-black/50 !text-white/50'
+                                      : '!text-[#5DF23F]'
+                                  }`}
+                                  onClick={() => void onClaimRewards()}
+                                >
+                                  {isSubmitting ? 'Processing...' : 'Claim Rewards'}
+                                </Button>
+                              </div>
+                            </div>
                           </div>
+                          {!isConnected && (
+                            <div className="mt-7.5 flex w-full justify-center">
+                              <WalletButton color="black" size="lg" />
+                            </div>
+                          )}
                         </>
                       )}
                     </div>
+
+                    {activeTab === 'claim' && (
+                      <div className="mt-5">
+                        <div className="text-[#5DF23F] font-semibold">Important Information</div>
+                        <ul className="text-base text-white leading-[1.5] tracking-[0.8px]">
+                          <li>
+                            • HPP will be available to withdraw {formatCooldownDuration(cooldownSeconds)} after
+                            unstaking.
+                          </li>
+                          <li>• When the cooldown is over, your tokens will be accumulated to ‘Unstaked Amount’.</li>
+                          <li>
+                            • Your APR and rewards may vary depending on overall participation and ecosystem activity.
+                          </li>
+                        </ul>
+                      </div>
+                    )}
                     {/* Transactions - Card 2 */}
                     {activeTab === 'claim' && isConnected && (
                       <>
@@ -1737,14 +2030,14 @@ export default function StakingClient() {
                                 />
                               </div>
                               <p className="text-base text-[#bfbfbf] tracking-[0.8px] leading-[1.5] text-center font-normal animate-pulse">
-                                Fetching cooldown entries...
+                                Fetching withdrawal cooldown entries...
                               </p>
                             </div>
                           )}
                           {!isCooldownsLoading && cooldownsInitialized && cooldowns.length === 0 && (
                             <div className="flex flex-col items-center justify-center py-8">
                               <p className="text-base text-[#bfbfbf] tracking-[0.8px] leading-[1.5] text-center font-normal">
-                                No claim history.
+                                No withdrawal entries.
                               </p>
                             </div>
                           )}
