@@ -14,7 +14,7 @@ import {
   Goldsky,
   Thirdweb,
   TwitterIcon,
-  MediumIcon,
+  BlogIcon,
   TelegramIcon,
   MobileTwitterIcon,
   MobileMediumIcon,
@@ -522,10 +522,10 @@ export const socialLinks = [
     MobileIcon: MobileTwitterIcon,
   },
   {
-    label: 'Medium',
-    href: 'https://medium.com/aergo',
-    Icon: MediumIcon,
-    MobileIcon: MobileMediumIcon,
+    label: 'HPP Blog',
+    href: 'https://blog.hpp.io',
+    Icon: BlogIcon,
+    MobileIcon: BlogIcon,
   },
   {
     label: 'Telegram',
