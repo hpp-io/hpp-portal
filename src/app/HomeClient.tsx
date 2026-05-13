@@ -41,7 +41,10 @@ export default function HomeClient() {
           endAt = d.isValid() ? d : null;
         }
       } catch {}
-      if (!endAt || !endAt.isValid()) return;
+      if (!endAt || !endAt.isValid()) {
+        if (!cancelled) setIsSeason2Open(false);
+        return;
+      }
       if (cancelled) return;
       const remainingMs = endAt.valueOf() - Date.now();
       if (remainingMs <= 0) {
@@ -54,6 +57,10 @@ export default function HomeClient() {
       // Re-check periodically and flip exactly when endAt passes.
       intervalId = setInterval(() => {
         if (cancelled) return;
+        console.log('[Home] Season 2 countdown', {
+          now: dayjs().format('YYYY-MM-DD HH:mm:ss'),
+          opensAt: endAt!.format('YYYY-MM-DD HH:mm:ss'),
+        });
         if (Date.now() >= endAt!.valueOf()) {
           setIsSeason2Open(true);
           if (intervalId) {
@@ -111,7 +118,9 @@ export default function HomeClient() {
             <h2 className="text-3xl leading-[1.5] font-[900] text-white mb-5">Quick Actions</h2>
             {/* Staking season banner (1-col full width) */}
             {(() => {
-              const seasonAction = (homeData.quickActions as any[]).find((a) => a.title === 'Staking');
+              const seasonAction = (homeData.quickActions as any[]).find(
+                (a) => a.title === 'Staking' || a.title === 'Pre-Registration' || a.openHref,
+              );
               if (!seasonAction) return null;
 
               // Loading state
@@ -138,7 +147,7 @@ export default function HomeClient() {
 
               const href: string | undefined = isSeason2Open ? seasonAction.openHref : seasonAction.href;
               const external = href ? /^https?:\/\//.test(href) : false;
-              const aprLabel = isSeason2Open ? 'Up to 31% APR' : 'Up to 23% APR';
+              const aprLabel = isSeason2Open ? 'Up to 39% APR' : 'Up to 23% APR';
               const titleSeason = isSeason2Open ? 'Season 2' : 'Season 1';
               const descriptionText = isSeason2Open
                 ? 'Hold your stake longer to earn more Bonus Credits and a higher APR.'
