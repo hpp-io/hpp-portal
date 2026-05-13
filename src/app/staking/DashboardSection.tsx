@@ -29,6 +29,40 @@ type CooldownItem = {
   cooling: boolean;
 };
 
+/** Activity log: compact pagination without skipping interior page numbers. */
+function getActivityPaginationItems(total: number, current: number): (number | 'ellipsis')[] {
+  if (total <= 1) return [1];
+  const siblings = 2;
+  /** Show every page when total is small enough to stay one row. */
+  if (total <= 9) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+
+  let left = Math.max(2, current - siblings);
+  let right = Math.min(total - 1, current + siblings);
+
+  if (current <= siblings + 2) {
+    left = 2;
+    right = Math.min(total - 1, 2 + siblings * 2 + 2);
+  } else if (current >= total - siblings - 1) {
+    right = total - 1;
+    left = Math.max(2, total - 1 - siblings * 2 - 2);
+  }
+
+  const items: (number | 'ellipsis')[] = [1];
+  if (left > 2) {
+    items.push('ellipsis');
+  }
+  for (let i = left; i <= right; i++) {
+    items.push(i);
+  }
+  if (right < total - 1) {
+    items.push('ellipsis');
+  }
+  items.push(total);
+  return items;
+}
+
 export default function DashboardSection() {
   const dispatch = useAppDispatch();
   const { address, isConnected } = useAccount();
@@ -57,6 +91,11 @@ export default function DashboardSection() {
   }, [address]);
 
   const activityPageCount = useMemo(() => Math.max(1, Math.ceil((activities?.length || 0) / 10)), [activities]);
+
+  const activityPaginationItems = useMemo(
+    () => getActivityPaginationItems(activityPageCount, activityPage),
+    [activityPageCount, activityPage],
+  );
 
   // Derived withdrawable from cooldowns
   const derivedWithdrawableWei = useMemo(() => {
@@ -413,87 +452,27 @@ export default function DashboardSection() {
                       ◀
                     </button>
                     <div className="flex items-center gap-4.5">
-                      {(() => {
-                        // Mobile: show max 5 pages around current page
-                        // Desktop: show all pages
-                        const pages: (number | string)[] = [];
-                        const maxMobilePages = 5;
-                        const showAll = activityPageCount <= maxMobilePages;
-
-                        if (showAll) {
-                          // Show all pages if total pages <= 5
-                          for (let i = 1; i <= activityPageCount; i++) {
-                            pages.push(i);
-                          }
-                        } else {
-                          // Mobile: show max 5 pages, Desktop: show all
-                          // For mobile, show current page and 2 pages on each side
-                          let startPage = Math.max(1, activityPage - 2);
-                          let endPage = Math.min(activityPageCount, startPage + maxMobilePages - 1);
-
-                          // Adjust if we're near the end
-                          if (endPage - startPage < maxMobilePages - 1) {
-                            startPage = Math.max(1, endPage - maxMobilePages + 1);
-                          }
-
-                          for (let i = startPage; i <= endPage; i++) {
-                            pages.push(i);
-                          }
-                        }
-
-                        return (
-                          <>
-                            {/* Desktop: show all pages */}
-                            <div className="hidden min-[640px]:flex items-center gap-4.5">
-                              {Array.from({ length: activityPageCount }).map((_, i) => {
-                                const n = i + 1;
-                                const active = n === activityPage;
-                                return (
-                                  <button
-                                    key={n}
-                                    aria-current={active ? 'page' : undefined}
-                                    className={[
-                                      'cursor-pointer flex items-center justify-center rounded-full',
-                                      'w-6 h-6 text-base leading-[1] tracking-[0]',
-                                      active ? 'bg-white text-black' : 'text-[#BFBFBF] hover:text-white',
-                                    ].join(' ')}
-                                    onClick={() => dispatch(setActivityPage(n))}
-                                  >
-                                    {n}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                            {/* Mobile: show max 5 pages */}
-                            <div className="flex min-[640px]:hidden items-center gap-4.5">
-                              {pages.map((page, idx) => {
-                                if (typeof page === 'string') {
-                                  return (
-                                    <span key={`ellipsis-${idx}`} className="text-[#BFBFBF]">
-                                      ...
-                                    </span>
-                                  );
-                                }
-                                const active = page === activityPage;
-                                return (
-                                  <button
-                                    key={page}
-                                    aria-current={active ? 'page' : undefined}
-                                    className={[
-                                      'cursor-pointer flex items-center justify-center rounded-full',
-                                      'w-6 h-6 text-base leading-[1] tracking-[0]',
-                                      active ? 'bg-white text-black' : 'text-[#BFBFBF] hover:text-white',
-                                    ].join(' ')}
-                                    onClick={() => dispatch(setActivityPage(page))}
-                                  >
-                                    {page}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </>
-                        );
-                      })()}
+                      {activityPaginationItems.map((item, idx) =>
+                        item === 'ellipsis' ? (
+                          <span key={`ellipsis-${idx}`} className="text-[#BFBFBF] select-none" aria-hidden>
+                            …
+                          </span>
+                        ) : (
+                          <button
+                            key={item}
+                            type="button"
+                            aria-current={item === activityPage ? 'page' : undefined}
+                            className={[
+                              'cursor-pointer flex items-center justify-center rounded-full',
+                              'w-6 h-6 text-base leading-[1] tracking-[0]',
+                              item === activityPage ? 'bg-white text-black' : 'text-[#BFBFBF] hover:text-white',
+                            ].join(' ')}
+                            onClick={() => dispatch(setActivityPage(item))}
+                          >
+                            {item}
+                          </button>
+                        ),
+                      )}
                     </div>
                     <button
                       aria-label="Next page"
