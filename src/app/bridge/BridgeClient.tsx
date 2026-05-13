@@ -2436,53 +2436,53 @@ export default function BridgeClient() {
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {/* Arbitrum Official Bridge — same URL as embedded widget */}
                 <div className="relative rounded-[5px] p-6 bg-primary flex flex-col">
                   <span className="absolute top-5 right-5 shrink-0 rounded-full border border-[#1f3f2a] bg-[#0f2a1b] px-2.5 py-1 text-xs font-semibold leading-none text-[#4ade80]">
                     Canonical Bridge
                   </span>
                   <div className="flex flex-col items-start gap-2.5 flex-1 pr-24 md:pr-0">
-                    <Image src={ARB} alt="Arbitrum" width={30} height={30} />
-                    <h3 className="text-white text-xl font-semibold leading-[1.5]">Arbitrum Official Bridge</h3>
-                    <p className="text-white/90 text-base text-normal leading-[1.5] max-w-md">
-                      The most secure way to transfer assets between Ethereum and Arbitrum, ideal for high-value or
-                      long-term holdings.
-                    </p>
-                  </div>
-                  <div className="pt-6">
-                    <Button variant="white" size="lg" href={arbitrumBridgeHref} external className="cursor-pointer">
-                      Go to Bridge
-                    </Button>
-                  </div>
+                  <Image src={ARB} alt="Arbitrum" width={30} height={30} />
+                  <h3 className="text-white text-xl font-semibold leading-[1.5]">Arbitrum Official Bridge</h3>
+                  <p className="text-white/90 text-base text-normal leading-[1.5] max-w-md">
+                    The most secure way to transfer assets between Ethereum and Arbitrum, ideal for high-value or
+                    long-term holdings.
+                  </p>
                 </div>
+                <div className="pt-6">
+                  <Button variant="white" size="lg" href={arbitrumBridgeHref} external className="cursor-pointer">
+                    Go to Bridge
+                  </Button>
+                </div>
+              </div>
 
-                {/* Orbiter Bridge */}
+              {/* Orbiter Bridge */}
                 <div className="relative rounded-[5px] p-6 bg-primary flex flex-col">
                   <span className="absolute top-5 right-5 shrink-0 rounded-full border border-[#0784C3]/50 bg-[#0b1720] px-2.5 py-1 text-xs font-semibold leading-none text-[#93c5fd]">
                     Liquidity Bridge
                   </span>
                   <div className="flex flex-col items-start gap-2.5 flex-1 pr-24 md:pr-0">
-                    <Image src={Orbiter} alt="Orbiter" width={30} height={30} />
-                    <h3 className="text-white text-xl font-semibold leading-[1.5]">Orbiter Bridge</h3>
-                    <p className="text-white/90 text-base text-normal leading-[1.5] max-w-md">
-                      A fast, low-cost solution for moving assets, ideal for quick transfers and multi-chain activity.
-                    </p>
-                  </div>
-                  <div className="pt-6">
+                  <Image src={Orbiter} alt="Orbiter" width={30} height={30} />
+                  <h3 className="text-white text-xl font-semibold leading-[1.5]">Orbiter Bridge</h3>
+                  <p className="text-white/90 text-base text-normal leading-[1.5] max-w-md">
+                    A fast, low-cost solution for moving assets, ideal for quick transfers and multi-chain activity.
+                  </p>
+                </div>
+                <div className="pt-6">
                     <Button variant="white" size="lg" href={orbiterBridgeHref} external className="cursor-pointer">
-                      Go to Bridge
-                    </Button>
-                  </div>
+                    Go to Bridge
+                  </Button>
                 </div>
               </div>
+            </div>
 
-              {/* Disclaimer */}
-              <p className="text-[#bfbfbf] text-base leading-[1.5] tracking-[0.8px] mt-5 mb-25">
+            {/* Disclaimer */}
+            <p className="text-[#bfbfbf] text-base leading-[1.5] tracking-[0.8px] mt-5 mb-25">
                 The Arbitrum link goes to Arbitrum’s official bridge (same URL as the embedded widget). Orbiter is an
                 independent third-party service. HPP does not operate these interfaces and is not responsible for their
                 security or for any loss from using them.
-              </p>
+            </p>
             </div>
 
             {/* FAQ */}
