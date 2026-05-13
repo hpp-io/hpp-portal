@@ -3,7 +3,7 @@
 import React from 'react';
 import Dropdown from '@/components/ui/Dropdown';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { setCalcPreRegYes, setCalcWhaleTier } from '@/store/slices';
+import { setCalcHoldMonths, setCalcPreRegYes, setCalcWhaleTier } from '@/store/slices';
 
 const WHALE_TIERS = [
   { key: 'T1', label: 'Tier 1' },
@@ -16,7 +16,6 @@ const WHALE_TIERS = [
 
 interface AprCalculatorOptions {
   whaleBoost?: boolean; // true = enabled, false = disabled
-  holdAndEarn?: boolean;
   daoParticipation?: boolean;
 }
 
@@ -27,19 +26,18 @@ interface AprCalculatorProps {
 
 const DEFAULT_OPTIONS: AprCalculatorOptions = {
   whaleBoost: true,
-  holdAndEarn: false,
   daoParticipation: false,
 };
 
 export default function AprCalculator({ options = {}, showPreRegistrationNote = false }: AprCalculatorProps = {}) {
   const opts = { ...DEFAULT_OPTIONS, ...options };
   const isWhaleBoostEnabled = opts.whaleBoost ?? true;
-  const isHoldAndEarnEnabled = opts.holdAndEarn ?? false;
   const isDaoParticipationEnabled = opts.daoParticipation ?? false;
   const dispatch = useAppDispatch();
   // Redux state
   const preRegYes = useAppSelector((state) => state.apr.calcPreRegYes);
   const whaleTier = useAppSelector((state) => state.apr.calcWhaleTier);
+  const holdMonthsInput = useAppSelector((state) => state.apr.calcHoldMonths);
   const isAprLoading = useAppSelector((state) => state.apr.aprLoading);
   const apiBaseApr = useAppSelector((state) => state.apr.aprBase);
   const apiBonusApr = useAppSelector((state) => state.apr.aprBonus);
@@ -67,7 +65,7 @@ export default function AprCalculator({ options = {}, showPreRegistrationNote = 
       const value = typeof v === 'function' ? v(whaleTier) : v;
       dispatch(setCalcWhaleTier(value));
     },
-    [whaleTier, dispatch]
+    [whaleTier, dispatch],
   );
 
   return (
@@ -111,8 +109,8 @@ export default function AprCalculator({ options = {}, showPreRegistrationNote = 
                   {isAprLoading
                     ? '...'
                     : apiWhaleCredit && apiWhaleCredit > 1
-                    ? `${formatNumber(apiWhaleCredit * 100, 0)}%`
-                    : '-%'}
+                      ? `${formatNumber(apiWhaleCredit * 100, 0)}%`
+                      : '-%'}
                 </span>
               </span>
               <span className="text-[#bfbfbf] text-base font-normal">×</span>
@@ -121,9 +119,9 @@ export default function AprCalculator({ options = {}, showPreRegistrationNote = 
                 <span>
                   {isAprLoading
                     ? '...'
-                    : apiHoldCredit && apiHoldCredit > 1
-                    ? `${formatNumber(apiHoldCredit * 100, 0)}%`
-                    : '-%'}
+                    : typeof apiHoldCredit === 'number' && apiHoldCredit > 0
+                      ? `${formatNumber(apiHoldCredit * 100, 0)}%`
+                      : '-%'}
                 </span>
               </span>
               <span className="text-[#bfbfbf] text-base font-normal">×</span>
@@ -133,8 +131,8 @@ export default function AprCalculator({ options = {}, showPreRegistrationNote = 
                   {isAprLoading
                     ? '...'
                     : apiDaoCredit && apiDaoCredit > 1
-                    ? `${formatNumber(apiDaoCredit * 100, 0)}%`
-                    : '-%'}
+                      ? `${formatNumber(apiDaoCredit * 100, 0)}%`
+                      : '-%'}
                 </span>
               </span>
             </div>
@@ -188,7 +186,7 @@ export default function AprCalculator({ options = {}, showPreRegistrationNote = 
             </div>
 
             {/* Whale Boost */}
-            <div className="flex items-center justify-between w-full gap-3">
+            <div className="relative z-20 flex items-center justify-between w-full gap-3">
               <span
                 className={`text-base ${
                   isWhaleBoostEnabled
@@ -209,21 +207,45 @@ export default function AprCalculator({ options = {}, showPreRegistrationNote = 
             </div>
 
             {/* Hold & Earn */}
-            <div className="flex items-center justify-between w-full gap-3">
-              <span
-                className={`text-base ${
-                  isHoldAndEarnEnabled
-                    ? 'text-white leading-[1.5] tracking-[0.8px]'
-                    : 'text-[#2d2d2d] leading-[1] tracking-[0]'
-                }`}
-              >
-                <span className={isHoldAndEarnEnabled ? '' : 'opacity-50'}>💰</span> Hold & Earn
-              </span>
-              <span className="text-[#2d2d2d] text-base leading-[1] tracking-[0]">Coming Soon</span>
+            <div className="relative z-0 flex items-center justify-between w-full gap-3">
+              <div className="flex items-start sm:items-center gap-2 min-w-0 text-base leading-[1.5] tracking-[0.8px]">
+                <span className="shrink-0" aria-hidden>
+                  💰
+                </span>
+                <div className="min-w-0">
+                  <span className="text-white">Hold & Earn </span>
+                  <span className="text-[#BFBFBF] text-sm">(Enter the months you&apos;ve been staking)</span>
+                </div>
+              </div>
+              <div className="shrink-0">
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  placeholder="Enter Months"
+                  min={1}
+                  step={1}
+                  value={holdMonthsInput}
+                  onChange={(e) => {
+                    const digitsOnly = e.target.value.replace(/\D/g, '');
+                    const withoutLeadingZero = digitsOnly.replace(/^0+/, '');
+                    if (!withoutLeadingZero) {
+                      dispatch(setCalcHoldMonths(''));
+                      return;
+                    }
+                    dispatch(setCalcHoldMonths(withoutLeadingZero));
+                  }}
+                  onKeyDown={(e) => {
+                    if (['e', 'E', '+', '-', '.'].includes(e.key)) e.preventDefault();
+                  }}
+                  className={`${holdMonthsInput ? 'text-center' : 'text-left'} text-xs px-3 py-1 rounded-[5px] font-semibold shadow-sm transition whitespace-nowrap bg-white text-black placeholder:text-black/45 outline-none border-0 min-w-[6.1rem] w-[6.1rem] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
+                  aria-label="Months staked for Hold and Earn"
+                />
+              </div>
             </div>
 
             {/* DAO Participation */}
-            <div className="flex items-center justify-between w-full gap-3">
+            <div className="relative z-0 flex items-center justify-between w-full gap-3">
               <span
                 className={`text-base ${
                   isDaoParticipationEnabled
