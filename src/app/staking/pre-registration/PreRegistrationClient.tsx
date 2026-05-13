@@ -103,10 +103,6 @@ export default function PreRegistrationClient() {
   // Fetch APR Calculator data
   useEffect(() => {
     let cancelled = false;
-    const toPositiveNumber = (v: unknown): number | undefined => {
-      const n = Number(v);
-      return Number.isFinite(n) && n > 0 ? n : undefined;
-    };
     const run = async () => {
       try {
         dispatch(setAprLoading(true));
@@ -135,27 +131,10 @@ export default function PreRegistrationClient() {
           if (typeof d.baseAPR === 'number') dispatch(setAprBase(d.baseAPR));
           if (typeof d.bonusAPR === 'number') dispatch(setAprBonus(d.bonusAPR));
           if (typeof d.whaleBoostCredit === 'number') dispatch(setAprWhaleCredit(d.whaleBoostCredit));
-          const holdNum =
-            toPositiveNumber(d.holdCredit) ??
-            toPositiveNumber(d.holdBoostCredit) ??
-            toPositiveNumber(d.holdAPR) ??
-            toPositiveNumber(d.holdEarnCredit) ??
-            toPositiveNumber(d.holdEarnCreditPercent) ??
-            toPositiveNumber(d.holdAndEarnCredit) ??
-            toPositiveNumber(d.holdAndEarnAPR) ??
-            toPositiveNumber(d.hold?.credit) ??
-            toPositiveNumber(d.holdAndEarn?.credit) ??
-            toPositiveNumber(d.bonusCredit?.hold) ??
-            toPositiveNumber(d.bonusCredits?.hold);
-          dispatch(setAprHoldCredit(holdNum));
-          const daoNum =
-            toPositiveNumber(d.daoCredit) ??
-            toPositiveNumber(d.daoBoostCredit) ??
-            toPositiveNumber(d.governanceCredit) ??
-            toPositiveNumber(d.dao?.credit) ??
-            toPositiveNumber(d.bonusCredit?.dao) ??
-            toPositiveNumber(d.bonusCredits?.dao);
-          dispatch(setAprDaoCredit(daoNum));
+          const holdNum = Number(d.holdEarnCredit);
+          const daoNum = Number(d.daoCredit);
+          dispatch(setAprHoldCredit(Number.isFinite(holdNum) && holdNum > 0 ? holdNum : undefined));
+          dispatch(setAprDaoCredit(Number.isFinite(daoNum) && daoNum > 0 ? daoNum : undefined));
           if (typeof d.totalAPR === 'number') dispatch(setAprTotal(d.totalAPR));
           // Always use finalAPR if available, otherwise calculate or use totalAPR
           if (typeof d.finalAPR === 'number') {

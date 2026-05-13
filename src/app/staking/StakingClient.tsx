@@ -225,10 +225,6 @@ export default function StakingClient() {
   // Only refetch when inputs change
   useEffect(() => {
     let cancelled = false;
-    const toPositiveNumber = (v: unknown): number | undefined => {
-      const n = Number(v);
-      return Number.isFinite(n) && n > 0 ? n : undefined;
-    };
     const run = async () => {
       try {
         dispatch(setAprLoading(true));
@@ -256,10 +252,10 @@ export default function StakingClient() {
           if (typeof d.baseAPR === 'number') dispatch(setAprBase(d.baseAPR));
           if (typeof d.bonusAPR === 'number') dispatch(setAprBonus(d.bonusAPR));
           if (typeof d.whaleBoostCredit === 'number') dispatch(setAprWhaleCredit(d.whaleBoostCredit));
-          const holdNum = toPositiveNumber(d.holdEarnCredit);
-          dispatch(setAprHoldCredit(holdNum));
-          const daoNum = toPositiveNumber(d.daoCredit);
-          dispatch(setAprDaoCredit(daoNum));
+          const holdNum = Number(d.holdEarnCredit);
+          const daoNum = Number(d.daoCredit);
+          dispatch(setAprHoldCredit(Number.isFinite(holdNum) && holdNum > 0 ? holdNum : undefined));
+          dispatch(setAprDaoCredit(Number.isFinite(daoNum) && daoNum > 0 ? daoNum : undefined));
           if (typeof d.totalAPR === 'number') dispatch(setAprTotal(d.totalAPR));
           // Always use finalAPR if available, otherwise calculate or use totalAPR
           if (typeof d.finalAPR === 'number') {
@@ -385,19 +381,10 @@ export default function StakingClient() {
         if (typeof d.baseAPR === 'number') dispatch(setWalletBaseApr(d.baseAPR));
         if (typeof d.bonusAPR === 'number') dispatch(setWalletBonusApr(d.bonusAPR));
         if (typeof d.whaleBoostCredit === 'number') dispatch(setWalletWhaleCredit(d.whaleBoostCredit));
-        const holdC =
-          (d as any).holdCredit ??
-          (d as any).holdBoostCredit ??
-          (d as any).holdAPR ??
-          (d as any).holdEarnCredit ??
-          (d as any).holdEarnCreditPercent ??
-          (d as any).holdAndEarnCredit ??
-          (d as any).holdAndEarnAPR ??
-          null;
-        const daoC = (d as any).daoCredit ?? (d as any).daoBoostCredit ?? (d as any).governanceCredit ?? null;
-        const holdNum = Number(holdC);
+        const holdNum = Number(d.holdEarnCredit);
+        const daoNum = Number(d.daoCredit);
         dispatch(setWalletHoldCredit(Number.isFinite(holdNum) && holdNum > 0 ? holdNum : null));
-        dispatch(setWalletDaoCredit(typeof daoC === 'number' ? (daoC as number) : null));
+        dispatch(setWalletDaoCredit(Number.isFinite(daoNum) && daoNum > 0 ? daoNum : null));
         // Convert big strings (18 decimals) to display
         try {
           if (typeof d.stakedAmount === 'string') {
