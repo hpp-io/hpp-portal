@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import type { Metadata } from 'next';
 import BridgeClient from './BridgeClient';
 
@@ -8,5 +8,9 @@ export const metadata: Metadata = {
 };
 
 export default function BridgePage() {
-  return <BridgeClient />;
+  return (
+    <Suspense fallback={null}>
+      <BridgeClient />
+    </Suspense>
+  );
 }
