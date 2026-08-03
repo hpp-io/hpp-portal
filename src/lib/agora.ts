@@ -18,6 +18,7 @@ export interface AgoraProposal {
   abstainVotes: string;
   status: 'pending' | 'active' | 'passed' | 'failed' | 'cancelled';
   cancelled: boolean;
+  displayId?: number;
   hidden?: boolean;
   voteCount?: number;
   createdAt: number;
