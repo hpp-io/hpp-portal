@@ -94,21 +94,21 @@ export function remainingBreakdown(totalSeconds: number): {
   };
 }
 
-// Format reward number to display string (e.g., 17000000 -> "17M HPP Token")
+// Format reward number to display string (e.g., 17000000 -> "17M HPP Token", 12750000 -> "12.75M HPP Token")
 export function formatReward(reward: number): string {
+  const formatScaled = (value: number, suffix: string) => {
+    if (value % 1 === 0) {
+      return `${value}${suffix} HPP Token`;
+    }
+    const trimmed = value.toFixed(2).replace(/\.?0+$/, '');
+    return `${trimmed}${suffix} HPP Token`;
+  };
+
   if (reward >= 1000000) {
-    const millions = reward / 1000000;
-    // If it's a whole number, don't show decimals
-    if (millions % 1 === 0) {
-      return `${millions}M HPP Token`;
-    }
-    return `${millions.toFixed(1)}M HPP Token`;
-  } else if (reward >= 1000) {
-    const thousands = reward / 1000;
-    if (thousands % 1 === 0) {
-      return `${thousands}K HPP Token`;
-    }
-    return `${thousands.toFixed(1)}K HPP Token`;
+    return formatScaled(reward / 1000000, 'M');
+  }
+  if (reward >= 1000) {
+    return formatScaled(reward / 1000, 'K');
   }
   return `${reward} HPP Token`;
 }
