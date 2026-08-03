@@ -1,7 +1,20 @@
 /** Ethereum mainnet USDC — L1 side of USDC → USDC.e on HPP (Arbitrum portal `token` / `destinationToken`). */
 export const L1_USDC_MAINNET = '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238' as const;
 
+/** HPP USDC.e — same address on HPP mainnet and HPP Sepolia; override via env. */
+export const L2_USDCE_DEFAULT = '0x401eCb1D350407f13ba348573E5630B83638E30D' as const;
+
 export type BridgeUrlToken = 'hpp' | 'usdc' | 'eth';
+
+/** HPP chain USDC.e (`NEXT_PUBLIC_HPP_USDCE_TOKEN_CONTRACT` or built-in default). */
+export function resolveHppUsdceTokenAddress(): `0x${string}` {
+  const fromEnv =
+    typeof process !== 'undefined'
+      ? process.env.NEXT_PUBLIC_HPP_USDCE_TOKEN_CONTRACT?.trim()
+      : undefined;
+  if (fromEnv) return fromEnv as `0x${string}`;
+  return L2_USDCE_DEFAULT;
+}
 
 const USDC_PARAM_ALIASES = new Set(['usdc', 'usdc.e', 'usdce', 'usdc_usdce', 'usdc-usdce']);
 

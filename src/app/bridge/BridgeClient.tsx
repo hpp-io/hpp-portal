@@ -40,13 +40,14 @@ import {
   L1_USDC_MAINNET,
   parseBridgeUrlTokenParam,
   resolveArbitrumBridgeL1Token,
+  resolveHppUsdceTokenAddress,
   type BridgeUrlToken,
 } from '@/lib/bridgeArbitrumToken';
 import Big from 'big.js';
 
 const L1_SEPOLIA_CHAIN_ID = 11155111;
 const L1_USDC_ADDRESS = L1_USDC_MAINNET;
-const L2_USDCE_ADDRESS = '0x401eCb1D350407f13ba348573E5630B83638E30D' as const;
+const L2_USDCE_ADDRESS = resolveHppUsdceTokenAddress();
 const USDC_DECIMALS = 6;
 const BRIDGE_TRACKING_POLL_MS = 10000;
 const BRIDGE_TRACKING_MAX_ATTEMPTS = 36;
