@@ -2143,7 +2143,10 @@ export default function StakingClient() {
               ) : topTab === 'overview' ? (
                 <OverviewSection />
               ) : (
-                <DashboardSection />
+                <DashboardSection
+                  rewardsAvailableDisplay={rewardClaimableDisplay}
+                  rewardsAvailableLoading={isClaimableLoading || !claimableInitialized}
+                />
               )}
             </div>
           </div>
