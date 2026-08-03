@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Sidebar from '@/components/ui/Sidebar';
@@ -12,70 +12,57 @@ import { homeData } from '@/static/uiData';
 import Image from 'next/image';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import axios from 'axios';
-import dayjs from '@/lib/dayjs';
+
+function formatAprDisplay(apr: number): string {
+  const rounded = Math.round(apr * 10) / 10;
+  if (rounded % 1 === 0) return `${Math.round(rounded)}`;
+  return rounded.toFixed(1);
+}
 
 export default function HomeClient() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const router = useRouter();
 
-  // Season open state (initialize from base API endDate)
-  const [isSeason2Open, setIsSeason2Open] = useState<boolean | null>(null);
+  /** Max APR from staking `/stats` (same field as Staking Overview "Max APR"). */
+  const [maxApr, setMaxApr] = useState<number | null>(null);
+  const [maxAprLoading, setMaxAprLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
-    let intervalId: ReturnType<typeof setInterval> | null = null;
-    const init = async () => {
-      // Fetch season date from base API
-      let endAt: ReturnType<typeof dayjs> | null = null;
+    const fetchMaxApr = async () => {
       try {
         const apiBaseUrl = process.env.NEXT_PUBLIC_HPP_STAKING_API_URL;
-        const resp = await axios.get(`${apiBaseUrl}/season/2/base`, {
+        if (!apiBaseUrl) return;
+        const resp = await axios.get(`${apiBaseUrl}/stats`, {
           headers: { accept: 'application/json' },
+          params: { period: '1M' },
         });
-        const data: any = resp?.data ?? {};
-        const s: string | undefined = data?.data?.endDate;
-        if (s && typeof s === 'string') {
-          let d = dayjs(s);
-          if (!d.isValid()) d = dayjs(s.replace(' ', 'T'));
-          if (!d.isValid()) d = dayjs(`${s.replace(' ', 'T')}Z`);
-          endAt = d.isValid() ? d : null;
+        const data: { success?: boolean; data?: { maxAPR?: number } } = resp?.data ?? {};
+        if (!cancelled && data?.success && data?.data && typeof data.data.maxAPR === 'number' && data.data.maxAPR > 0) {
+          setMaxApr(data.data.maxAPR);
         }
-      } catch {}
-      if (!endAt || !endAt.isValid()) {
-        if (!cancelled) setIsSeason2Open(false);
-        return;
+      } catch {
+        // keep null; badge hidden unless env fallback
+      } finally {
+        if (!cancelled) setMaxAprLoading(false);
       }
-      if (cancelled) return;
-      const remainingMs = endAt.valueOf() - Date.now();
-      if (remainingMs <= 0) {
-        setIsSeason2Open(true);
-        return;
-      }
-
-      setIsSeason2Open(false);
-      // Do not rely on a single long timeout (it overflows around 24.8 days in browsers).
-      // Re-check periodically and flip exactly when endAt passes.
-      intervalId = setInterval(() => {
-        if (cancelled) return;
-        console.log('[Home] Season 2 countdown', {
-          now: dayjs().format('YYYY-MM-DD HH:mm:ss'),
-          opensAt: endAt!.format('YYYY-MM-DD HH:mm:ss'),
-        });
-        if (Date.now() >= endAt!.valueOf()) {
-          setIsSeason2Open(true);
-          if (intervalId) {
-            clearInterval(intervalId);
-            intervalId = null;
-          }
-        }
-      }, 60_000);
     };
-    void init();
+    void fetchMaxApr();
     return () => {
       cancelled = true;
-      if (intervalId) clearInterval(intervalId);
     };
   }, []);
+
+  const aprLabel = useMemo(() => {
+    if (maxApr != null && maxApr > 0) {
+      return `Up to ${formatAprDisplay(maxApr)}% APR`;
+    }
+    const envFallback = Number(process.env.NEXT_PUBLIC_STAKING_APR ?? process.env.NEXT_PUBLIC_DEFAULT_APR ?? NaN);
+    if (Number.isFinite(envFallback) && envFallback > 0) {
+      return `Up to ${formatAprDisplay(envFallback)}% APR`;
+    }
+    return null;
+  }, [maxApr]);
 
   // Quick Actions now rely on href provided in uiData.quickActions
 
@@ -123,43 +110,43 @@ export default function HomeClient() {
               );
               if (!seasonAction) return null;
 
-              // Loading state
-              if (isSeason2Open === null) {
-                return (
-                  <div className="mb-5">
-                    <div className="rounded-[5px] p-6 min-[1200px]:p-8 bg-[#4b4ab0] text-white flex flex-col items-center justify-center">
-                      <DotLottieReact
-                        src="/lotties/Loading.lottie"
-                        autoplay
-                        loop
-                        className="w-[60px] h-[60px]"
-                        renderConfig={{
-                          autoResize: true,
-                          devicePixelRatio: typeof window !== 'undefined' ? window.devicePixelRatio : 2,
-                          freezeOnOffscreen: true,
-                        }}
-                        layout={{ fit: 'contain', align: [0.5, 0.5] }}
-                      />
-                    </div>
-                  </div>
-                );
-              }
-
-              const href: string | undefined = isSeason2Open ? seasonAction.openHref : seasonAction.href;
+              const showBannerOverlay = maxAprLoading;
+              const href: string | undefined = seasonAction.openHref ?? seasonAction.href;
               const external = href ? /^https?:\/\//.test(href) : false;
-              const aprLabel = isSeason2Open ? 'Up to 39% APR' : 'Up to 23% APR';
-              const titleSeason = isSeason2Open ? 'Season 2' : 'Season 1';
-              const descriptionText = isSeason2Open
-                ? 'Hold your stake longer to earn more Bonus Credits and a higher APR.'
-                : 'Stake your HPP to earn rewards and participate in HPP ecosystem.';
+              const descriptionText =
+                seasonAction.openDescription ??
+                'Hold your stake longer to earn more Bonus Credits and a higher APR.';
+              const badgeLabel = aprLabel ?? 'Up to 39% APR';
+
               return (
                 <div className="mb-5">
-                  <div className="rounded-[5px] p-6 min-[1200px]:p-8 bg-[#4b4ab0] text-white flex flex-col items-center justify-center text-center min-[600px]:flex-row min-[600px]:items-center min-[600px]:justify-between min-[600px]:text-left">
+                  <div className="relative rounded-[5px] p-6 min-[1200px]:p-8 bg-[#4b4ab0] text-white flex flex-col items-center justify-center text-center min-[600px]:flex-row min-[600px]:items-center min-[600px]:justify-between min-[600px]:text-left">
+                    {showBannerOverlay && (
+                      <div
+                        className="absolute inset-0 z-10 flex items-center justify-center rounded-[5px] bg-[#4b4ab0]"
+                        aria-busy="true"
+                        aria-label="Loading staking banner"
+                      >
+                        <DotLottieReact
+                          src="/lotties/Loading.lottie"
+                          autoplay
+                          loop
+                          className="h-[48px] w-[48px]"
+                          renderConfig={{
+                            autoResize: true,
+                            devicePixelRatio: typeof window !== 'undefined' ? window.devicePixelRatio : 2,
+                            freezeOnOffscreen: true,
+                          }}
+                          layout={{ fit: 'contain', align: [0.5, 0.5] }}
+                        />
+                      </div>
+                    )}
                     <DotLottieReact
                       src="/lotties/Staking.lottie"
                       autoplay
                       loop
-                      className="w-[120px] h-[120px]"
+                      className={`h-[120px] w-[120px] shrink-0 ${showBannerOverlay ? 'invisible' : ''}`}
+                      aria-hidden={showBannerOverlay}
                       renderConfig={{
                         autoResize: true,
                         devicePixelRatio: typeof window !== 'undefined' ? window.devicePixelRatio : 2,
@@ -167,28 +154,35 @@ export default function HomeClient() {
                       }}
                       layout={{ fit: 'contain', align: [0.5, 0.5] }}
                     />
-                    <div className="mt-3 min-[600px]:mt-0 min-[600px]:ml-2.5 text-left flex-1 self-center">
-                      <div className="mb-2 flex justify-start">
-                        <span className="inline-flex items-center gap-2 bg-white text-black rounded-[5px] px-2.5 py-1.25 text-sm font-semibold leading-[1]">
-                          <span>🔥</span>
-                          <span>{aprLabel}</span>
-                        </span>
-                      </div>
-                      <div className="flex gap-3 justify-start">
+                    <div
+                      className={`mt-3 min-[600px]:mt-0 min-[600px]:ml-2.5 flex-1 self-center text-left ${
+                        showBannerOverlay ? 'invisible pointer-events-none' : ''
+                      }`}
+                      aria-hidden={showBannerOverlay}
+                    >
+                      {(aprLabel || showBannerOverlay) && (
+                        <div className="mb-2 flex justify-start">
+                          <span className="inline-flex items-center gap-2 rounded-[5px] bg-white px-2.5 py-1.25 text-sm font-semibold leading-[1] text-black">
+                            <span>🔥</span>
+                            <span>{badgeLabel}</span>
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex justify-start gap-3">
                         <h3 className="text-3xl font-[900] leading-[1.2]">
                           HPP Staking{' '}
                           <>
                             <br className="hidden max-[900px]:block" />
-                            <span className="text-[#5DF23F] whitespace-nowrap inline">{titleSeason}</span>{' '}
-                            <span className="text-white whitespace-nowrap inline">is now open!</span>
+                            <span className="inline whitespace-nowrap text-[#5DF23F]">Season 2</span>{' '}
+                            <span className="inline whitespace-nowrap text-white">is now open!</span>
                           </>
                         </h3>
                       </div>
-                      <p className="text-base text-white font-normal leading-[1.2] mt-2.5">
+                      <p className="mt-2.5 text-base font-normal leading-[1.2] text-white">
                         <span>{descriptionText}</span>
                       </p>
                       {href && (
-                        <div className="mt-4 self-center hidden max-[810px]:block max-[599px]:flex max-[599px]:justify-center max-[599px]:ml-0">
+                        <div className="mt-4 hidden self-center max-[810px]:block max-[599px]:ml-0 max-[599px]:flex max-[599px]:justify-center">
                           <Button variant="black" size="md" href={href} external={external} className="cursor-pointer">
                             Go to Stake
                           </Button>
@@ -196,7 +190,12 @@ export default function HomeClient() {
                       )}
                     </div>
                     {href && (
-                      <div className="mt-4 self-center hidden min-[810px]:block min-[810px]:mt-0 min-[810px]:ml-6">
+                      <div
+                        className={`mt-4 hidden self-center min-[810px]:ml-6 min-[810px]:mt-0 min-[810px]:block ${
+                          showBannerOverlay ? 'invisible pointer-events-none' : ''
+                        }`}
+                        aria-hidden={showBannerOverlay}
+                      >
                         <Button variant="black" size="md" href={href} external={external} className="cursor-pointer">
                           Go to Stake
                         </Button>
