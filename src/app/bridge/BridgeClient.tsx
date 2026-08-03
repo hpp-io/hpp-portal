@@ -1,6 +1,7 @@
 'use client';
 
 import React, { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Sidebar from '@/components/ui/Sidebar';
 import Button from '@/components/ui/Button';
@@ -34,10 +35,17 @@ import {
 } from '@/lib/bridgeHistory';
 import { formatDisplayAmount, PERCENTS, computePercentAmount } from '@/lib/helpers';
 import { hppCore } from '@/config/hppCore';
+import {
+  buildArbitrumBridgeTokenQuery,
+  L1_USDC_MAINNET,
+  parseBridgeUrlTokenParam,
+  resolveArbitrumBridgeL1Token,
+  type BridgeUrlToken,
+} from '@/lib/bridgeArbitrumToken';
 import Big from 'big.js';
 
 const L1_SEPOLIA_CHAIN_ID = 11155111;
-const L1_USDC_ADDRESS = '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238' as const;
+const L1_USDC_ADDRESS = L1_USDC_MAINNET;
 const L2_USDCE_ADDRESS = '0x401eCb1D350407f13ba348573E5630B83638E30D' as const;
 const USDC_DECIMALS = 6;
 const BRIDGE_TRACKING_POLL_MS = 10000;
@@ -76,6 +84,12 @@ const l1GatewayRouterAbi = [
 ] as const;
 
 type NativeBridgeRoute = 'eth_eth' | 'hpp_hpp' | 'usdc_usdce';
+
+function nativeRouteFromBridgeUrlToken(token: BridgeUrlToken): NativeBridgeRoute {
+  if (token === 'usdc') return 'usdc_usdce';
+  if (token === 'eth') return 'eth_eth';
+  return 'hpp_hpp';
+}
 type BridgeDirection = 'eth_to_hpp' | 'hpp_to_eth';
 type BridgeTrackingStatus = 'pending' | 'success' | 'failed';
 type PendingTransferStatus = BridgeTrackingStatus;
@@ -352,11 +366,19 @@ function BridgeTransferHeaderSummary({
 }
 
 export default function BridgeClient() {
+  const searchParams = useSearchParams();
+  const bridgeUrlToken = useMemo(
+    () => parseBridgeUrlTokenParam(searchParams.get('token')),
+    [searchParams],
+  );
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const showNativeBridge = false;
   const [amount, setAmount] = useState('');
   const [isSubmittingBridge, setIsSubmittingBridge] = useState(false);
-  const [selectedRoute, setSelectedRoute] = useState<NativeBridgeRoute>('usdc_usdce');
+  const [selectedRoute, setSelectedRoute] = useState<NativeBridgeRoute>(() =>
+    nativeRouteFromBridgeUrlToken(parseBridgeUrlTokenParam(searchParams.get('token'))),
+  );
   const [bridgeDirection, setBridgeDirection] = useState<BridgeDirection>('eth_to_hpp');
   const [isFromDropdownOpen, setIsFromDropdownOpen] = useState(false);
   const [isDirectionDropdownOpen, setIsDirectionDropdownOpen] = useState(false);
@@ -401,16 +423,26 @@ export default function BridgeClient() {
   const bridgeTrackingApiBase = process.env.NEXT_PUBLIC_BRIDGE_TRACKING_API_BASE;
   const L1_HPP_ADDRESS = process.env.NEXT_PUBLIC_ETH_HPP_TOKEN_CONTRACT as `0x${string}` | undefined;
   const L2_HPP_ADDRESS = process.env.NEXT_PUBLIC_HPP_TOKEN_CONTRACT as `0x${string}` | undefined;
-  // Same L1 HPP token as NEXT_PUBLIC_ETH_HPP_TOKEN_CONTRACT (.env): Arbitrum `token=` is the bridged Ethereum address.
-  const arbitrumBridgeHref = (() => {
-    const base = isSepoliaEnv
-      ? 'https://portal.arbitrum.io/bridge/embed?destinationChain=hpp-sepolia&sanitized=true&sourceChain=sepolia&tab=bridge'
-      : 'https://portal.arbitrum.io/bridge/embed?destinationChain=hpp-mainnet&sanitized=true&sourceChain=ethereum&tab=bridge';
-    const tokenQs = L1_HPP_ADDRESS?.trim()
-      ? `&token=${encodeURIComponent(L1_HPP_ADDRESS.trim().toLowerCase())}`
-      : '';
-    return `${base}${tokenQs}&${ARBITRUM_EMBED_THEME_QUERY}`;
-  })();
+
+  useEffect(() => {
+    setSelectedRoute(nativeRouteFromBridgeUrlToken(bridgeUrlToken));
+  }, [bridgeUrlToken]);
+
+  // `?token=` → Arbitrum portal `token` / `destinationToken` (L1 ERC-20; USDC.e uses L1 USDC).
+  const arbitrumBridgeQuery = isSepoliaEnv
+    ? 'destinationChain=hpp-sepolia&sanitized=true&sourceChain=sepolia&tab=bridge'
+    : 'destinationChain=hpp-mainnet&sanitized=true&sourceChain=ethereum&tab=bridge';
+  const arbitrumBridgeL1Token = useMemo(
+    () =>
+      resolveArbitrumBridgeL1Token(bridgeUrlToken, {
+        l1HppAddress: L1_HPP_ADDRESS,
+        isSepolia: isSepoliaEnv,
+      }),
+    [bridgeUrlToken, L1_HPP_ADDRESS, isSepoliaEnv],
+  );
+  const arbitrumBridgeTokenQs = buildArbitrumBridgeTokenQuery(arbitrumBridgeL1Token);
+  const arbitrumBridgeEmbedHref = `https://portal.arbitrum.io/bridge/embed?${arbitrumBridgeQuery}${arbitrumBridgeTokenQs}&${ARBITRUM_EMBED_THEME_QUERY}`;
+  const arbitrumBridgeExternalHref = `https://portal.arbitrum.io/bridge?${arbitrumBridgeQuery}${arbitrumBridgeTokenQs}`;
   /**
    * Deep link sets both contracts: `from` = Ethereum L1 HPP, `to` = HPP L2 HPP (env). UI may shorten the visible URL later.
    */
@@ -2152,8 +2184,9 @@ export default function BridgeClient() {
                 style={{ height: 920 }}
               >
                 <iframe
+                  key={arbitrumBridgeEmbedHref}
                   title="Arbitrum Bridge Widget"
-                  src={arbitrumBridgeHref}
+                  src={arbitrumBridgeEmbedHref}
                   width={840}
                   height={920}
                   allow="clipboard-write"
@@ -2426,21 +2459,31 @@ export default function BridgeClient() {
               </div>
             )}
 
-            {/* Bridge links (same Arbitrum URL as embedded widget) */}
+            {/* Bridge links — Arbitrum opens full portal (embed URL is iframe-only) */}
             <div className="mt-16 pt-10 border-t border-[#2D2D2D]">
               <div className="mb-5">
                 <h2 className="text-3xl leading-[1.5] font-[900] text-white">External Bridge Links</h2>
                 <p className="text-base text-[#bfbfbf] leading-[1.5]">
-                  Direct links to bridge interfaces. The Arbitrum entry opens the same official bridge as the Bridge
-                  Widget above, in a new tab.
+                  Direct links to bridge interfaces. The Arbitrum entry opens the official bridge portal in a new tab
+                  (same route and token params as the widget above).
                 </p>
               </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {/* Arbitrum Official Bridge — same URL as embedded widget */}
+                {/* Arbitrum Official Bridge — full portal URL (not /embed) */}
                 <div className="relative rounded-[5px] p-6 bg-primary flex flex-col">
-                  <span className="absolute top-5 right-5 shrink-0 rounded-full border border-[#1f3f2a] bg-[#0f2a1b] px-2.5 py-1 text-xs font-semibold leading-none text-[#4ade80]">
+                  <span
+                    className="group/canonical absolute top-5 right-5 shrink-0 cursor-help rounded-full border border-[#1f3f2a] bg-[#0f2a1b] px-2.5 py-1 text-xs font-semibold leading-none text-[#4ade80] outline-offset-2 focus-within:outline focus-within:outline-2 focus-within:outline-primary"
+                    tabIndex={0}
+                    aria-label={bridgeData.canonicalBridgeTooltip}
+                  >
                     Canonical Bridge
+                    <span
+                      className="pointer-events-none absolute right-0 top-full z-30 mt-2 w-max max-w-[min(18rem,calc(100vw-2rem))] whitespace-pre-line rounded-[6px] border border-[#2D2D2D] bg-[#111111] px-2.5 py-2 text-left text-[11px] font-medium leading-snug text-[#cfcfcf] opacity-0 shadow-[0_4px_12px_rgba(0,0,0,0.45)] transition-opacity duration-150 group-hover/canonical:opacity-100 group-focus-within/canonical:opacity-100"
+                      role="tooltip"
+                    >
+                      {bridgeData.canonicalBridgeTooltip}
+                    </span>
                   </span>
                   <div className="flex flex-col items-start gap-2.5 flex-1 pr-24 md:pr-0">
                   <Image src={ARB} alt="Arbitrum" width={30} height={30} />
@@ -2451,7 +2494,7 @@ export default function BridgeClient() {
                   </p>
                 </div>
                 <div className="pt-6">
-                  <Button variant="white" size="lg" href={arbitrumBridgeHref} external className="cursor-pointer">
+                  <Button variant="white" size="lg" href={arbitrumBridgeExternalHref} external className="cursor-pointer">
                     Go to Bridge
                   </Button>
                 </div>
@@ -2459,8 +2502,18 @@ export default function BridgeClient() {
 
               {/* Orbiter Bridge */}
                 <div className="relative rounded-[5px] p-6 bg-primary flex flex-col">
-                  <span className="absolute top-5 right-5 shrink-0 rounded-full border border-[#0784C3]/50 bg-[#0b1720] px-2.5 py-1 text-xs font-semibold leading-none text-[#93c5fd]">
+                  <span
+                    className="group/liquidity absolute top-5 right-5 shrink-0 cursor-help rounded-full border border-[#0784C3]/50 bg-[#0b1720] px-2.5 py-1 text-xs font-semibold leading-none text-[#93c5fd] outline-offset-2 focus-within:outline focus-within:outline-2 focus-within:outline-primary"
+                    tabIndex={0}
+                    aria-label={bridgeData.liquidityBridgeTooltip}
+                  >
                     Liquidity Bridge
+                    <span
+                      className="pointer-events-none absolute right-0 top-full z-30 mt-2 w-max max-w-[min(18rem,calc(100vw-2rem))] whitespace-pre-line rounded-[6px] border border-[#2D2D2D] bg-[#111111] px-2.5 py-2 text-left text-[11px] font-medium leading-snug text-[#cfcfcf] opacity-0 shadow-[0_4px_12px_rgba(0,0,0,0.45)] transition-opacity duration-150 group-hover/liquidity:opacity-100 group-focus-within/liquidity:opacity-100"
+                      role="tooltip"
+                    >
+                      {bridgeData.liquidityBridgeTooltip}
+                    </span>
                   </span>
                   <div className="flex flex-col items-start gap-2.5 flex-1 pr-24 md:pr-0">
                   <Image src={Orbiter} alt="Orbiter" width={30} height={30} />
@@ -2479,7 +2532,7 @@ export default function BridgeClient() {
 
             {/* Disclaimer */}
             <p className="text-[#bfbfbf] text-base leading-[1.5] tracking-[0.8px] mt-5 mb-25">
-                The Arbitrum link goes to Arbitrum’s official bridge (same URL as the embedded widget). Orbiter is an
+                The Arbitrum link opens Arbitrum’s official bridge portal (not the embedded iframe URL). Orbiter is an
                 independent third-party service. HPP does not operate these interfaces and is not responsible for their
                 security or for any loss from using them.
             </p>
