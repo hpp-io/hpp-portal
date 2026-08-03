@@ -254,7 +254,9 @@ export default function GovernanceClient() {
         .then((posts: AgoraProposal[]) => {
           collected.agora = posts.map((post: AgoraProposal) => {
             const imgRef = firstMarkdownImageUrl(post.body);
-            const imageSrc = imgRef ? resolveAgoraAssetUrl(agoraApiBase, imgRef) : makeHipFallbackImageDataUrl(post.id);
+            const imageSrc = imgRef
+              ? resolveAgoraAssetUrl(agoraApiBase, imgRef)
+              : makeHipFallbackImageDataUrl(post.displayId ?? post.id);
             const createdAtMs = dayjs.unix(post.createdAt).valueOf();
             return {
               id: `proposal-${post.id}`,
@@ -510,7 +512,7 @@ export default function GovernanceClient() {
                 <GovernanceFeedGrid items={pagedItems} />
 
                 {discussionPaginationItems.length > 0 && (
-                  <nav className="mt-10 flex flex-wrap items-center justify-center gap-2" aria-label="Proposals pages">
+                  <nav className="mt-5 flex flex-wrap items-center justify-center gap-2" aria-label="Proposals pages">
                     {discussionPaginationItems.map((item, idx) =>
                       item === 'ellipsis' ? (
                         <span
