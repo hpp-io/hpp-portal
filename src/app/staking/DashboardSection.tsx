@@ -17,7 +17,6 @@ import {
   setWalletDaoCredit,
 } from '@/store/slices';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
-import { formatUnits, parseUnits } from 'viem';
 import Big from 'big.js';
 import { formatTokenBalance } from '@/lib/helpers';
 import axios from 'axios';
@@ -63,7 +62,20 @@ function getActivityPaginationItems(total: number, current: number): (number | '
   return items;
 }
 
-export default function DashboardSection() {
+type DashboardSectionProps = {
+  /**
+   * TEMP(unclaimed-reward-from-rewards-available):
+   * Same value as Staking tab "Rewards Available" (`getClaimableAmount` on reward contract).
+   * TODO: Replace with dedicated staking API and remove these props.
+   */
+  rewardsAvailableDisplay: string;
+  rewardsAvailableLoading: boolean;
+};
+
+export default function DashboardSection({
+  rewardsAvailableDisplay,
+  rewardsAvailableLoading,
+}: DashboardSectionProps) {
   const dispatch = useAppDispatch();
   const { address, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
@@ -81,8 +93,6 @@ export default function DashboardSection() {
   const activities = useAppSelector((state) => state.activities.activities);
   const activitiesLoading = useAppSelector((state) => state.activities.activitiesLoading);
   const activityPage = useAppSelector((state) => state.activities.activityPage);
-  const cooldowns = useAppSelector((state) => state.cooldown.cooldowns);
-  const nowSecTick = useAppSelector((state) => state.cooldown.nowSecTick);
 
   // Computed values
   const shortAddress = useMemo(() => {
@@ -97,25 +107,34 @@ export default function DashboardSection() {
     [activityPageCount, activityPage],
   );
 
-  // Derived withdrawable from cooldowns
-  const derivedWithdrawableWei = useMemo(() => {
-    if (!cooldowns?.length) return BigInt(0);
-    return cooldowns.reduce(
-      (acc, c) => (c.unlock <= nowSecTick ? acc + (c.amountWei ? BigInt(c.amountWei) : BigInt(0)) : acc),
-      BigInt(0),
-    );
-  }, [cooldowns, nowSecTick]);
-
-  const derivedWithdrawable = useMemo(() => {
-    const val = formatUnits(derivedWithdrawableWei, 18);
-    try {
-      const v = new Big(val);
-      if (v.gt(0) && v.lt(new Big('0.01'))) {
-        return '≈0.01';
+  /**
+   * TEMP(total-rewards-claimed-from-activity-log):
+   * Sum Season 1 reward claims from Activity Log until a dedicated staking API exists.
+   * — Includes rows with action "Claim" (reward contract), not unstake "Withdraw".
+   * — Only "Completed" txs (Blockscout-indexed); rows without amount are skipped.
+   * TODO: Replace with API (e.g. wallet rewards claimed endpoint) and delete this block.
+   */
+  const totalS1RewardsClaimedDisplay = useMemo(() => {
+    if (!isConnected) return null;
+    let sum = new Big(0);
+    for (const tx of activities ?? []) {
+      if (tx.action?.toLowerCase() !== 'claim') continue;
+      if (tx.status !== 'Completed') continue;
+      const numeric = String(tx.amount ?? '')
+        .replace(/,/g, '')
+        .replace(/\s*HPP\s*$/i, '')
+        .trim();
+      if (!numeric) continue;
+      try {
+        const v = new Big(numeric);
+        if (v.gt(0)) sum = sum.plus(v);
+      } catch {
+        /* skip unparseable amount */
       }
-    } catch {}
-    return formatTokenBalance(val, 2);
-  }, [derivedWithdrawableWei]);
+    }
+    if (sum.lte(0)) return '0';
+    return formatTokenBalance(sum.toString(), 2);
+  }, [activities, isConnected]);
 
   // Fetch wallet Expected APR based on current staked amount
   const fetchWalletExpectedApr = useCallback(async () => {
@@ -345,16 +364,24 @@ export default function DashboardSection() {
                 <div className="text-[#bfbfbf] text-base leading-[1.5] tracking-[0.8px] font-normal">
                   Total Rewards Claimed
                 </div>
-                <div className="mt-2.5 text-white text-xl font-normal leading-[24px] tracking-[0]">- HPP</div>
+                <div className="mt-2.5 text-white text-xl font-normal leading-[24px] tracking-[0]">
+                  {/* TEMP: total-rewards-claimed-from-activity-log — swap for API later */}
+                  {isConnected ? `${totalS1RewardsClaimedDisplay} HPP` : '- HPP'}
+                </div>
               </div>
               <div className="bg-[#121212] px-5 py-7.5 border-t border-[#2D2D2D] min-[640px]:border-l min-[640px]:border-[#2D2D2D] min-[1000px]:border-l">
                 <div className="text-[#bfbfbf] text-base leading-[1.5] tracking-[0.8px] font-normal">
                   Unclaimed Reward
                 </div>
                 <div className="mt-2.5 flex items-center justify-center min-[640px]:justify-start gap-2">
-                  <span className="text-white text-xl font-normal leading-[24px] tracking-[0]">
-                    {/* {isConnected ? `${derivedWithdrawable} HPP` : '- HPP'} */}- HPP
-                  </span>
+                  {/* TEMP: unclaimed-reward-from-rewards-available — swap for API later */}
+                  {isConnected && rewardsAvailableLoading ? (
+                    <DotLottieReact src="/lotties/Loading.lottie" autoplay loop style={{ width: 32, height: 32 }} />
+                  ) : (
+                    <span className="text-white text-xl font-normal leading-[24px] tracking-[0]">
+                      {isConnected ? `${rewardsAvailableDisplay} HPP` : '- HPP'}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
