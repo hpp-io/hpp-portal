@@ -1,34 +1,57 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
-import '@reown/appkit-ui';
-import { useRouter } from 'next/navigation';
-import Sidebar from '@/components/ui/Sidebar';
-import Header from '@/components/ui/Header';
-import Footer from '@/components/ui/Footer';
-import Button from '@/components/ui/Button';
-import { navItems, legalLinks } from '@/config/navigation';
-import { useAccount, useDisconnect, useWalletClient } from 'wagmi';
-import { getWalletClient } from '@wagmi/core';
-import { useAppKit } from '@reown/appkit/react';
-import axios from 'axios';
-import { DotLottieReact } from '@lottiefiles/dotlottie-react';
-import { HPPTickerIcon } from '@/assets/icons';
-import FaqSection from '@/components/ui/Faq';
-import DontMissAirdrop from '@/components/ui/DontMissAirdrop';
-import { airdropData } from '@/static/uiData';
-import { formatUnits } from 'viem';
-import { useHppPublicClient, useHppChain } from '@/app/staking/hppClient';
-import { formatTokenBalance } from '@/lib/helpers';
-import Big from 'big.js';
-import dayjs from '@/lib/dayjs';
-import { hppVestingABI } from '../abi';
-import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { setAirdropDetailLoading, setAirdropDetail, type AirdropDetailData } from '@/store/slices';
-import { useToast } from '@/hooks/useToast';
-import { useEnsureChain } from '@/hooks/useWallet';
-import { config as wagmiConfig } from '@/config/walletConfig';
-import { getHppExplorerBaseUrl } from '@/lib/hppExplorer';
+import React, { useState, useEffect, useMemo } from "react";
+import "@reown/appkit-ui";
+import { useRouter } from "next/navigation";
+import Sidebar from "@/components/ui/Sidebar";
+import Header from "@/components/ui/Header";
+import Footer from "@/components/ui/Footer";
+import Button from "@/components/ui/Button";
+import { navItems, legalLinks } from "@/config/navigation";
+import { useAccount, useDisconnect, useWalletClient } from "wagmi";
+import { getWalletClient } from "@wagmi/core";
+import { useAppKit } from "@reown/appkit/react";
+import axios from "axios";
+import { DotLottieReact } from "@lottiefiles/dotlottie-react";
+import Image from "next/image";
+import { HPPTickerIcon } from "@/assets/icons";
+import { getAirdropHeroImage } from "@/lib/airdropAssets";
+import FaqSection from "@/components/ui/Faq";
+import DontMissAirdrop from "@/components/ui/DontMissAirdrop";
+import { getStaticAirdropDetailById, getAirdropFaqForEvent } from "@/config/airdrops";
+import { formatUnits } from "viem";
+import { useHppPublicClient, useHppChain } from "@/app/staking/hppClient";
+import { formatTokenBalance } from "@/lib/helpers";
+import Big from "big.js";
+import dayjs from "@/lib/dayjs";
+import { hppVestingABI } from "../abi";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { setAirdropDetailLoading, setAirdropDetail } from "@/store/slices";
+import { useToast } from "@/hooks/useToast";
+import { useEnsureChain } from "@/hooks/useWallet";
+import { config as wagmiConfig } from "@/config/walletConfig";
+import { getHppExplorerBaseUrl } from "@/lib/hppExplorer";
+
+function formatClaimPeriodBadge(start?: string, end?: string) {
+  const normalize = (v?: string) => {
+    if (!v) return "";
+    return String(v).split(",")[0]?.trim() ?? "";
+  };
+  const s = normalize(start);
+  const e = normalize(end);
+  if (!s || !e) return "";
+  return `${s} ~ ${e}`;
+}
+
+function AirdropClaimPeriodBadge({ start, end }: { start?: string; end?: string }) {
+  return (
+    <div className="mt-4">
+      <span className="inline-flex items-center rounded-[5px] bg-[#4949B4] px-3 py-1.5 text-white text-base font-semibold leading-[1.2] tracking-[0.8px]">
+        Claim Period: {formatClaimPeriodBadge(start, end)}
+      </span>
+    </div>
+  );
+}
 
 export default function AirdropDetailClient({ id }: { id: string }) {
   const router = useRouter();
@@ -46,7 +69,7 @@ export default function AirdropDetailClient({ id }: { id: string }) {
   const [claimableAmountRaw, setClaimableAmountRaw] = useState<bigint | null>(null);
   const [isVestingLoading, setIsVestingLoading] = useState(false);
   const [isClaiming, setIsClaiming] = useState(false);
-  const [successModal, setSuccessModal] = useState<null | { variant: 'claim' | 'claimAndStake'; amount: string }>(null);
+  const [successModal, setSuccessModal] = useState<null | { variant: "claim" | "claimAndStake"; amount: string }>(null);
   const [historyItems, setHistoryItems] = useState<
     Array<{ id: string; date: string; action: string; amount?: string; status?: string; isLocal?: boolean }>
   >([]);
@@ -59,14 +82,6 @@ export default function AirdropDetailClient({ id }: { id: string }) {
   const isDetailLoading = airdropState.detailLoading[id] || false;
   const detailLastFetched = airdropState.detailLastFetched[id];
 
-  // Try to infer airdrop type from the cached events list (used for the type endpoint)
-  const inferredAirdropType = useMemo<'hpp' | 'dapp' | 'collaboration'>(() => {
-    if (airdropState.events.hpp?.some((e) => e.id === id)) return 'hpp';
-    if (airdropState.events.dapp?.some((e) => e.id === id)) return 'dapp';
-    if (airdropState.events.collaboration?.some((e) => e.id === id)) return 'collaboration';
-    return 'hpp';
-  }, [airdropState.events, id]);
-
   // Convert Redux detail to AirdropDetail format
   const airdropDetail = useMemo(() => {
     if (!cachedDetail) return null;
@@ -75,6 +90,10 @@ export default function AirdropDetailClient({ id }: { id: string }) {
       icon: HPPTickerIcon,
     };
   }, [cachedDetail]);
+
+  const heroImage = useMemo(() => getAirdropHeroImage(cachedDetail?.imageUrl), [cachedDetail?.imageUrl]);
+
+  const faqItems = useMemo(() => getAirdropFaqForEvent(id), [id]);
 
   // HPP network public client
   const publicClient = useHppPublicClient();
@@ -97,7 +116,7 @@ export default function AirdropDetailClient({ id }: { id: string }) {
     const fromDetail = cachedDetail?.contract;
     if (fromDetail) {
       const normalized = String(fromDetail).trim().toLowerCase();
-      if (normalized !== 'none') return fromDetail as `0x${string}`;
+      if (normalized !== "none") return fromDetail as `0x${string}`;
     }
 
     // Fallback: list payload (if it included contract/contractAddress)
@@ -108,10 +127,10 @@ export default function AirdropDetailClient({ id }: { id: string }) {
 
     if (fromEvents) {
       const normalized = String(fromEvents).trim().toLowerCase();
-      if (normalized !== 'none') return fromEvents as `0x${string}`;
+      if (normalized !== "none") return fromEvents as `0x${string}`;
     }
 
-    return '' as `0x${string}`;
+    return "" as `0x${string}`;
   }, [cachedDetail?.contract, airdropState.events, id]);
 
   // Fetch vesting schedule from contract
@@ -129,13 +148,13 @@ export default function AirdropDetailClient({ id }: { id: string }) {
         publicClient.readContract({
           address: contractAddress,
           abi: hppVestingABI,
-          functionName: 'getVestingSchedule',
+          functionName: "getVestingSchedule",
           args: [address],
         }),
         publicClient.readContract({
           address: contractAddress,
           abi: hppVestingABI,
-          functionName: 'getClaimableAmount',
+          functionName: "getClaimableAmount",
           args: [address],
         }),
       ]);
@@ -143,7 +162,7 @@ export default function AirdropDetailClient({ id }: { id: string }) {
       setVestingSchedule(scheduleResult as unknown as [`0x${string}`, bigint, bigint, boolean]);
       setClaimableAmountRaw(claimableResult as unknown as bigint);
     } catch (error) {
-      console.error('Failed to fetch vesting schedule:', error);
+      console.error("Failed to fetch vesting schedule:", error);
       setVestingSchedule(null);
       setClaimableAmountRaw(null);
     } finally {
@@ -179,9 +198,9 @@ export default function AirdropDetailClient({ id }: { id: string }) {
     }
 
     // Defensive: if the contract response is missing fields, avoid crashing formatUnits/Big.
-    const totalAmountSafe = typeof totalAmount === 'bigint' ? totalAmount : BigInt(0);
-    const claimedAmountSafe = typeof claimedAmount === 'bigint' ? claimedAmount : BigInt(0);
-    const claimableSafe = typeof claimableAmountRaw === 'bigint' ? claimableAmountRaw : BigInt(0);
+    const totalAmountSafe = typeof totalAmount === "bigint" ? totalAmount : BigInt(0);
+    const claimedAmountSafe = typeof claimedAmount === "bigint" ? claimedAmount : BigInt(0);
+    const claimableSafe = typeof claimableAmountRaw === "bigint" ? claimableAmountRaw : BigInt(0);
 
     // On-chain meaning:
     // - claimedAmount: already claimed
@@ -219,21 +238,21 @@ export default function AirdropDetailClient({ id }: { id: string }) {
       }
       const lambdaBase = process.env.NEXT_PUBLIC_HPP_BLOCKSCOUT_PROXY_URL;
       if (!lambdaBase) {
-        console.error('NEXT_PUBLIC_HPP_BLOCKSCOUT_PROXY_URL is not defined');
+        console.error("NEXT_PUBLIC_HPP_BLOCKSCOUT_PROXY_URL is not defined");
         setIsHistoryLoading(false);
         return;
       }
       const MAX_RETRIES = 3;
       const RETRY_DELAY = 2000;
       const isMainnet = HPP_CHAIN_ID === 190415;
-      const network = isMainnet ? 'mainnet' : 'sepolia';
+      const network = isMainnet ? "mainnet" : "sepolia";
       const baseUrl = `${lambdaBase}/blockscout/${network}/api/v2/addresses/${contractAddress}/transactions`;
 
       const isInternalServerError = (err: any): boolean => {
         return (
           err?.response?.status === 500 ||
-          err?.response?.data?.message === 'Internal Server Error' ||
-          err?.message?.includes('Internal Server Error')
+          err?.response?.data?.message === "Internal Server Error" ||
+          err?.message?.includes("Internal Server Error")
         );
       };
 
@@ -258,7 +277,7 @@ export default function AirdropDetailClient({ id }: { id: string }) {
         let nextUrl: string | null = baseUrl;
         let guard = 0;
         while (nextUrl && guard < 200) {
-          const resp = await retryApiCall(() => axios.get(nextUrl!, { headers: { accept: 'application/json' } }));
+          const resp = await retryApiCall(() => axios.get(nextUrl!, { headers: { accept: "application/json" } }));
           const pageItems: any[] = resp?.data?.items ?? [];
           if (Array.isArray(pageItems) && pageItems.length > 0) items.push(...pageItems);
           const np = resp?.data?.next_page_params;
@@ -267,34 +286,34 @@ export default function AirdropDetailClient({ id }: { id: string }) {
             break;
           }
           const qs = new URLSearchParams();
-          if (np.index !== undefined) qs.set('index', String(np.index));
-          if (np.value !== undefined) qs.set('value', String(np.value));
-          if (np.hash !== undefined) qs.set('hash', String(np.hash));
-          if (np.inserted_at !== undefined) qs.set('inserted_at', String(np.inserted_at));
-          if (np.block_number !== undefined) qs.set('block_number', String(np.block_number));
-          if (np.fee !== undefined) qs.set('fee', String(np.fee));
-          if (np.items_count !== undefined) qs.set('items_count', String(np.items_count));
+          if (np.index !== undefined) qs.set("index", String(np.index));
+          if (np.value !== undefined) qs.set("value", String(np.value));
+          if (np.hash !== undefined) qs.set("hash", String(np.hash));
+          if (np.inserted_at !== undefined) qs.set("inserted_at", String(np.inserted_at));
+          if (np.block_number !== undefined) qs.set("block_number", String(np.block_number));
+          if (np.fee !== undefined) qs.set("fee", String(np.fee));
+          if (np.items_count !== undefined) qs.set("items_count", String(np.items_count));
           nextUrl = `${baseUrl}?${qs.toString()}`;
           guard += 1;
         }
 
         const walletLc = address.toLowerCase();
         const normalizeMethod = (raw: any) =>
-          String(raw || '')
+          String(raw || "")
             .trim()
             .toLowerCase()
-            .replace(/[^a-z0-9_]/g, '');
+            .replace(/[^a-z0-9_]/g, "");
         // For now, only show Claim history. (Future: add "Claim + Staking" etc. here.)
-        const allowedMethods = new Set(['claimtokens', 'claimandstake']);
+        const allowedMethods = new Set(["claimtokens", "claimandstake"]);
         const mapStatus = (it: any): string => {
-          const res = String(it?.result || '').toLowerCase();
-          const ok = String(it?.status || '').toLowerCase() === 'ok';
+          const res = String(it?.result || "").toLowerCase();
+          const ok = String(it?.status || "").toLowerCase() === "ok";
           const hasRevert = !!it?.revert_reason;
-          return hasRevert || res === 'failed' ? 'Rejected' : ok && res === 'success' ? 'Completed' : 'Pending';
+          return hasRevert || res === "failed" ? "Rejected" : ok && res === "success" ? "Completed" : "Pending";
         };
         let mapped = Array.isArray(items)
           ? items
-              .filter((it: any) => String(it?.from?.hash || '').toLowerCase() === walletLc)
+              .filter((it: any) => String(it?.from?.hash || "").toLowerCase() === walletLc)
               .filter((it: any) => {
                 const method = normalizeMethod(
                   it?.method || it?.decoded_input?.method_call || it?.decoded_input?.method,
@@ -305,10 +324,10 @@ export default function AirdropDetailClient({ id }: { id: string }) {
                 const method = normalizeMethod(
                   it?.method || it?.decoded_input?.method_call || it?.decoded_input?.method,
                 );
-                const action = method === 'claimandstake' ? 'Claim + Stake' : 'Claim';
+                const action = method === "claimandstake" ? "Claim + Stake" : "Claim";
                 return {
                   id: String(it.hash),
-                  date: dayjs(new Date(String(it.timestamp)).getTime()).format('YYYY-MM-DD HH:mm'),
+                  date: dayjs(new Date(String(it.timestamp)).getTime()).format("YYYY-MM-DD HH:mm"),
                   action,
                   amount: undefined as string | undefined,
                   status: mapStatus(it),
@@ -316,8 +335,8 @@ export default function AirdropDetailClient({ id }: { id: string }) {
                 };
               })
               .sort((a: any, b: any) => {
-                const dateA = new Date(a.date.replace(' ', 'T')).getTime();
-                const dateB = new Date(b.date.replace(' ', 'T')).getTime();
+                const dateA = new Date(a.date.replace(" ", "T")).getTime();
+                const dateB = new Date(b.date.replace(" ", "T")).getTime();
                 return dateB - dateA;
               })
           : [];
@@ -325,29 +344,29 @@ export default function AirdropDetailClient({ id }: { id: string }) {
         // Backfill claimed amount from token transfers by tx hash (HPP token -> wallet, from contract)
         try {
           const needAmount = mapped.filter((m: any) => !m.amount);
-          const tokenAddr = (process.env.NEXT_PUBLIC_HPP_TOKEN_CONTRACT || '').toLowerCase();
+          const tokenAddr = (process.env.NEXT_PUBLIC_HPP_TOKEN_CONTRACT || "").toLowerCase();
           const contractLc = String(contractAddress).toLowerCase();
-          const stakingLc = String(process.env.NEXT_PUBLIC_HPP_STAKING_CONTRACT || '').toLowerCase();
+          const stakingLc = String(process.env.NEXT_PUBLIC_HPP_STAKING_CONTRACT || "").toLowerCase();
           if (needAmount.length > 0 && tokenAddr) {
             const addrTUrl = `${lambdaBase}/blockscout/${network}/api/v2/addresses/${address}/token-transfers?type=`;
             const addrTResp = await retryApiCall(() =>
-              axios.get(addrTUrl, { headers: { accept: 'application/json' } }),
+              axios.get(addrTUrl, { headers: { accept: "application/json" } }),
             );
             const addrTItems: any[] = addrTResp?.data?.items ?? [];
             if (Array.isArray(addrTItems) && addrTItems.length > 0) {
               const byHashQuick = new Map<string, string>();
               for (const tr of addrTItems) {
-                const tokenLc = String(tr?.token?.address_hash || '').toLowerCase();
+                const tokenLc = String(tr?.token?.address_hash || "").toLowerCase();
                 if (tokenLc !== tokenAddr) continue;
-                const toLc = String(tr?.to?.hash || '').toLowerCase();
-                const fromLc = String(tr?.from?.hash || '').toLowerCase();
+                const toLc = String(tr?.to?.hash || "").toLowerCase();
+                const fromLc = String(tr?.from?.hash || "").toLowerCase();
                 if (toLc !== walletLc) continue;
                 if (fromLc && fromLc !== contractLc) continue; // prefer contract->wallet transfers
-                const txHash = String(tr?.transaction_hash || tr?.tx_hash || tr?.hash || '');
+                const txHash = String(tr?.transaction_hash || tr?.tx_hash || tr?.hash || "");
                 if (!txHash) continue;
                 const dec =
                   Number(tr?.token?.decimals) || Number(tr?.total?.decimals) || Number(tr?.token_decimals) || 18;
-                const raw = String(tr?.total?.value ?? tr?.value ?? tr?.amount ?? '0');
+                const raw = String(tr?.total?.value ?? tr?.value ?? tr?.amount ?? "0");
                 try {
                   const units = formatUnits(BigInt(raw), Number.isFinite(dec) ? dec : 18);
                   byHashQuick.set(txHash.toLowerCase(), `${formatTokenBalance(units, 2)} HPP`);
@@ -371,29 +390,29 @@ export default function AirdropDetailClient({ id }: { id: string }) {
         // If still missing amounts (e.g., Claim + Stake doesn't transfer to wallet), try tx-level token transfers (limited).
         try {
           const need = mapped.filter((m: any) => !m.amount).slice(0, 20);
-          const tokenAddr = (process.env.NEXT_PUBLIC_HPP_TOKEN_CONTRACT || '').toLowerCase();
+          const tokenAddr = (process.env.NEXT_PUBLIC_HPP_TOKEN_CONTRACT || "").toLowerCase();
           const contractLc = String(contractAddress).toLowerCase();
-          const stakingLc = String(process.env.NEXT_PUBLIC_HPP_STAKING_CONTRACT || '').toLowerCase();
+          const stakingLc = String(process.env.NEXT_PUBLIC_HPP_STAKING_CONTRACT || "").toLowerCase();
           if (need.length > 0 && tokenAddr) {
             for (const m of need) {
               try {
                 const url = `${lambdaBase}/blockscout/${network}/api/v2/transactions/${m.id}/token-transfers`;
-                const resp = await retryApiCall(() => axios.get(url, { headers: { accept: 'application/json' } }));
+                const resp = await retryApiCall(() => axios.get(url, { headers: { accept: "application/json" } }));
                 const tItems: any[] = resp?.data?.items ?? [];
                 if (!Array.isArray(tItems) || tItems.length === 0) continue;
                 // pick the HPP transfer that originated from this airdrop contract and went to wallet or staking
                 const tr = tItems.find((x: any) => {
-                  const tokenLc = String(x?.token?.address_hash || '').toLowerCase();
+                  const tokenLc = String(x?.token?.address_hash || "").toLowerCase();
                   if (tokenLc !== tokenAddr) return false;
-                  const fromLc = String(x?.from?.hash || '').toLowerCase();
-                  const toLc = String(x?.to?.hash || '').toLowerCase();
+                  const fromLc = String(x?.from?.hash || "").toLowerCase();
+                  const toLc = String(x?.to?.hash || "").toLowerCase();
                   if (fromLc && fromLc !== contractLc) return false;
                   return toLc === walletLc || (stakingLc ? toLc === stakingLc : false);
                 });
                 if (!tr) continue;
                 const dec =
                   Number(tr?.token?.decimals) || Number(tr?.total?.decimals) || Number(tr?.token_decimals) || 18;
-                const raw = String(tr?.total?.value ?? tr?.value ?? tr?.amount ?? '0');
+                const raw = String(tr?.total?.value ?? tr?.value ?? tr?.amount ?? "0");
                 const units = formatUnits(BigInt(raw), Number.isFinite(dec) ? dec : 18);
                 const display = `${formatTokenBalance(units, 2)} HPP`;
                 mapped = mapped.map((x: any) =>
@@ -414,8 +433,8 @@ export default function AirdropDetailClient({ id }: { id: string }) {
           const blockscoutIds = new Set(mapped.map((a: any) => String(a.id).toLowerCase()));
           const localToKeep = localItems.filter((local) => !blockscoutIds.has(String(local.id).toLowerCase()));
           return [...mapped, ...localToKeep].sort((a: any, b: any) => {
-            const dateA = new Date(String(a.date || '').replace(' ', 'T')).getTime();
-            const dateB = new Date(String(b.date || '').replace(' ', 'T')).getTime();
+            const dateA = new Date(String(a.date || "").replace(" ", "T")).getTime();
+            const dateB = new Date(String(b.date || "").replace(" ", "T")).getTime();
             if (dateA !== dateB) return dateB - dateA;
             if (a.isLocal && !b.isLocal) return -1;
             if (!a.isLocal && b.isLocal) return 1;
@@ -440,7 +459,7 @@ export default function AirdropDetailClient({ id }: { id: string }) {
 
   // Poll for history when there are local pending items (same as staking Activity Log)
   useEffect(() => {
-    const localPending = historyItems.filter((h) => h.isLocal && h.status === 'Pending');
+    const localPending = historyItems.filter((h) => h.isLocal && h.status === "Pending");
     if (localPending.length === 0) return;
     if (!isConnected || !address) return;
     const intervalId = setInterval(() => {
@@ -452,11 +471,11 @@ export default function AirdropDetailClient({ id }: { id: string }) {
   const onClaimTokens = React.useCallback(async () => {
     try {
       if (!address || !isConnected) {
-        open({ view: 'Connect' });
+        open({ view: "Connect" });
         return;
       }
       if (!contractAddress) {
-        showToast('Error', 'Contract address is not available yet.', 'error');
+        showToast("Error", "Contract address is not available yet.", "error");
         return;
       }
       if (!claimableAmount || new Big(claimableAmount).lte(0)) return;
@@ -465,7 +484,7 @@ export default function AirdropDetailClient({ id }: { id: string }) {
       try {
         await ensureHppChain();
       } catch {
-        showToast('Switch network', 'Please switch to HPP Network in your wallet and try again.', 'error');
+        showToast("Switch network", "Please switch to HPP Network in your wallet and try again.", "error");
         return;
       }
 
@@ -473,22 +492,22 @@ export default function AirdropDetailClient({ id }: { id: string }) {
         walletClient ?? (await getWalletClient(wagmiConfig, { account: address, chainId: HPP_CHAIN_ID }));
 
       setIsClaiming(true);
-      showToast('Waiting for claim...', 'Please confirm in your wallet.', 'loading');
+      showToast("Waiting for claim...", "Please confirm in your wallet.", "loading");
 
       const txHash = await hppWalletClient.writeContract({
         address: contractAddress,
         abi: hppVestingABI,
-        functionName: 'claimTokens',
+        functionName: "claimTokens",
         args: [],
         account: address as `0x${string}`,
         chain: hppChain,
       });
 
       const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash as `0x${string}` });
-      if (receipt.status === 'success') {
+      if (receipt.status === "success") {
         hideToast();
-        const amountNumeric = claimableAmount ? formatTokenBalance(claimableAmount, 2) : '0.00';
-        setSuccessModal({ variant: 'claim', amount: amountNumeric });
+        const amountNumeric = claimableAmount ? formatTokenBalance(claimableAmount, 2) : "0.00";
+        setSuccessModal({ variant: "claim", amount: amountNumeric });
         // Add local history immediately (Pending until indexed by Blockscout)
         const amountDisplay = claimableAmount ? `${formatTokenBalance(claimableAmount, 2)} HPP` : undefined;
         setHistoryItems((prev) => {
@@ -497,10 +516,10 @@ export default function AirdropDetailClient({ id }: { id: string }) {
           return [
             {
               id: String(txHash),
-              date: dayjs().format('YYYY-MM-DD HH:mm'),
-              action: 'Claim',
+              date: dayjs().format("YYYY-MM-DD HH:mm"),
+              action: "Claim",
               amount: amountDisplay,
-              status: 'Pending',
+              status: "Pending",
               isLocal: true,
             },
             ...prev,
@@ -511,10 +530,10 @@ export default function AirdropDetailClient({ id }: { id: string }) {
         // Give Blockscout a moment to index, then refresh without flashing loader
         setTimeout(() => fetchAirdropHistory({ silent: true }), 2000);
       } else {
-        showToast('Claim failed', 'Transaction was rejected or failed.', 'error');
+        showToast("Claim failed", "Transaction was rejected or failed.", "error");
       }
     } catch (_e) {
-      showToast('Error', 'Failed to process claim request.', 'error');
+      showToast("Error", "Failed to process claim request.", "error");
     } finally {
       setIsClaiming(false);
     }
@@ -538,11 +557,11 @@ export default function AirdropDetailClient({ id }: { id: string }) {
   const onClaimAndStake = React.useCallback(async () => {
     try {
       if (!address || !isConnected) {
-        open({ view: 'Connect' });
+        open({ view: "Connect" });
         return;
       }
       if (!contractAddress) {
-        showToast('Error', 'Contract address is not available yet.', 'error');
+        showToast("Error", "Contract address is not available yet.", "error");
         return;
       }
       if (!claimableAmount || new Big(claimableAmount).lte(0)) return;
@@ -550,7 +569,7 @@ export default function AirdropDetailClient({ id }: { id: string }) {
       try {
         await ensureHppChain();
       } catch {
-        showToast('Switch network', 'Please switch to HPP Network in your wallet and try again.', 'error');
+        showToast("Switch network", "Please switch to HPP Network in your wallet and try again.", "error");
         return;
       }
 
@@ -558,22 +577,22 @@ export default function AirdropDetailClient({ id }: { id: string }) {
         walletClient ?? (await getWalletClient(wagmiConfig, { account: address, chainId: HPP_CHAIN_ID }));
 
       setIsClaiming(true);
-      showToast('Waiting for claim + stake...', 'Please confirm in your wallet.', 'loading');
+      showToast("Waiting for claim + stake...", "Please confirm in your wallet.", "loading");
 
       const txHash = await hppWalletClient.writeContract({
         address: contractAddress,
         abi: hppVestingABI,
-        functionName: 'claimAndStake',
+        functionName: "claimAndStake",
         args: [],
         account: address as `0x${string}`,
         chain: hppChain,
       });
 
       const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash as `0x${string}` });
-      if (receipt.status === 'success') {
+      if (receipt.status === "success") {
         hideToast();
-        const amountNumeric = claimableAmount ? formatTokenBalance(claimableAmount, 2) : '0.00';
-        setSuccessModal({ variant: 'claimAndStake', amount: amountNumeric });
+        const amountNumeric = claimableAmount ? formatTokenBalance(claimableAmount, 2) : "0.00";
+        setSuccessModal({ variant: "claimAndStake", amount: amountNumeric });
         const amountDisplay = claimableAmount ? `${formatTokenBalance(claimableAmount, 2)} HPP` : undefined;
         setHistoryItems((prev) => {
           const exists = prev.some((a) => String(a.id).toLowerCase() === String(txHash).toLowerCase());
@@ -581,10 +600,10 @@ export default function AirdropDetailClient({ id }: { id: string }) {
           return [
             {
               id: String(txHash),
-              date: dayjs().format('YYYY-MM-DD HH:mm'),
-              action: 'Claim + Stake',
+              date: dayjs().format("YYYY-MM-DD HH:mm"),
+              action: "Claim + Stake",
               amount: amountDisplay,
-              status: 'Pending',
+              status: "Pending",
               isLocal: true,
             },
             ...prev,
@@ -593,10 +612,10 @@ export default function AirdropDetailClient({ id }: { id: string }) {
         await fetchVestingSchedule();
         setTimeout(() => fetchAirdropHistory({ silent: true }), 2000);
       } else {
-        showToast('Claim + Stake failed', 'Transaction was rejected or failed.', 'error');
+        showToast("Claim + Stake failed", "Transaction was rejected or failed.", "error");
       }
     } catch {
-      showToast('Error', 'Failed to process claim + stake request.', 'error');
+      showToast("Error", "Failed to process claim + stake request.", "error");
     } finally {
       setIsClaiming(false);
     }
@@ -649,7 +668,7 @@ export default function AirdropDetailClient({ id }: { id: string }) {
 
   // Computed values
   const shortAddress = useMemo(() => {
-    if (!address) return '';
+    if (!address) return "";
     return `${address.slice(0, 11)}...${address.slice(-9)}`;
   }, [address]);
 
@@ -657,7 +676,7 @@ export default function AirdropDetailClient({ id }: { id: string }) {
   useEffect(() => {
     if (avatarRef.current && address) {
       avatarRef.current.address = address;
-      avatarRef.current.setAttribute('address', address);
+      avatarRef.current.setAttribute("address", address);
     }
   }, [address]);
 
@@ -696,91 +715,22 @@ export default function AirdropDetailClient({ id }: { id: string }) {
     return parts.length > 0 ? parts : [text];
   };
 
-  // Cache duration: 5 minutes
-  const CACHE_DURATION = 5 * 60 * 1000;
-
-  // Fetch airdrop detail from API (only if not cached or cache expired)
+  // TEMP(airdrop-static-ui): load detail from static config (was GET /airdrop/type/{type}?id=)
   useEffect(() => {
-    const fetchAirdropDetail = async () => {
-      if (!id) return;
+    if (!id) return;
+    if (cachedDetail && detailLastFetched) return;
 
-      // Check if we have cached data that's still valid
-      const now = Date.now();
-      if (cachedDetail && detailLastFetched && now - detailLastFetched < CACHE_DURATION) {
-        return; // Use cached data
-      }
+    dispatch(setAirdropDetailLoading({ id, loading: true }));
+    setError(null);
 
-      try {
-        dispatch(setAirdropDetailLoading({ id, loading: true }));
-        setError(null);
-
-        const apiBaseUrl = process.env.NEXT_PUBLIC_HPP_STAKING_API_URL;
-        if (!apiBaseUrl) {
-          console.error('NEXT_PUBLIC_HPP_STAKING_API_URL is not set');
-          setError('API configuration error');
-          dispatch(setAirdropDetailLoading({ id, loading: false }));
-          return;
-        }
-
-        // Use the type endpoint with id query, e.g. /api/airdrop/type/hpp?id=...
-        const response = await axios.get(`${apiBaseUrl}/airdrop/type/${inferredAirdropType}`, {
-          params: { id },
-          headers: { accept: 'application/json' },
-        });
-
-        // Handle different response structures
-        let detailData: any = null;
-        const raw = response.data;
-        if (raw?.data) {
-          // Common API shape: { success: true, data: [...] } or { data: {...} }
-          if (Array.isArray(raw.data)) {
-            detailData = raw.data[0] ?? null;
-          } else {
-            detailData = raw.data;
-          }
-        } else if (Array.isArray(raw)) {
-          // some APIs return an array even for id-filtered requests
-          detailData = raw[0] ?? null;
-        } else if (raw && typeof raw === 'object') {
-          detailData = raw;
-        }
-
-        if (detailData) {
-          // Map API response to AirdropDetailData format (without icon)
-          const detail: AirdropDetailData = {
-            id: detailData.id ?? id,
-            name: detailData.name ?? 'Unknown Airdrop',
-            eventName: detailData.eventName ?? detailData.name ?? 'HPP',
-            reward: detailData.reward ?? 0,
-            starts: detailData.starts ?? detailData.claimPeriodStart ?? '-',
-            ends: detailData.ends ?? detailData.claimPeriodEnd ?? '-',
-            status: detailData.status ?? 'Coming Soon',
-            description: detailData.description ?? '',
-            claimPeriodStart: detailData.claimPeriodStart ?? detailData.starts ?? '-',
-            claimPeriodEnd: detailData.claimPeriodEnd ?? detailData.ends ?? '-',
-            vestingPeriodStart: detailData.vestingPeriodStart ?? '-',
-            vestingPeriodEnd: detailData.vestingPeriodEnd ?? '-',
-            vestingDuration: detailData.vestingDuration ?? '-',
-            eligibilityDescription: detailData.eligibilityDescription ?? '',
-            governanceVoteLink: detailData.governanceVoteLink,
-            governanceVoteText: detailData.governanceVoteText,
-            imageUrl: detailData.imageUrl,
-            contract: detailData.contract,
-          };
-          dispatch(setAirdropDetail({ id, detail }));
-        } else {
-          setError('Airdrop not found');
-          dispatch(setAirdropDetailLoading({ id, loading: false }));
-        }
-      } catch (err) {
-        console.error('Failed to fetch airdrop detail:', err);
-        setError('Failed to load airdrop details');
-        dispatch(setAirdropDetailLoading({ id, loading: false }));
-      }
-    };
-
-    fetchAirdropDetail();
-  }, [id, cachedDetail, detailLastFetched, dispatch, inferredAirdropType]);
+    const detail = getStaticAirdropDetailById(id);
+    if (detail) {
+      dispatch(setAirdropDetail({ id, detail }));
+    } else {
+      setError("Airdrop not found");
+      dispatch(setAirdropDetailLoading({ id, loading: false }));
+    }
+  }, [id, cachedDetail, detailLastFetched, dispatch]);
 
   return (
     <div className="flex flex-col h-screen bg-black text-white overflow-x-hidden">
@@ -800,20 +750,20 @@ export default function AirdropDetailClient({ id }: { id: string }) {
 
         <main
           className={`flex-1 overflow-y-auto transition-all duration-300 ${
-            sidebarOpen ? 'opacity-50 min-[1200px]:opacity-100' : ''
+            sidebarOpen ? "opacity-50 min-[1200px]:opacity-100" : ""
           }`}
         >
           {/* Go Back Button */}
           <div className="ml-4 max-w-6xl mx-auto my-4">
             <Button
               size="sm"
-              onClick={() => router.push('/airdrop')}
+              onClick={() => router.push("/airdrop")}
               className="flex items-center space-x-1 cursor-pointer !bg-[#121212] text-white rounded-[5px]"
             >
               <svg className="w-4 h-4 text-[#FFFFFF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M15 19l-7-7 7-7" />
               </svg>
-              {'Go Back'}
+              {"Go Back"}
             </Button>
           </div>
 
@@ -831,30 +781,41 @@ export default function AirdropDetailClient({ id }: { id: string }) {
               <div className="grid grid-cols-1 min-[1200px]:grid-cols-2 min-[1200px]:items-start">
                 {/* Right Side - Video */}
                 <div className="flex justify-center min-[1200px]:justify-end min-[1200px]:order-2">
-                  <div className="w-[400px] h-[400px]">
-                    <video
-                      src="/videos/Airdrop.mp4"
-                      autoPlay
-                      loop
-                      muted
-                      playsInline
-                      className="w-full h-full object-cover"
-                    />
+                  <div className="h-[400px] w-[400px] overflow-hidden rounded-[5px]">
+                    {heroImage ? (
+                      <Image
+                        src={heroImage}
+                        alt={airdropDetail.name}
+                        width={400}
+                        height={400}
+                        className="h-full w-full object-cover"
+                        priority
+                      />
+                    ) : (
+                      <video
+                        src="/videos/Airdrop.mp4"
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        className="h-full w-full object-cover"
+                      />
+                    )}
                   </div>
                 </div>
 
                 {/* Left Side - Text Content */}
-                <div className="flex flex-col items-center text-center min-[1200px]:order-1 min-[1200px]:items-start min-[1200px]:text-left">
+                <div className="mt-6 min-[1200px]:mt-0 flex flex-col items-center text-center min-[1200px]:order-1 min-[1200px]:items-start min-[1200px]:text-left">
                   {/* Status Tag */}
                   <div
                     className="inline-block px-2.5 py-1 rounded-[5px] mb-2.5 text-base font-semibold text-black"
                     style={{
                       backgroundColor:
-                        airdropDetail.status === 'On-Going'
-                          ? '#5DF23F'
-                          : airdropDetail.status === 'Coming Soon'
-                            ? '#F7EA94'
-                            : '#BFBFBF',
+                        airdropDetail.status === "On-Going"
+                          ? "#5DF23F"
+                          : airdropDetail.status === "Coming Soon"
+                            ? "#F7EA94"
+                            : "#BFBFBF",
                     }}
                   >
                     {airdropDetail.status}
@@ -864,20 +825,20 @@ export default function AirdropDetailClient({ id }: { id: string }) {
                     <p className="text-[#bfbfbf] text-base">{parseMarkdownLinks(airdropDetail.description)}</p>
                     <div className="space-y-1">
                       <p className="text-[#bfbfbf] text-base">
-                        Claim period:{' '}
+                        Claim Period:{" "}
                         <span className="text-white text-base">
                           {airdropDetail.claimPeriodStart} ~ {airdropDetail.claimPeriodEnd}
                         </span>
                       </p>
                       <p className="text-[#bfbfbf] text-base">
-                        Vesting Period:{' '}
+                        Vesting Period:{" "}
                         <span className="text-white text-base">
                           {airdropDetail.vestingPeriodStart} ~ {airdropDetail.vestingPeriodEnd} (
                           {airdropDetail.vestingDuration})
                         </span>
                       </p>
                     </div>
-                    <p className="text-[#bfbfbf] text-base">{airdropDetail.eligibilityDescription}</p>
+                    {!isConnected && <p className="text-[#bfbfbf] text-base">{airdropDetail.eligibilityDescription}</p>}
                   </div>
                   {isConnected ? (
                     <></>
@@ -885,7 +846,7 @@ export default function AirdropDetailClient({ id }: { id: string }) {
                     <Button
                       variant="white"
                       size="md"
-                      onClick={() => open({ view: 'Connect' })}
+                      onClick={() => open({ view: "Connect" })}
                       className="cursor-pointer border border-white"
                     >
                       Connect
@@ -904,7 +865,7 @@ export default function AirdropDetailClient({ id }: { id: string }) {
                 <div className="flex items-center justify-between mb-8">
                   <div className="flex items-center gap-3">
                     <span className="inline-flex items-center justify-center w-11 h-11 rounded-full overflow-hidden">
-                      {React.createElement('wui-avatar', { ref: avatarRef, address })}
+                      {React.createElement("wui-avatar", { ref: avatarRef, address })}
                     </span>
                     <div className="flex flex-col">
                       <span className="text-white text-base font-semibold leading-[1.5] tracking-[0.8px]">
@@ -930,7 +891,13 @@ export default function AirdropDetailClient({ id }: { id: string }) {
                   <DotLottieReact src="/lotties/Loading.lottie" autoplay loop style={{ width: 24, height: 24 }} />
                 </div>
               ) : vestingData && vestingData.isActive ? (
-                <h2 className="text-[50px] font-[600] text-white leading-[1] mb-5">You are eligible.</h2>
+                <div className="mb-5">
+                  <h2 className="text-[50px] font-[600] text-white leading-[1]">You are eligible.</h2>
+                  <AirdropClaimPeriodBadge
+                    start={airdropDetail.claimPeriodStart}
+                    end={airdropDetail.claimPeriodEnd}
+                  />
+                </div>
               ) : (
                 <h2 className="text-[50px] font-[600] text-white leading-[1] mb-5">Sorry, you are not eligible.</h2>
               )}
@@ -975,15 +942,15 @@ export default function AirdropDetailClient({ id }: { id: string }) {
                     {/* Dashed vertical lines extending above the bar */}
                     <div
                       className="absolute left-[25%] top-0 h-6 w-px"
-                      style={{ borderLeft: '1px dashed #2D2D2D' }}
+                      style={{ borderLeft: "1px dashed #2D2D2D" }}
                     ></div>
                     <div
                       className="absolute left-[50%] top-0 h-6 w-px"
-                      style={{ borderLeft: '1px dashed #2D2D2D' }}
+                      style={{ borderLeft: "1px dashed #2D2D2D" }}
                     ></div>
                     <div
                       className="absolute left-[75%] top-0 h-6 w-px"
-                      style={{ borderLeft: '1px dashed #2D2D2D' }}
+                      style={{ borderLeft: "1px dashed #2D2D2D" }}
                     ></div>
 
                     {/* Percentage markers */}
@@ -1016,10 +983,10 @@ export default function AirdropDetailClient({ id }: { id: string }) {
                       </span>
                       <span className="text-white text-xl font-semibold leading-[24px]">
                         {isVestingLoading
-                          ? '...'
+                          ? "..."
                           : vestingData
                             ? `${formatTokenBalance(vestingData.totalAmount, 0)} HPP`
-                            : '- HPP'}
+                            : "- HPP"}
                       </span>
                     </div>
                     <div className="flex flex-col items-center text-center px-4 py-4 border-b min-[800px]:border-b-0 min-[800px]:border-r border-[#2D2D2D]">
@@ -1029,10 +996,10 @@ export default function AirdropDetailClient({ id }: { id: string }) {
                       </div>
                       <span className="text-white text-xl font-semibold leading-[24px]">
                         {isVestingLoading
-                          ? '...'
+                          ? "..."
                           : vestingData
                             ? `${formatTokenBalance(vestingData.vestedAmount, 2)} HPP`
-                            : '- HPP'}
+                            : "- HPP"}
                       </span>
                     </div>
                     <div className="flex flex-col items-center text-center px-4 py-4 border-b min-[800px]:border-b-0 min-[800px]:border-r border-[#2D2D2D]">
@@ -1042,20 +1009,20 @@ export default function AirdropDetailClient({ id }: { id: string }) {
                       </div>
                       <span className="text-white text-xl font-semibold leading-[24px]">
                         {isVestingLoading
-                          ? '...'
+                          ? "..."
                           : vestingData
                             ? `${formatTokenBalance(vestingData.notVestedAmount, 2)} HPP`
-                            : '- HPP'}
+                            : "- HPP"}
                       </span>
                     </div>
                     <div className="flex flex-col items-center text-center px-4 py-4 min-[800px]:border-r border-[#2D2D2D]">
                       <span className="text-[#bfbfbf] text-base leading-[1.2] tracking-[0.8px] mb-2">Claimed</span>
                       <span className="text-white text-xl font-semibold leading-[24px]">
                         {isVestingLoading
-                          ? '...'
+                          ? "..."
                           : vestingData
                             ? `${formatTokenBalance(vestingData.claimedAmount, 2)} HPP`
-                            : '- HPP'}
+                            : "- HPP"}
                       </span>
                     </div>
                   </div>
@@ -1067,7 +1034,7 @@ export default function AirdropDetailClient({ id }: { id: string }) {
                 <div className="flex items-center justify-between bg-[#121212] rounded-lg px-5 py-7 mb-5">
                   <span>
                     <span className="text-white font-bold text-3xl leading-[1.5] tracking-[0.8px]">
-                      {isVestingLoading ? '...' : claimableAmount ? formatTokenBalance(claimableAmount, 2) : '0'}
+                      {isVestingLoading ? "..." : claimableAmount ? formatTokenBalance(claimableAmount, 2) : "0"}
                     </span>
                     <span className="text-white text-xl leading-[1.5] tracking-[0.8px] ml-2">
                       HPP tokens ready to claim.
@@ -1079,7 +1046,7 @@ export default function AirdropDetailClient({ id }: { id: string }) {
                         isVestingLoading || isClaiming || !claimableAmount || new Big(claimableAmount).lte(0);
                       return (
                         <Button
-                          variant={isDisabled ? 'black' : 'white'}
+                          variant={isDisabled ? "black" : "white"}
                           size="md"
                           onClick={() => void onClaimTokens()}
                           disabled={isDisabled}
@@ -1096,7 +1063,7 @@ export default function AirdropDetailClient({ id }: { id: string }) {
               {successModal && (
                 <div
                   className="fixed inset-0 z-[60] flex items-center justify-center px-4 backdrop-blur-sm"
-                  style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}
+                  style={{ backgroundColor: "rgba(0,0,0,0.7)" }}
                   onClick={() => setSuccessModal(null)}
                 >
                   <div
@@ -1113,7 +1080,7 @@ export default function AirdropDetailClient({ id }: { id: string }) {
                       </svg>
                     </button>
 
-                    {successModal.variant === 'claim' ? (
+                    {successModal.variant === "claim" ? (
                       <>
                         <div className="text-white text-[64px] leading-[1] font-[900] mb-6">Congrats!</div>
                         <div className="text-[#5DF23F] text-xl font-semibold leading-[1.2] tracking-[0.8px] mb-6">
@@ -1129,7 +1096,7 @@ export default function AirdropDetailClient({ id }: { id: string }) {
                           className="!rounded-full"
                           onClick={() => {
                             setSuccessModal(null);
-                            router.push('/staking');
+                            router.push("/staking");
                           }}
                         >
                           Go to HPP Staking
@@ -1151,7 +1118,7 @@ export default function AirdropDetailClient({ id }: { id: string }) {
                           className="!rounded-full"
                           onClick={() => {
                             setSuccessModal(null);
-                            router.push('/staking');
+                            router.push("/staking");
                           }}
                         >
                           Go to HPP Staking
@@ -1162,8 +1129,8 @@ export default function AirdropDetailClient({ id }: { id: string }) {
                 </div>
               )}
 
-              {/* History Section - only when eligible */}
-              {vestingData && vestingData.isActive && (
+              {/* History Section - show by default when wallet is connected */}
+              {isConnected && (
                 <div className="mb-25">
                   <div className="text-white text-base font-semibold leading-[1.2] tracking-[0.8px] mb-2.5">
                     History
@@ -1197,10 +1164,10 @@ export default function AirdropDetailClient({ id }: { id: string }) {
                                   <div className="flex flex-col items-end gap-2">
                                     <div className="flex items-center gap-2 text-white text-sm leading-[1.2] tracking-[0.8px]">
                                       <span>
-                                        {tx.status === 'Pending' ? (
+                                        {tx.status === "Pending" ? (
                                           <span className="pending-text">Pending</span>
                                         ) : (
-                                          tx.status || 'Completed'
+                                          tx.status || "Completed"
                                         )}
                                       </span>
                                       <a
@@ -1226,7 +1193,7 @@ export default function AirdropDetailClient({ id }: { id: string }) {
                                       </a>
                                     </div>
                                     <div className="text-white text-base leading-[1.2] tracking-[0.8px] font-normal">
-                                      {tx.amount || '-'}
+                                      {tx.amount || "-"}
                                     </div>
                                   </div>
                                 </div>
@@ -1276,12 +1243,12 @@ export default function AirdropDetailClient({ id }: { id: string }) {
                                           return (
                                             <button
                                               key={n}
-                                              aria-current={active ? 'page' : undefined}
+                                              aria-current={active ? "page" : undefined}
                                               className={[
-                                                'cursor-pointer flex items-center justify-center rounded-full',
-                                                'w-6 h-6 text-base leading-[1] tracking-[0]',
-                                                active ? 'bg-white text-black' : 'text-[#BFBFBF] hover:text-white',
-                                              ].join(' ')}
+                                                "cursor-pointer flex items-center justify-center rounded-full",
+                                                "w-6 h-6 text-base leading-[1] tracking-[0]",
+                                                active ? "bg-white text-black" : "text-[#BFBFBF] hover:text-white",
+                                              ].join(" ")}
                                               onClick={() => setHistoryPage(n)}
                                             >
                                               {n}
@@ -1291,7 +1258,7 @@ export default function AirdropDetailClient({ id }: { id: string }) {
                                       </div>
                                       <div className="flex min-[640px]:hidden items-center gap-4.5">
                                         {pages.map((page, idx) => {
-                                          if (typeof page === 'string') {
+                                          if (typeof page === "string") {
                                             return (
                                               <span key={`ellipsis-${idx}`} className="text-[#BFBFBF]">
                                                 ...
@@ -1302,12 +1269,12 @@ export default function AirdropDetailClient({ id }: { id: string }) {
                                           return (
                                             <button
                                               key={page}
-                                              aria-current={active ? 'page' : undefined}
+                                              aria-current={active ? "page" : undefined}
                                               className={[
-                                                'cursor-pointer flex items-center justify-center rounded-full',
-                                                'w-6 h-6 text-base leading-[1] tracking-[0]',
-                                                active ? 'bg-white text-black' : 'text-[#BFBFBF] hover:text-white',
-                                              ].join(' ')}
+                                                "cursor-pointer flex items-center justify-center rounded-full",
+                                                "w-6 h-6 text-base leading-[1] tracking-[0]",
+                                                active ? "bg-white text-black" : "text-[#BFBFBF] hover:text-white",
+                                              ].join(" ")}
                                               onClick={() => setHistoryPage(page)}
                                             >
                                               {page}
@@ -1344,7 +1311,7 @@ export default function AirdropDetailClient({ id }: { id: string }) {
 
           {/* FAQ Section */}
           <div className="px-5 max-w-6xl mx-auto mt-7.5 mb-20">
-            <FaqSection items={airdropData.faq} />
+            <FaqSection items={faqItems} />
           </div>
 
           {/* Don't Miss the Next Airdrop Section */}
