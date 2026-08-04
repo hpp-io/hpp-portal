@@ -39,7 +39,7 @@ function SocialLinks({ spacingClass = 'space-x-4', isMobile = false }: { spacing
             target="_blank"
             rel="noopener noreferrer"
           >
-            <IconComp className={sizeClass} />
+            <IconComp className={sizeClass} aria-hidden="true" />
           </a>
         );
       })}
@@ -49,6 +49,15 @@ function SocialLinks({ spacingClass = 'space-x-4', isMobile = false }: { spacing
 
 export default function Sidebar({ navItems, legalLinks, isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
+
+  React.useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [isOpen]);
   const mobileHideWhenOpen = isOpen ? 'max-[1199px]:hidden' : '';
   const getHrefAndExternal = (item: NavItem): { href: string; external: boolean } => {
     if (item.label.toLowerCase() === 'block explorer') {
@@ -78,6 +87,8 @@ export default function Sidebar({ navItems, legalLinks, isOpen, onClose }: Sideb
         <div
           className="fixed left-0 right-0 bottom-0 opacity-30 z-40 min-[1200px]:hidden top-[66px]"
           style={{ background: 'var(--color-primary)' }}
+          aria-modal="true"
+          aria-label="Navigation menu"
           onClick={() => onClose?.()}
         />
       )}

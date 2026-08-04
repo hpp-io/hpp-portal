@@ -102,10 +102,6 @@ const airdropSlice = createSlice({
       state.lastFetched[action.payload.type] = Date.now();
       state.loading[action.payload.type] = false;
     },
-    clearAirdropEvents: (state, action: PayloadAction<AirdropType>) => {
-      state.events[action.payload] = [];
-      state.lastFetched[action.payload] = null;
-    },
     setAirdropDetailLoading: (state, action: PayloadAction<{ id: string; loading: boolean }>) => {
       state.detailLoading[action.payload.id] = action.payload.loading;
     },
@@ -114,20 +110,13 @@ const airdropSlice = createSlice({
       state.detailLastFetched[action.payload.id] = Date.now();
       state.detailLoading[action.payload.id] = false;
     },
-    clearAirdropDetail: (state, action: PayloadAction<string>) => {
-      delete state.details[action.payload];
-      delete state.detailLastFetched[action.payload];
-      delete state.detailLoading[action.payload];
-    },
   },
 });
 
 export const {
   setAirdropLoading,
   setAirdropEvents,
-  clearAirdropEvents,
   setAirdropDetailLoading,
   setAirdropDetail,
-  clearAirdropDetail,
 } = airdropSlice.actions;
 export default airdropSlice.reducer;

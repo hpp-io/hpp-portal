@@ -633,7 +633,6 @@ export default function AirdropDetailClient({ id }: { id: string }) {
     fetchVestingSchedule,
     fetchAirdropHistory,
     showToast,
-    explorerBase,
     hideToast,
   ]);
 
@@ -1087,7 +1086,7 @@ export default function AirdropDetailClient({ id }: { id: string }) {
                           {successModal.amount} HPP claimed!
                         </div>
                         <div className="text-white text-base leading-[1.5] tracking-[0.8px] mb-10">
-                          Your rewards don't stop here. Stake your airdrop and earn up to 23% APR.
+                          Your rewards don&apos;t stop here. Stake your airdrop and earn up to 23% APR.
                         </div>
                         <Button
                           variant="green"
@@ -1104,7 +1103,7 @@ export default function AirdropDetailClient({ id }: { id: string }) {
                       </>
                     ) : (
                       <>
-                        <div className="text-white text-[64px] leading-[1] font-[900] mb-6">You're in!</div>
+                        <div className="text-white text-[64px] leading-[1] font-[900] mb-6">You&apos;re in!</div>
                         <div className="text-[#5DF23F] text-xl font-semibold leading-[1.2] tracking-[0.8px] mb-6">
                           {successModal.amount} HPP claimed and staked!
                         </div>

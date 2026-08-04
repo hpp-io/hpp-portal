@@ -103,6 +103,7 @@ const DISCOURSE_429_MAX_ATTEMPTS = 5;
 
 async function discourseProxyFetchTopics(fullUrl: string, init?: RequestInit): Promise<DiscourseTopic[]> {
   const fetchOpts: RequestInit = {
+    signal: AbortSignal.timeout(10_000),
     ...init,
     headers: {
       accept: 'application/json',

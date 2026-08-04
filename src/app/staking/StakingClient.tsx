@@ -26,7 +26,7 @@ import axios from 'axios';
 import OverviewSection from './OverviewSection';
 import DashboardSection from './DashboardSection';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import type { UiState } from '@/store/slices/uiSlice';
+import type { UiState, StakingTab, TopTab } from '@/store/slices/uiSlice';
 import {
   setSidebarOpen,
   setTopTab,
@@ -65,12 +65,64 @@ import {
   setCooldownsInitialized,
   setNowSecTick,
   setCooldownSeconds,
-  setChartSideMargin,
-  setIsNarrow450,
-  setIsNarrow600,
   setIsChartReady,
-  setChartAnimKey,
 } from '@/store/slices';
+
+interface AprApiData {
+  baseAPR?: number;
+  bonusAPR?: number;
+  whaleBoostCredit?: number;
+  holdEarnCredit?: number | string;
+  daoCredit?: number | string;
+  totalAPR?: number;
+  finalAPR?: number;
+  expectedReward?: number | string;
+  stakedAmount?: string;
+}
+
+interface AprApiResponse {
+  success: boolean;
+  data?: AprApiData;
+}
+
+interface BlockscoutTx {
+  hash: string;
+  method?: string;
+  result?: string;
+  status?: string;
+  revert_reason?: unknown;
+  timestamp?: string;
+  from?: { hash: string };
+  to?: { hash: string };
+  created_contract?: { hash: string } | string | boolean | null;
+  decoded_input?: {
+    method_call?: string;
+    parameters?: Array<{ name: string; value: unknown }>;
+  };
+  date?: string;
+  action?: string;
+  amount?: string;
+  id?: string;
+}
+
+interface BlockscoutTokenTransfer {
+  transaction_hash?: string;
+  tx_hash?: string;
+  hash?: string;
+  method?: string;
+  from?: { hash: string };
+  to?: { hash: string };
+  token?: { address_hash: string; decimals?: number | string };
+  total?: { value?: string; decimals?: number | string };
+  value?: string;
+  amount?: string;
+  token_decimals?: number | string;
+}
+
+interface BlockscoutPageResponse<T> {
+  items?: T[];
+  next_page_params?: unknown;
+}
 
 function formatHppClaimWeiDisplay(wei: bigint, decimals: number): string {
   if (wei <= BigInt(0)) return '0';
@@ -120,9 +172,7 @@ function blockscoutTxListNextUrl(
   return s ? `${pathWithoutQuery}?${s}` : null;
 }
 
-type StakingTab = 'stake' | 'unstake' | 'claim';
 const VALID_TOP_TABS = ['overview', 'staking', 'dashboard'] as const;
-type TopTab = (typeof VALID_TOP_TABS)[number];
 const VALID_STAKING_TABS = ['stake', 'unstake', 'claim'] as const;
 const STAKING_TAB_PARAM = 'tab';
 const STAKING_PATH = '/staking/';
@@ -207,7 +257,7 @@ export default function StakingClient() {
       sp.set(STAKING_TAB_PARAM, desiredParam);
       window.history.replaceState(null, '', `${STAKING_PATH}?${sp.toString()}`);
     },
-    [dispatch, activeTab],
+    [dispatch],
   );
 
   const handleStakingTabChange = useCallback(
@@ -277,14 +327,10 @@ export default function StakingClient() {
             tier: tierNum,
             preRegistered: calcPreRegYes === 'yes',
             holdEarnMonths: calcHoldMonths ? Number(calcHoldMonths) : undefined,
-            holdMonths: calcHoldMonths ? Number(calcHoldMonths) : undefined,
-            holdMonth: calcHoldMonths ? Number(calcHoldMonths) : undefined,
-            months: calcHoldMonths ? Number(calcHoldMonths) : undefined,
-            stakingMonths: calcHoldMonths ? Number(calcHoldMonths) : undefined,
           },
           headers: { accept: 'application/json' },
         });
-        const data: any = resp?.data ?? {};
+        const data = (resp?.data ?? {}) as AprApiResponse;
         const d = data?.data ?? {};
         if (!cancelled && data?.success && d) {
           if (typeof d.baseAPR === 'number') dispatch(setAprBase(d.baseAPR));
@@ -330,15 +376,10 @@ export default function StakingClient() {
   const cooldownsInitialized = useAppSelector((state) => state.cooldown.cooldownsInitialized);
   const nowSecTick = useAppSelector((state) => state.cooldown.nowSecTick);
   const cooldownSeconds = useAppSelector((state) => state.cooldown.cooldownSeconds);
-  const HPP_TOKEN_ADDRESS = process.env.NEXT_PUBLIC_HPP_TOKEN_CONTRACT as `0x${string}`;
-  const HPP_STAKING_ADDRESS = process.env.NEXT_PUBLIC_HPP_STAKING_CONTRACT as `0x${string}`;
+  const HPP_TOKEN_ADDRESS = (process.env.NEXT_PUBLIC_HPP_TOKEN_CONTRACT ?? '') as `0x${string}`;
+  const HPP_STAKING_ADDRESS = (process.env.NEXT_PUBLIC_HPP_STAKING_CONTRACT ?? '') as `0x${string}`;
   const HPP_STAKING_REWARD_ADDRESS = process.env.NEXT_PUBLIC_HPP_STAKING_REWARD_CONTRACT;
   const DECIMALS = 18;
-
-  // Overview chart states (TVL history)
-  const overviewTvl = useAppSelector((state) => state.overview.overviewTvl);
-  const statsInitialized = useAppSelector((state) => state.overview.statsInitialized);
-  const chartAnimKey = useAppSelector((state) => state.overview.chartAnimKey);
 
   // HPP network public client (Sepolia in dev, Mainnet in prod)
   const publicClient = useHppPublicClient();
@@ -363,29 +404,6 @@ export default function StakingClient() {
     }
   }, [publicClient, HPP_STAKING_ADDRESS, dispatch]);
 
-  // Overview: responsive margins like PreRegistration chart (throttled with rAF)
-  useEffect(() => {
-    const compute = () => {
-      const w = typeof window !== 'undefined' ? window.innerWidth : 1024;
-      dispatch(setChartSideMargin(w <= 600 ? 10 : 40));
-      dispatch(setIsNarrow450(w <= 450));
-      dispatch(setIsNarrow600(w <= 600));
-    };
-    compute();
-    let frame: number | null = null;
-    const onResize = () => {
-      if (frame) cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => {
-        compute();
-        frame = null;
-      });
-    };
-    window.addEventListener('resize', onResize);
-    return () => {
-      if (frame) cancelAnimationFrame(frame);
-      window.removeEventListener('resize', onResize);
-    };
-  }, [dispatch]);
   useEffect(() => {
     dispatch(setIsChartReady(true));
   }, [dispatch]);
@@ -413,7 +431,7 @@ export default function StakingClient() {
       const resp = await axios.get(`${apiBaseUrl}/apr/wallet/${address}`, {
         headers: { accept: 'application/json' },
       });
-      const data: any = resp?.data ?? {};
+      const data = (resp?.data ?? {}) as AprApiResponse;
       const d = data?.data ?? {};
       if (data?.success && d) {
         if (typeof d.baseAPR === 'number') dispatch(setWalletBaseApr(d.baseAPR));
@@ -448,7 +466,7 @@ export default function StakingClient() {
 
   // Fetch activity list from Blockscout (staking interactions + HPP token transfers)
   const fetchActivities = useCallback(
-    async (retryCount = 0) => {
+    async () => {
       if (!isConnected || !address || !HPP_STAKING_ADDRESS) {
         dispatch(setActivities([]));
         dispatch(setActivitiesLoading(false));
@@ -470,24 +488,22 @@ export default function StakingClient() {
         const network = isMainnet ? 'mainnet' : 'sepolia';
         const baseUrl = `${lambdaBase}/blockscout/${network}/api/v2/addresses/${HPP_STAKING_ADDRESS}/transactions`;
         // Helper function to check if error is Internal Server Error
-        const isInternalServerError = (err: any): boolean => {
+        const isInternalServerError = (err: unknown): boolean => {
+          const e = err as { response?: { status?: number; data?: { message?: string } }; message?: string };
           return (
-            err?.response?.status === 500 ||
-            err?.response?.data?.message === 'Internal Server Error' ||
-            err?.message?.includes('Internal Server Error')
+            e?.response?.status === 500 ||
+            e?.response?.data?.message === 'Internal Server Error' ||
+            (typeof e?.message === 'string' && e.message.includes('Internal Server Error'))
           );
         };
 
         // Helper function to retry API call with exponential backoff
-        const retryApiCall = async (apiCall: () => Promise<any>, callRetryCount = 0): Promise<any> => {
+        const retryApiCall = async <T,>(apiCall: () => Promise<T>, callRetryCount = 0): Promise<T> => {
           try {
             return await apiCall();
-          } catch (err: any) {
+          } catch (err: unknown) {
             if (isInternalServerError(err) && callRetryCount < MAX_RETRIES) {
               const delay = RETRY_DELAY * (callRetryCount + 1);
-              console.log(
-                `Internal Server Error, retrying API call... (${callRetryCount + 1}/${MAX_RETRIES}) after ${delay}ms`,
-              );
               await new Promise((resolve) => setTimeout(resolve, delay));
               return retryApiCall(apiCall, callRetryCount + 1);
             }
@@ -495,13 +511,13 @@ export default function StakingClient() {
           }
         };
 
-        let items: any[] = [];
+        let items: BlockscoutTx[] = [];
         try {
           let nextUrl: string | null = baseUrl;
           let guard = 0;
           while (nextUrl && guard < 200) {
-            const resp = await retryApiCall(() => axios.get(nextUrl!, { headers: { accept: 'application/json' } }));
-            const pageItems: any[] = resp?.data?.items ?? [];
+            const resp = await retryApiCall(() => axios.get<BlockscoutPageResponse<BlockscoutTx>>(nextUrl!, { headers: { accept: 'application/json' } }));
+            const pageItems: BlockscoutTx[] = resp?.data?.items ?? [];
             if (Array.isArray(pageItems) && pageItems.length > 0) items.push(...pageItems);
             const np = resp?.data?.next_page_params;
             const next = blockscoutTxListNextUrl(baseUrl, np);
@@ -521,12 +537,12 @@ export default function StakingClient() {
             const rewardBaseUrl = `${lambdaBase}/blockscout/${network}/api/v2/addresses/${rewardAddr}/transactions`;
             let nextRewardUrl: string | null = rewardBaseUrl;
             let rewardGuard = 0;
-            const seenHashes = new Set(items.map((it: any) => String(it?.hash || '').toLowerCase()).filter(Boolean));
+            const seenHashes = new Set(items.map((it) => String(it?.hash || '').toLowerCase()).filter(Boolean));
             while (nextRewardUrl && rewardGuard < 200) {
               const resp = await retryApiCall(() =>
-                axios.get(nextRewardUrl!, { headers: { accept: 'application/json' } }),
+                axios.get<BlockscoutPageResponse<BlockscoutTx>>(nextRewardUrl!, { headers: { accept: 'application/json' } }),
               );
-              const pageItems: any[] = resp?.data?.items ?? [];
+              const pageItems: BlockscoutTx[] = resp?.data?.items ?? [];
               if (Array.isArray(pageItems) && pageItems.length > 0) {
                 for (const it of pageItems) {
                   const h = String(it?.hash || '').toLowerCase();
@@ -549,13 +565,13 @@ export default function StakingClient() {
         } catch {}
 
         const rewardAddrLc = String(HPP_STAKING_REWARD_ADDRESS || '').trim().toLowerCase();
-        const normalizeTxMethod = (it: any) => {
+        const normalizeTxMethod = (it: BlockscoutTx) => {
           const raw = String(it?.method || it?.decoded_input?.method_call || '').trim().toLowerCase();
           const p = raw.indexOf('(');
           return p >= 0 ? raw.slice(0, p) : raw;
         };
         // Exclude contract-deployment txs (Blockscout sets `created_contract` / method label)
-        items = items.filter((it: any) => {
+        items = items.filter((it) => {
           if (normalizeTxMethod(it) === 'created_contract') return false;
           const cc = it?.created_contract;
           if (cc == null || cc === false) return true;
@@ -565,7 +581,7 @@ export default function StakingClient() {
         });
         // Reward contract: only show user txs whose top-level call is `claim` (hide approve, transfer, etc.)
         if (rewardAddrLc && /^0x[a-f0-9]{40}$/.test(rewardAddrLc)) {
-          items = items.filter((it: any) => {
+          items = items.filter((it) => {
             const toLc = String(it?.to?.hash || '').toLowerCase();
             if (toLc !== rewardAddrLc) return true;
             return normalizeTxMethod(it) === 'claim';
@@ -575,8 +591,8 @@ export default function StakingClient() {
         const walletLc = address.toLowerCase();
         let mapped = Array.isArray(items)
           ? items
-              .filter((it: any) => String(it?.from?.hash || '').toLowerCase() === walletLc)
-              .map((it: any) => {
+              .filter((it) => String(it?.from?.hash || '').toLowerCase() === walletLc)
+              .map((it) => {
                 const method = String(it.method || it?.decoded_input?.method_call || '').toLowerCase();
                 // Status mapping
                 const res = String(it.result || '').toLowerCase();
@@ -587,7 +603,7 @@ export default function StakingClient() {
                 // Amount from decoded parameters (18 decimals)
                 let amountDisplay: string | undefined;
                 try {
-                  const params: any[] = it?.decoded_input?.parameters ?? [];
+                  const params = it?.decoded_input?.parameters ?? [];
                   const p = Array.isArray(params) ? params.find((x) => x?.name === 'amount') : null;
                   if (p?.value) {
                     const units = formatUnits(BigInt(String(p.value)), 18);
@@ -603,7 +619,7 @@ export default function StakingClient() {
                   status,
                 };
               })
-              .sort((a: any, b: any) => {
+              .sort((a, b) => {
                 // Parse dates for accurate comparison
                 const dateA = new Date(a.date.replace(' ', 'T')).getTime();
                 const dateB = new Date(b.date.replace(' ', 'T')).getTime();
@@ -612,7 +628,7 @@ export default function StakingClient() {
           : [];
         // Fallback amount for withdraw/claim from token transfers if missing
         try {
-          const needAmount = mapped.filter((m: any) => !m.amount);
+          const needAmount = mapped.filter((m) => !m.amount);
           const tokenAddr = (process.env.NEXT_PUBLIC_HPP_TOKEN_CONTRACT || '').toLowerCase();
           if (needAmount.length > 0 && tokenAddr) {
             // 1) Fast path: address-level token transfers (single request; includes withdraw amounts)
@@ -625,9 +641,9 @@ export default function StakingClient() {
               const byHashQuick = new Map<string, string>();
               while (nextTokUrl && tokGuard < 200) {
                 const addrTResp = await retryApiCall(() =>
-                  axios.get(nextTokUrl!, { headers: { accept: 'application/json' } }),
+                  axios.get<BlockscoutPageResponse<BlockscoutTokenTransfer>>(nextTokUrl!, { headers: { accept: 'application/json' } }),
                 );
-                const addrTItems: any[] = addrTResp?.data?.items ?? [];
+                const addrTItems: BlockscoutTokenTransfer[] = addrTResp?.data?.items ?? [];
                 if (Array.isArray(addrTItems) && addrTItems.length > 0) {
                   for (const tr of addrTItems) {
                     const tokenLc = String(tr?.token?.address_hash || '').toLowerCase();
@@ -667,7 +683,7 @@ export default function StakingClient() {
                 tokGuard += 1;
               }
               if (byHashQuick.size > 0) {
-                mapped = mapped.map((m: any) => {
+                mapped = mapped.map((m) => {
                   if (!m.amount) {
                     const v = byHashQuick.get(String(m.id).toLowerCase());
                     if (v) return { ...m, amount: v };
@@ -741,15 +757,7 @@ export default function StakingClient() {
         }
       })();
     }
-  }, [isConnected, currentChainId, HPP_CHAIN_ID]);
-  // Set a stable animation key once when stats are first initialized
-  useEffect(() => {
-    if (statsInitialized && !chartAnimKey) {
-      const first = overviewTvl?.[0]?.date || 'init';
-      const last = overviewTvl?.[overviewTvl.length - 1]?.date || 'init';
-      dispatch(setChartAnimKey(`tvl-init-${first}-${last}`));
-    }
-  }, [statsInitialized, overviewTvl, chartAnimKey, dispatch]);
+  }, [isConnected, currentChainId, HPP_CHAIN_ID]); // eslint-disable-line react-hooks/exhaustive-deps
   // Prefetch lottie spinner to avoid first-render delay
   useEffect(() => {
     try {
@@ -828,7 +836,7 @@ export default function StakingClient() {
     return () => {
       cancelled = true;
     };
-  }, [publicClient, address, isConnected, HPP_TOKEN_ADDRESS]);
+  }, [publicClient, address, isConnected, HPP_TOKEN_ADDRESS, dispatch]);
 
   // Writes are handled via viem wallet client
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -988,7 +996,7 @@ export default function StakingClient() {
       dispatch(setIsCooldownsLoading(false));
       dispatch(setCooldownsInitialized(true));
     }
-  }, [publicClient, address, isConnected, HPP_STAKING_ADDRESS, hppStakingAbi, DECIMALS, cooldownSeconds]);
+  }, [publicClient, address, isConnected, HPP_STAKING_ADDRESS, cooldownSeconds, dispatch]);
 
   const fetchClaimable = useCallback(async () => {
     if (!isConnected || !address) {
@@ -1110,8 +1118,7 @@ export default function StakingClient() {
       } else {
         showToast('Stake failed', 'Transaction was rejected or failed.', 'error');
       }
-    } catch (_e) {
-      console.log(_e, '_e');
+    } catch {
       showToast('Error', 'Failed to process staking request.', 'error');
     } finally {
       setIsSubmitting(false);
@@ -1225,19 +1232,10 @@ export default function StakingClient() {
 
       setIsSubmitting(true);
       showToast('Waiting for Withdraw Tokens...', 'Please confirm in your wallet.', 'loading');
-      const withdrawAbi = [
-        {
-          type: 'function',
-          name: 'withdraw',
-          stateMutability: 'nonpayable',
-          inputs: [],
-          outputs: [],
-        },
-      ] as const;
 
       const txHash = await hppWalletClient.writeContract({
         address: HPP_STAKING_ADDRESS,
-        abi: withdrawAbi,
+        abi: hppStakingAbi,
         functionName: 'withdraw',
         args: [],
         account: address as `0x${string}`,
@@ -1518,7 +1516,7 @@ export default function StakingClient() {
         const resp = await axios.get(`${apiBaseUrl}/apr/wallet/${address}?stakedAmount=${stakedAmountWei.toFixed(0)}`, {
           headers: { accept: 'application/json' },
         });
-        const data: any = resp?.data ?? {};
+        const data = (resp?.data ?? {}) as AprApiResponse;
         const d = data?.data ?? {};
         if (!cancelled && data?.success && d) {
           // Use finalAPR if available, otherwise use totalAPR
@@ -1564,7 +1562,7 @@ export default function StakingClient() {
       cancelled = true;
       clearTimeout(timeoutId);
     };
-  }, [amount, stakedTotal, activeTab, isConnected, address, inputError, finalAPR]);
+  }, [amount, stakedTotal, activeTab, isConnected, address, inputError, finalAPR, dispatch]);
 
   // APR and Reward display (use stakingFinalAPR for Staking, separate from APR Calculator's finalAPR)
   const DEFAULT_APR_ENV = Number(process.env.NEXT_PUBLIC_STAKING_APR ?? process.env.NEXT_PUBLIC_DEFAULT_APR ?? NaN);

@@ -63,6 +63,7 @@ export async function fetchGhostFeedItems(init?: RequestInit): Promise<GhostFeed
   const endpoint = `${base}/ghost/api/content/posts/?key=${encodeURIComponent(GHOST_CONTENT_API_KEY)}&limit=20&order=published_at%20desc&fields=id,title,url,excerpt,custom_excerpt,feature_image,published_at`;
   const response = await fetch(endpoint, {
     method: 'GET',
+    signal: AbortSignal.timeout(10_000),
     ...init,
     headers: {
       Accept: 'application/json',

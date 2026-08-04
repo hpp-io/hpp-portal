@@ -43,31 +43,50 @@ export default function OverviewSection() {
   const isStatsLoading = useAppSelector((state) => state.overview.isStatsLoading);
   const isChartReady = useAppSelector((state) => state.overview.isChartReady);
   const overviewTvl = useAppSelector((state) => state.overview.overviewTvl);
-  const chartAnimKey = useAppSelector((state) => state.overview.chartAnimKey);
-  const chartSideMargin = useAppSelector((state) => state.overview.chartSideMargin);
   const totalStakers = useAppSelector((state) => state.overview.totalStakers);
   const totalStakedAmount = useAppSelector((state) => state.overview.totalStakedAmount);
   const baseApr = useAppSelector((state) => state.overview.baseApr);
   const maxApr = useAppSelector((state) => state.overview.maxApr);
-  const isNarrow450 = useAppSelector((state) => state.overview.isNarrow450);
-  const isNarrow600 = useAppSelector((state) => state.overview.isNarrow600);
 
   // Local state
   const [period, setPeriod] = React.useState<string>('1M');
   const [aprTab, setAprTab] = React.useState<'pre' | 'whale' | 'hold' | 'dao'>('hold');
   const [totalPreRegisteredWallets, setTotalPreRegisteredWallets] = React.useState<number>(0);
 
-  // Check if screen width is 900px or less
+  // Responsive layout state (local — no need for global Redux)
+  const [chartSideMargin, setChartSideMargin] = React.useState(40);
+  const [isNarrow450, setIsNarrow450] = React.useState(false);
+  const [isNarrow600, setIsNarrow600] = React.useState(false);
   const [isNarrow900, setIsNarrow900] = React.useState(false);
 
   React.useEffect(() => {
-    const checkWidth = () => {
-      setIsNarrow900(window.innerWidth <= 900);
+    const compute = () => {
+      const w = window.innerWidth;
+      setChartSideMargin(w <= 600 ? 10 : 40);
+      setIsNarrow450(w <= 450);
+      setIsNarrow600(w <= 600);
+      setIsNarrow900(w <= 900);
     };
-    checkWidth();
-    window.addEventListener('resize', checkWidth);
-    return () => window.removeEventListener('resize', checkWidth);
+    compute();
+    let frame: number | null = null;
+    const onResize = () => {
+      if (frame) cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => { compute(); frame = null; });
+    };
+    window.addEventListener('resize', onResize);
+    return () => {
+      if (frame) cancelAnimationFrame(frame);
+      window.removeEventListener('resize', onResize);
+    };
   }, []);
+
+  // Stable chart animation key derived from initial TVL data
+  const chartAnimKey = useMemo(() => {
+    if (!statsInitialized) return null;
+    const first = overviewTvl?.[0]?.date || 'init';
+    const last = overviewTvl?.[overviewTvl.length - 1]?.date || 'init';
+    return `tvl-init-${first}-${last}`;
+  }, [statsInitialized, overviewTvl]);
 
   // Build TVL chart data
   const tvlChartData = useMemo(() => {
@@ -116,7 +135,7 @@ export default function OverviewSection() {
 
   // Render TVL tooltip
   const renderTvlTooltip = useCallback(
-    ({ active, payload, label }: any) => {
+    ({ active, payload, label }: { active?: boolean; payload?: Array<{ value?: number; payload?: { fullLabel?: string } }>; label?: string }) => {
       if (!active || !payload || !payload.length) return null;
       const val = Number(payload[0]?.value ?? 0);
       const fullLabel = payload?.[0]?.payload?.fullLabel ?? label;
@@ -152,7 +171,7 @@ export default function OverviewSection() {
         headers: { accept: 'application/json' },
         params: { period: apiPeriod },
       });
-      const data: any = resp?.data ?? {};
+      const data = resp?.data as { success?: boolean; data?: { totalStakers?: number; totalStakedAmount?: string; baseAPR?: number; maxAPR?: number; tvlHistory?: Array<{ date: string; value: string }> } } ?? {};
       if (data?.success && data?.data) {
         const d = data.data;
         if (typeof d.totalStakers === 'number') dispatch(setTotalStakers(d.totalStakers));
@@ -180,7 +199,7 @@ export default function OverviewSection() {
       const resp = await axios.get(`${apiBaseUrl}/pre-registration/stats`, {
         headers: { accept: 'application/json' },
       });
-      const data: any = resp?.data ?? {};
+      const data = resp?.data as { success?: boolean; data?: { totalPreRegisteredWallets?: number } } ?? {};
       if (data?.success && data?.data) {
         const d = data.data;
         if (typeof d.totalPreRegisteredWallets === 'number') {

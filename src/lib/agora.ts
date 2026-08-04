@@ -88,6 +88,7 @@ export function proposalDetailHref(webBase: string, proposalId: number): string 
 export async function fetchAgoraProposals(apiBase: string, init?: RequestInit): Promise<AgoraProposal[]> {
   const url = `${apiBase.replace(/\/$/, '')}/proposals`;
   const res = await fetch(url, {
+    signal: AbortSignal.timeout(10_000),
     ...init,
     cache: 'no-store',
     headers: {

@@ -20,7 +20,7 @@ export default function Footer() {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <TwitterIcon className="w-7.5 h-7.5" />
+                <TwitterIcon className="w-7.5 h-7.5" aria-hidden="true" />
               </a>
               <a
                 href="https://blog.hpp.io"
@@ -29,7 +29,7 @@ export default function Footer() {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <BlogIcon className="w-7.5 h-7.5" />
+                <BlogIcon className="w-7.5 h-7.5" aria-hidden="true" />
               </a>
               <a
                 href="https://t.me/aergoofficial"
@@ -38,7 +38,7 @@ export default function Footer() {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <TelegramIcon className="w-7.5 h-7.5" />
+                <TelegramIcon className="w-7.5 h-7.5" aria-hidden="true" />
               </a>
             </div>
           </div>

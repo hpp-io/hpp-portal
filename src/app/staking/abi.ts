@@ -97,6 +97,13 @@ export const hppStakingAbi = [
     inputs: [{ name: 'amount', type: 'uint256' }],
     outputs: [],
   },
+  {
+    type: 'function',
+    name: 'withdraw',
+    stateMutability: 'nonpayable',
+    inputs: [],
+    outputs: [],
+  },
 ] as const;
 
 /** HPP_StakingReward — claimable one-shot rewards */

@@ -83,7 +83,7 @@ export function mergeBridgeHistoryPrioritizeApi(apiRows: BridgeHistoryRow[], loc
 
 export async function fetchBridgeHistoryFromApi(apiBase: string, walletAddress: `0x${string}`): Promise<BridgeHistoryRow[]> {
   const url = `${apiBase.replace(/\/$/, '')}/bridge-tracking/history?walletAddress=${walletAddress}`;
-  const res = await fetch(url, { method: 'GET' });
+  const res = await fetch(url, { method: 'GET', signal: AbortSignal.timeout(10_000) });
   if (!res.ok) return [];
   const data = (await res.json()) as unknown;
   if (!Array.isArray(data)) return [];

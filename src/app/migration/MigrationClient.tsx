@@ -42,6 +42,16 @@ import axios from "axios";
 import { hppMigrationABI } from "./abi";
 import { useEnsureChain } from "@/hooks/useWallet";
 
+interface EtherscanTokenTx {
+  from?: string;
+  to?: string;
+  value: string;
+  tokenDecimal: string;
+  hash?: string;
+  timeStamp?: string;
+  isError?: string;
+}
+
 // Constants
 const AERGO_DECIMAL = 18;
 
@@ -383,11 +393,12 @@ export default function MigrationClient({ token = "AERGO" }: { token?: Migration
 
   // Cleanup polling on unmount
   useEffect(() => {
+    const refs = pollingRefs.current;
     return () => {
-      pollingRefs.current.forEach((timeoutId) => {
+      refs.forEach((timeoutId) => {
         clearTimeout(timeoutId);
       });
-      pollingRefs.current.clear();
+      refs.clear();
     };
   }, []);
 
@@ -434,12 +445,12 @@ export default function MigrationClient({ token = "AERGO" }: { token?: Migration
         const contractLc = MIGRATION_CONTRACT_ADDRESS.toLowerCase();
 
         // Filter for migration-related token transfers
-        const relevantTransactions = (tokenTxData.result || [])
-          .filter((tx: any) => {
+        const relevantTransactions = (tokenTxData.result as EtherscanTokenTx[] || [])
+          .filter((tx) => {
             // Find transfers where user sends tokens TO the migration contract
             return tx.from?.toLowerCase() === walletLc && tx.to?.toLowerCase() === contractLc;
           })
-          .map((tx: any) => {
+          .map((tx) => {
             const type = `Migration: ${token} → HPP`;
             let status: Transaction["status"] = "Completed";
 
@@ -453,7 +464,7 @@ export default function MigrationClient({ token = "AERGO" }: { token?: Migration
             return {
               id: tx.hash,
               type,
-              date: dayjs(parseInt(tx.timeStamp) * 1000).format("YYYY-MM-DD HH:mm:ss"),
+              date: dayjs(parseInt(tx.timeStamp ?? '0') * 1000).format("YYYY-MM-DD HH:mm:ss"),
               amount: `${parseFloat(fromAmount).toLocaleString("en-US", {
                 minimumFractionDigits: 0,
                 maximumFractionDigits: 6,
@@ -572,7 +583,7 @@ export default function MigrationClient({ token = "AERGO" }: { token?: Migration
       // Initial history fetch is safe now due to merge logic
       fetchTransactionHistory(address);
     }
-  }, [isConnected, address, chainId]);
+  }, [isConnected, address, chainId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Validation function to check if migration button should be disabled
   const isMigrationDisabled = () => {
@@ -653,8 +664,9 @@ export default function MigrationClient({ token = "AERGO" }: { token?: Migration
           }
         }, 7000);
       }
-    } catch (error: any) {
-      showToast("Error", error.message || "Failed to process migration", "error");
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : 'Failed to process migration';
+      showToast("Error", msg, "error");
       setIsApproving(false);
       setIsSwapping(false);
       approvalInFlightRef.current = false;
@@ -673,7 +685,7 @@ export default function MigrationClient({ token = "AERGO" }: { token?: Migration
         handleSwapAergoForHpp();
       });
     }
-  }, [isApproveSuccess, isApproving, refetchAllowance]);
+  }, [isApproveSuccess, isApproving, refetchAllowance]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Reset approval success when approval status changes to needs_approval
   useEffect(() => {
@@ -742,9 +754,10 @@ export default function MigrationClient({ token = "AERGO" }: { token?: Migration
           showToast("Migration sent", "The network may be busy.\nPlease hold on a moment.", "loading");
         }
       }, 7000);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error migrating tokens:", error);
-      showToast("Migration failed", error.message || "Failed to migrate tokens", "error");
+      const msg = error instanceof Error ? error.message : 'Failed to migrate tokens';
+      showToast("Migration failed", msg, "error");
       setIsSwapping(false);
       migrationInFlightRef.current = false;
     }
@@ -769,7 +782,7 @@ export default function MigrationClient({ token = "AERGO" }: { token?: Migration
     refetchAllowance();
 
     // No automatic history refetch; user triggers refresh manually
-  }, [isMigrationSuccess, migrationHash, chainId, refetchHppBalance, refetchBalance, refetchAllowance]);
+  }, [isMigrationSuccess, migrationHash, chainId, refetchHppBalance, refetchBalance, refetchAllowance]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Handle migration error (failed) - keep status strictly from server/polling
   useEffect(() => {

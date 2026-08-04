@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import type { Metadata } from 'next';
 import StakingClient from './StakingClient';
 
@@ -19,5 +19,9 @@ export const metadata: Metadata = {
 };
 
 export default function StakingPage() {
-  return <StakingClient />;
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-black" />}>
+      <StakingClient />
+    </Suspense>
+  );
 }

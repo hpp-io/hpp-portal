@@ -6,13 +6,9 @@ interface OverviewState {
   totalStakedAmount: string;
   baseApr: number;
   maxApr: number;
-  chartSideMargin: number;
-  isNarrow450: boolean;
-  isNarrow600: boolean;
   isChartReady: boolean;
   isStatsLoading: boolean;
   statsInitialized: boolean;
-  chartAnimKey: string | null;
 }
 
 const initialState: OverviewState = {
@@ -21,13 +17,9 @@ const initialState: OverviewState = {
   totalStakedAmount: '0',
   baseApr: 0,
   maxApr: 0,
-  chartSideMargin: 40,
-  isNarrow450: false,
-  isNarrow600: false,
   isChartReady: false,
   isStatsLoading: true,
   statsInitialized: false,
-  chartAnimKey: null,
 };
 
 const overviewSlice = createSlice({
@@ -49,15 +41,6 @@ const overviewSlice = createSlice({
     setMaxApr: (state, action: PayloadAction<number>) => {
       state.maxApr = action.payload;
     },
-    setChartSideMargin: (state, action: PayloadAction<number>) => {
-      state.chartSideMargin = action.payload;
-    },
-    setIsNarrow450: (state, action: PayloadAction<boolean>) => {
-      state.isNarrow450 = action.payload;
-    },
-    setIsNarrow600: (state, action: PayloadAction<boolean>) => {
-      state.isNarrow600 = action.payload;
-    },
     setIsChartReady: (state, action: PayloadAction<boolean>) => {
       state.isChartReady = action.payload;
     },
@@ -66,9 +49,6 @@ const overviewSlice = createSlice({
     },
     setStatsInitialized: (state, action: PayloadAction<boolean>) => {
       state.statsInitialized = action.payload;
-    },
-    setChartAnimKey: (state, action: PayloadAction<string | null>) => {
-      state.chartAnimKey = action.payload;
     },
   },
 });
@@ -79,13 +59,9 @@ export const {
   setTotalStakedAmount,
   setBaseApr,
   setMaxApr,
-  setChartSideMargin,
-  setIsNarrow450,
-  setIsNarrow600,
   setIsChartReady,
   setIsStatsLoading,
   setStatsInitialized,
-  setChartAnimKey,
 } = overviewSlice.actions;
 export default overviewSlice.reducer;
 

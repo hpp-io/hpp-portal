@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import type { Metadata } from 'next';
 import SelectionClient from './SelectionClient';
 
@@ -8,5 +8,9 @@ export const metadata: Metadata = {
 };
 
 export default function MigrationTestPage() {
-  return <SelectionClient />;
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-black" />}>
+      <SelectionClient />
+    </Suspense>
+  );
 }

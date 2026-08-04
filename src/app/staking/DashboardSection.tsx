@@ -161,7 +161,7 @@ export default function DashboardSection({
           headers: { accept: 'application/json' },
         },
       );
-      const data: any = resp?.data ?? {};
+      const data = resp?.data as { success?: boolean; data?: { finalAPR?: number; totalAPR?: number; baseAPR?: number; bonusAPR?: number; whaleBoostCredit?: number; holdEarnCredit?: number | string; daoCredit?: number | string } } ?? {};
       const d = data?.data ?? {};
       if (data?.success && d) {
         // Use finalAPR if available, otherwise use totalAPR

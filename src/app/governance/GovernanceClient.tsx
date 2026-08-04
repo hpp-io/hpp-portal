@@ -113,13 +113,13 @@ const GovernanceFeedGrid = React.memo(function GovernanceFeedGrid({ items }: Gov
           >
             <div className="relative min-h-0 min-w-0 bg-[#1a1a1a]">
               {isGif ? (
-                <img
+                <Image
                   src={item.imageSrc}
                   alt={item.title}
-                  className="h-full w-full object-cover"
-                  loading="eager"
-                  decoding="sync"
-                  fetchPriority="high"
+                  fill
+                  unoptimized
+                  className="object-cover"
+                  sizes="(max-width: 767px) 100vw, (max-width: 1439px) 50vw, 33vw"
                 />
               ) : (
                 <Image
@@ -411,7 +411,7 @@ export default function GovernanceClient() {
               </div>
               <h1 className="text-[50px] leading-[1.5] font-[900] text-white text-center">HPP Governance</h1>
               <p className="text-xl text-[#bfbfbf] font-semibold leading-[1.5] max-w-7xl text-center">
-                HPP Governance isn't a feature. It's the foundation of the AI-native ecosystem.
+                HPP Governance isn&apos;t a feature. It&apos;s the foundation of the AI-native ecosystem.
               </p>
             </div>
           </div>

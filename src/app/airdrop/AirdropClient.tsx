@@ -175,34 +175,6 @@ export default function AirdropClient() {
 
           {/* Event Section */}
           <div className="px-5 max-w-6xl mx-auto mt-35">
-            {/* Tab Buttons */}
-            {/* <div className="flex gap-2.5 mb-5">
-              <button
-                onClick={() => setActiveTab('HPP')}
-                className={`px-5 py-2.5 rounded-[23px] text-base font-normal transition-colors cursor-pointer ${
-                  activeTab === 'HPP' ? 'bg-[#5DF23F] text-black' : 'bg-[#121212] text-white'
-                }`}
-              >
-                HPP
-              </button>
-              <button
-                onClick={() => setActiveTab('DApp')}
-                className={`px-5 py-2.5 rounded-[23px] text-base font-normal transition-colors cursor-pointer ${
-                  activeTab === 'DApp' ? 'bg-[#5DF23F] text-black' : 'bg-[#121212] text-white'
-                }`}
-              >
-                DApp
-              </button>
-              <button
-                onClick={() => setActiveTab('Collaboration')}
-                className={`px-5 py-2.5 rounded-[23px] text-base font-normal transition-colors cursor-pointer ${
-                  activeTab === 'Collaboration' ? 'bg-[#5DF23F] text-black' : 'bg-[#121212] text-white'
-                }`}
-              >
-                Collaboration
-              </button>
-            </div> */}
-
             {/* Mobile/Tablet View (below 1200px) */}
             <div className="min-[1200px]:hidden">
               {isLoading ? (

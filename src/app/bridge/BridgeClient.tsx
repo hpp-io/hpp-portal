@@ -915,8 +915,9 @@ export default function BridgeClient() {
       } else {
         showToast('Bridge failed', 'Transaction failed or was reverted.', 'error');
       }
-    } catch (e: any) {
-      if (e?.code === 4001) {
+    } catch (e: unknown) {
+      const code = (e as { code?: number })?.code;
+      if (code === 4001) {
         showToast('Transaction rejected', 'You rejected the transaction.', 'error');
       } else {
         showToast('Bridge error', 'Failed to process bridge transaction.', 'error');
@@ -1064,8 +1065,9 @@ export default function BridgeClient() {
       } else {
         showToast('Bridge failed', 'Transaction failed or was reverted.', 'error');
       }
-    } catch (e: any) {
-      if (e?.code === 4001) {
+    } catch (e: unknown) {
+      const code = (e as { code?: number })?.code;
+      if (code === 4001) {
         showToast('Transaction rejected', 'You rejected the transaction.', 'error');
       } else {
         showToast('Bridge error', 'Failed to process bridge transaction.', 'error');
@@ -1262,8 +1264,9 @@ export default function BridgeClient() {
       } else {
         showToast('Bridge failed', 'Transaction failed or was reverted.', 'error');
       }
-    } catch (e: any) {
-      if (e?.code === 4001) {
+    } catch (e: unknown) {
+      const code = (e as { code?: number })?.code;
+      if (code === 4001) {
         showToast('Transaction rejected', 'You rejected the transaction.', 'error');
       } else {
         showToast('Bridge error', 'Failed to process bridge transaction.', 'error');
@@ -1473,7 +1476,7 @@ export default function BridgeClient() {
         trackingPollActiveRef.current.delete(t.l1TxHash);
       });
     }
-  }, [bridgeTrackingApiBase, trackingPollKey, pendingBridgeTransfers]);
+  }, [bridgeTrackingApiBase, trackingPollKey, pendingBridgeTransfers]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const legacyTrackingRecoverKey = useMemo(
     () =>
@@ -1499,7 +1502,7 @@ export default function BridgeClient() {
         destinationNetwork: t.destinationNetwork,
       });
     }
-  }, [bridgeTrackingApiBase, legacyTrackingRecoverKey]);
+  }, [bridgeTrackingApiBase, legacyTrackingRecoverKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const onVis = () => {
@@ -1589,7 +1592,7 @@ export default function BridgeClient() {
     return () => {
       controllers.forEach((c) => c.abort());
     };
-  }, [
+  }, [ // eslint-disable-line react-hooks/exhaustive-deps
     applyL2Resolved,
     hppChainId,
     hppL1Rollup,
@@ -1659,7 +1662,7 @@ export default function BridgeClient() {
     return () => {
       cancelled = true;
     };
-  }, [hppPublicClient, l2GasFetchKey, bridgeOnChainSyncGeneration]);
+  }, [hppPublicClient, l2GasFetchKey, bridgeOnChainSyncGeneration]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const l1OnChainSyncKey = useMemo(
     () => [...new Set(pendingBridgeTransfers.map((t) => t.l1TxHash))].sort().join('|'),
@@ -1711,7 +1714,7 @@ export default function BridgeClient() {
     return () => {
       cancelled = true;
     };
-  }, [publicClient, l1OnChainSyncKey, bridgeOnChainSyncGeneration]);
+  }, [publicClient, l1OnChainSyncKey, bridgeOnChainSyncGeneration]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!amount || amount === '.') {

@@ -241,7 +241,7 @@ export default function PreRegistrationClient() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [isValidEth, agreed, isSubmitting, ethAddress, fetchStats]);
+  }, [isValidEth, agreed, isSubmitting, ethAddress, fetchStats, shareIntentUrl, showToast]);
 
   // Stats (to be wired to API)
   const [totalWallets, setTotalWallets] = useState<number>(0);

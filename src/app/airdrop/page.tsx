@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import type { Metadata } from 'next';
 import AirdropClient from './AirdropClient';
 
@@ -19,5 +19,9 @@ export const metadata: Metadata = {
 };
 
 export default function AirdropPage() {
-  return <AirdropClient />;
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-black" />}>
+      <AirdropClient />
+    </Suspense>
+  );
 }

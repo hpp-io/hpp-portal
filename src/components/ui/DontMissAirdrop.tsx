@@ -7,7 +7,7 @@ export default function DontMissAirdrop() {
     <div className="px-5 max-w-6xl mx-auto mb-20">
       <div className="text-center py-20 w-full">
         <h3 className="text-[50px] font-black text-white leading-[1.5em] tracking-[0] mb-2.5">
-          Don't Miss the Next Airdrop
+          Don&apos;t Miss the Next Airdrop
         </h3>
         <p className="text-[#BFBFBF] text-xl leading-[1.5em] tracking-[0.8px] font-normal mb-5">
           Stay up to date with new airdrops across the HPP ecosystem on Twitter and Telegram.

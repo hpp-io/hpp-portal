@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function BridgePage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<div className="min-h-screen bg-black" />}>
       <BridgeClient />
     </Suspense>
   );
