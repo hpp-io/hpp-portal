@@ -83,3 +83,45 @@ export const hppPartyKnightsRewardABI = [
     type: 'function',
   },
 ] as const;
+
+/** Booost one-shot claim (`HPP_BooostReward`) — no `beneficiary` field on `getReward`, unlike Party Knights. */
+export const hppBooostRewardABI = [
+  {
+    inputs: [{ name: '_beneficiary', type: 'address' }],
+    name: 'getReward',
+    outputs: [
+      {
+        components: [
+          { name: 'totalAmount', type: 'uint256' },
+          { name: 'claimed', type: 'bool' },
+          { name: 'isActive', type: 'bool' },
+        ],
+        name: '',
+        type: 'tuple',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [{ name: '_beneficiary', type: 'address' }],
+    name: 'getClaimableAmount',
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'claim',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'isClaimPeriodActive',
+    outputs: [{ name: '', type: 'bool' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+] as const;

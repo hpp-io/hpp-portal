@@ -24,7 +24,7 @@ import { useHppPublicClient, useHppChain } from "@/app/staking/hppClient";
 import { formatTokenBalance } from "@/lib/helpers";
 import Big from "big.js";
 import dayjs from "@/lib/dayjs";
-import { hppPartyKnightsRewardABI } from "../abi";
+import { hppBooostRewardABI } from "../abi";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { setAirdropDetailLoading, setAirdropDetail } from "@/store/slices";
 import { useToast } from "@/hooks/useToast";
@@ -276,7 +276,6 @@ export default function AirdropBooostDetailClient({ id }: { id: string }) {
   const [error, setError] = useState<string | null>(null);
   const [historyPage, setHistoryPage] = useState(1);
   const [reward, setReward] = useState<{
-    beneficiary: `0x${string}`;
     totalAmount: bigint;
     claimed: boolean;
     isActive: boolean;
@@ -362,33 +361,30 @@ export default function AirdropBooostDetailClient({ id }: { id: string }) {
       const [rewardResult, claimableResult] = await Promise.all([
         publicClient.readContract({
           address: contractAddress,
-          abi: hppPartyKnightsRewardABI,
+          abi: hppBooostRewardABI,
           functionName: "getReward",
           args: [address],
         }),
         publicClient.readContract({
           address: contractAddress,
-          abi: hppPartyKnightsRewardABI,
+          abi: hppBooostRewardABI,
           functionName: "getClaimableAmount",
           args: [address],
         }),
       ]);
 
       const r = rewardResult as unknown as {
-        beneficiary?: `0x${string}`;
         totalAmount?: bigint;
         claimed?: boolean;
         isActive?: boolean;
-        0?: `0x${string}`;
-        1?: bigint;
+        0?: bigint;
+        1?: boolean;
         2?: boolean;
-        3?: boolean;
       };
       setReward({
-        beneficiary: (r.beneficiary ?? r[0]) as `0x${string}`,
-        totalAmount: (r.totalAmount ?? r[1] ?? BigInt(0)) as bigint,
-        claimed: !!(r.claimed ?? r[2]),
-        isActive: !!(r.isActive ?? r[3]),
+        totalAmount: (r.totalAmount ?? r[0] ?? BigInt(0)) as bigint,
+        claimed: !!(r.claimed ?? r[1]),
+        isActive: !!(r.isActive ?? r[2]),
       });
       setClaimableAmountRaw(claimableResult as unknown as bigint);
     } catch (error) {
@@ -413,7 +409,6 @@ export default function AirdropBooostDetailClient({ id }: { id: string }) {
     const claimableSafe = typeof claimableAmountRaw === "bigint" ? claimableAmountRaw : BigInt(0);
 
     return {
-      beneficiary: reward.beneficiary,
       totalAmount: formatUnits(totalAmountSafe, 18),
       claimedAmount: formatUnits(claimedAmountSafe, 18),
       claimableAmount: formatUnits(claimableSafe, 18),
@@ -776,7 +771,7 @@ export default function AirdropBooostDetailClient({ id }: { id: string }) {
 
       const txHash = await hppWalletClient.writeContract({
         address: contractAddress,
-        abi: hppPartyKnightsRewardABI,
+        abi: hppBooostRewardABI,
         functionName: "claim",
         args: [],
         account: address as `0x${string}`,

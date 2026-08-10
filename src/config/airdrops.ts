@@ -114,8 +114,9 @@ export const STATIC_AIRDROP_EVENTS: Record<AirdropType, StaticAirdropEventConfig
       claimPeriodStart: "2026.8.10, 09:00 UTC",
       claimPeriodEnd: "2026.12.31, 09:00 UTC",
       eligibilityDescription: "Connect your Booost wallet to check airdrop eligibility.",
-      // TODO: replace with deployed Booost reward contract addresses
-      contract: "none",
+      contract: isSepoliaChain()
+        ? "0xDFD751E793609429ecD43C5D160Cd15e0fd1C929" // HPP Sepolia
+        : "0x3F35F750D6B5F4f79bF90Efba085A9553F5dDDc7", // HPP Mainnet
       adminApiBaseUrl: "https://portal-api.hpp.io",
       faqCampaignName: "Booost Airdrop",
       faqEligibilityAnswer:
