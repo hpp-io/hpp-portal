@@ -66,20 +66,15 @@ NEXT_PUBLIC_APP_KIT_PROJECT_ID=
 # Site URL for metadata (Open Graph, sitemap, robots)
 NEXT_PUBLIC_SITE_URL=https://localhost:3000
 
-# Ethereum (L1) — migration / bridge
-NEXT_PUBLIC_ETH_HPP_TOKEN_CONTRACT=0x...
-NEXT_PUBLIC_ETH_AERGO_TOKEN_CONTRACT=0x...
-NEXT_PUBLIC_ETH_AERGO_HPP_MIGRATION_CONTRACT=0x...
-NEXT_PUBLIC_ETH_AQT_TOKEN_CONTRACT=0x...
-NEXT_PUBLIC_ETH_AQT_HPP_MIGRATION_CONTRACT=0x...
+# Public contract addresses (ETH migration tokens, HPP token, staking) are NOT env vars —
+# they're tracked in source since they're public and rarely change. See:
+#   src/config/coreContracts.ts    — HPP token, staking, ETH migration tokens/contracts
+#   src/config/stakingRewards.ts   — staking reward ("claim") contracts, one list per season
+#   src/lib/bridgeArbitrumToken.ts — USDC / USDC.e (still overridable below)
 
 # HPP chain — staking, airdrop claims, explorer links
 NEXT_PUBLIC_HPP_CHAIN_ID=190415
 NEXT_PUBLIC_HPP_RPC_URL=https://...
-NEXT_PUBLIC_HPP_TOKEN_CONTRACT=0x...
-NEXT_PUBLIC_HPP_STAKING_CONTRACT=0x...
-# Optional: reward contract (claim flow / activity)
-NEXT_PUBLIC_HPP_STAKING_REWARD_CONTRACT=0x...
 
 # Staking stats API (APR, airdrop list, pre-registration, etc.)
 NEXT_PUBLIC_HPP_STAKING_API_URL=https://...
@@ -154,7 +149,7 @@ Open `https://localhost:3000`.
 
 - **Chain**: `useHppChain` / `useEnsureChain` for switching; explorer links via `src/lib/hppExplorer.ts`.
 - **Activity**: `NEXT_PUBLIC_HPP_BLOCKSCOUT_PROXY_URL` for transaction / token transfer history.
-- **Reward contract**: Set `NEXT_PUBLIC_HPP_STAKING_REWARD_CONTRACT` when the reward `claim` flow is live.
+- **Reward contracts**: `src/config/stakingRewards.ts` lists every season's reward contract per network (public addresses, tracked in source rather than an env var). Every season stays claimable and shows up in history; append a new address to open the next one.
 
 ## Governance
 

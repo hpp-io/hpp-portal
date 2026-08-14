@@ -18,7 +18,14 @@ import { HPPTickerIcon } from '@/assets/icons';
 import { getAirdropHeroImage } from '@/lib/airdropAssets';
 import FaqSection from '@/components/ui/Faq';
 import DontMissAirdrop from '@/components/ui/DontMissAirdrop';
-import { getStaticAirdropDetailById, getAirdropFaqForEvent, getAirdropAdminApiBaseUrl } from '@/config/airdrops';
+import {
+  getStaticAirdropDetailById,
+  getAirdropFaqForEvent,
+  getAirdropAdminApiBaseUrl,
+  getAirdropRankingMonth,
+  getAirdropStatusLabel,
+} from '@/config/airdrops';
+import { getHppChainContracts } from '@/config/coreContracts';
 import { formatUnits } from 'viem';
 import { useHppPublicClient, useHppChain } from '@/app/staking/hppClient';
 import { formatTokenBalance } from '@/lib/helpers';
@@ -193,7 +200,8 @@ export default function AirdropPartyKnightsDetailClient({ id }: { id: string }) 
   // HPP network public client
   const publicClient = useHppPublicClient();
   const { id: HPP_CHAIN_ID, chain: hppChain, rpcUrl } = useHppChain();
-  const HPP_TOKEN_ADDRESS = process.env.NEXT_PUBLIC_HPP_TOKEN_CONTRACT as `0x${string}`;
+  const HPP_TOKEN_ADDRESS = getHppChainContracts().hppToken;
+  const HPP_STAKING_ADDRESS = getHppChainContracts().staking;
   const explorerBase = getHppExplorerBaseUrl();
 
   // Ensure wallet is connected to HPP network for writes
@@ -316,9 +324,9 @@ export default function AirdropPartyKnightsDetailClient({ id }: { id: string }) 
         return;
       }
 
-      const month = '2026-06';
+      const month = getAirdropRankingMonth(id);
       const baseUrl = getAirdropAdminApiBaseUrl(id);
-      if (!baseUrl) {
+      if (!baseUrl || !month) {
         if (!cancelled) setPartyKnightsRanking({ rank: '-', tier: '-', score: '-', loading: false });
         return;
       }
@@ -475,9 +483,9 @@ export default function AirdropPartyKnightsDetailClient({ id }: { id: string }) 
         // Backfill claimed amount from token transfers by tx hash (HPP token -> wallet, from contract)
         try {
           const needAmount = mapped.filter((m: any) => !m.amount);
-          const tokenAddr = (process.env.NEXT_PUBLIC_HPP_TOKEN_CONTRACT || '').toLowerCase();
+          const tokenAddr = HPP_TOKEN_ADDRESS.toLowerCase();
           const contractLc = String(contractAddress).toLowerCase();
-          const stakingLc = String(process.env.NEXT_PUBLIC_HPP_STAKING_CONTRACT || '').toLowerCase();
+          const stakingLc = HPP_STAKING_ADDRESS.toLowerCase();
           if (needAmount.length > 0 && tokenAddr) {
             const addrTUrl = `${lambdaBase}/blockscout/${network}/api/v2/addresses/${address}/token-transfers?type=`;
             const addrTResp = await retryApiCall(() =>
@@ -521,9 +529,9 @@ export default function AirdropPartyKnightsDetailClient({ id }: { id: string }) 
         // If still missing amounts (e.g., Claim + Stake doesn't transfer to wallet), try tx-level token transfers (limited).
         try {
           const need = mapped.filter((m: any) => !m.amount).slice(0, 20);
-          const tokenAddr = (process.env.NEXT_PUBLIC_HPP_TOKEN_CONTRACT || '').toLowerCase();
+          const tokenAddr = HPP_TOKEN_ADDRESS.toLowerCase();
           const contractLc = String(contractAddress).toLowerCase();
-          const stakingLc = String(process.env.NEXT_PUBLIC_HPP_STAKING_CONTRACT || '').toLowerCase();
+          const stakingLc = HPP_STAKING_ADDRESS.toLowerCase();
           if (need.length > 0 && tokenAddr) {
             for (const m of need) {
               try {
@@ -866,7 +874,7 @@ export default function AirdropPartyKnightsDetailClient({ id }: { id: string }) 
                             : '#BFBFBF',
                     }}
                   >
-                    {airdropDetail.status}
+                    {getAirdropStatusLabel(airdropDetail.status)}
                   </div>
                   <h1 className="text-[50px] leading-[1.5] font-[900] text-white">{airdropDetail.name}</h1>
                   <div className="space-y-6 text-white text-base leading-[1.5] mb-5">

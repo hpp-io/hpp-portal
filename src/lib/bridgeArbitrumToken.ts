@@ -1,5 +1,8 @@
-/** Ethereum mainnet USDC — L1 side of USDC → USDC.e on HPP (Arbitrum portal `token` / `destinationToken`). */
-export const L1_USDC_MAINNET = '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238' as const;
+/** Ethereum mainnet USDC (Circle) — L1 side of USDC → USDC.e on HPP (Arbitrum portal `token` / `destinationToken`). */
+export const L1_USDC_MAINNET = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48' as const;
+
+/** Ethereum Sepolia USDC — L1 side of USDC → USDC.e on HPP Sepolia. */
+export const L1_USDC_SEPOLIA = '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238' as const;
 
 /** HPP USDC.e — same address on HPP mainnet and HPP Sepolia; override via env. */
 export const L2_USDCE_DEFAULT = '0x401eCb1D350407f13ba348573E5630B83638E30D' as const;
@@ -43,8 +46,7 @@ export function resolveArbitrumBridgeL1Token(
         ? process.env.NEXT_PUBLIC_ETH_USDC_TOKEN_CONTRACT?.trim().toLowerCase()
         : undefined;
     if (fromEnv) return fromEnv;
-    if (options.isSepolia) return null;
-    return L1_USDC_MAINNET.toLowerCase();
+    return (options.isSepolia ? L1_USDC_SEPOLIA : L1_USDC_MAINNET).toLowerCase();
   }
 
   return options.l1HppAddress?.trim().toLowerCase() ?? null;

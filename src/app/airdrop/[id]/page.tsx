@@ -51,11 +51,11 @@ export default async function AirdropDetailPage({ params }: { params: Promise<{ 
     return <AirdropLegacyRedirect to={getAirdropPath(event)} />;
   }
 
-  if (event.id === 'hpp-party-knights-1') {
+  if (event.id.startsWith('hpp-party-knights-')) {
     return <AirdropPartyKnightsDetailClient id={event.id} />;
   }
 
-  if (event.id === 'hpp-booost-1') {
+  if (event.id.startsWith('hpp-booost-')) {
     return <AirdropBooostDetailClient id={event.id} />;
   }
 

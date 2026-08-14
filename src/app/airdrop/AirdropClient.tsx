@@ -13,7 +13,7 @@ import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 import FaqSection from "@/components/ui/Faq";
 import DontMissAirdrop from "@/components/ui/DontMissAirdrop";
 import { airdropData } from "@/static/uiData";
-import { getStaticAirdropEvents, getAirdropPath } from "@/config/airdrops";
+import { getStaticAirdropEvents, getAirdropPath, getAirdropStatusLabel } from "@/config/airdrops";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   setAirdropLoading,
@@ -219,7 +219,7 @@ export default function AirdropClient() {
                             <IconComponent className="w-5 h-5 text-white flex-shrink-0" />
                             <div className="flex flex-col gap-1">
                               <span className={`${getStatusClasses(event.status).text} text-sm leading-[1]`}>
-                                {event.status}
+                                {getAirdropStatusLabel(event.status)}
                               </span>
                               <span className="text-white text-base font-semibold leading-[1]">{event.name}</span>
                             </div>
@@ -264,7 +264,7 @@ export default function AirdropClient() {
                                     <span
                                       className={`text-sm leading-[1] whitespace-nowrap ${getStatusClasses(event.status).text}`}
                                     >
-                                      {event.status}
+                                      {getAirdropStatusLabel(event.status)}
                                     </span>
                                   </div>
                                 </div>
@@ -318,7 +318,7 @@ export default function AirdropClient() {
                                   <span
                                     className={`text-sm leading-[1] whitespace-nowrap ${getStatusClasses(event.status).text}`}
                                   >
-                                    {event.status}
+                                    {getAirdropStatusLabel(event.status)}
                                   </span>
                                 </div>
                               </div>
@@ -407,7 +407,7 @@ export default function AirdropClient() {
                                   : "text-white"
                             }`}
                           >
-                            {event.status}
+                            {getAirdropStatusLabel(event.status)}
                           </span>
                         </div>
                         <div className="flex items-center justify-end text-white">

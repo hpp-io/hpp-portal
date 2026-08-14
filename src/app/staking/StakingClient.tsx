@@ -15,6 +15,8 @@ import { getWalletClient } from '@wagmi/core';
 import { formatUnits, parseUnits } from 'viem';
 import Big from 'big.js';
 import { navItems, legalLinks } from '@/config/navigation';
+import { getStakingRewardContracts } from '@/config/stakingRewards';
+import { getHppChainContracts } from '@/config/coreContracts';
 import { standardArbErc20Abi, hppStakingAbi, hppStakingRewardAbi } from './abi';
 import { formatDisplayAmount, PERCENTS, computePercentAmount, formatTokenBalance } from '@/lib/helpers';
 import { getHppExplorerTxUrl } from '@/lib/hppExplorer';
@@ -376,9 +378,11 @@ export default function StakingClient() {
   const cooldownsInitialized = useAppSelector((state) => state.cooldown.cooldownsInitialized);
   const nowSecTick = useAppSelector((state) => state.cooldown.nowSecTick);
   const cooldownSeconds = useAppSelector((state) => state.cooldown.cooldownSeconds);
-  const HPP_TOKEN_ADDRESS = (process.env.NEXT_PUBLIC_HPP_TOKEN_CONTRACT ?? '') as `0x${string}`;
-  const HPP_STAKING_ADDRESS = (process.env.NEXT_PUBLIC_HPP_STAKING_CONTRACT ?? '') as `0x${string}`;
-  const HPP_STAKING_REWARD_ADDRESS = process.env.NEXT_PUBLIC_HPP_STAKING_REWARD_CONTRACT;
+  const hppChainContracts = getHppChainContracts();
+  const HPP_TOKEN_ADDRESS = hppChainContracts.hppToken;
+  const HPP_STAKING_ADDRESS = hppChainContracts.staking;
+  // Every staking reward contract ever deployed, oldest season first — see src/config/stakingRewards.ts.
+  const rewardContracts = useMemo(() => getStakingRewardContracts(), []);
   const DECIMALS = 18;
 
   // HPP network public client (Sepolia in dev, Mainnet in prod)
@@ -530,14 +534,13 @@ export default function StakingClient() {
           }
         } catch {}
 
-        // Season 1 reward `claim()` hits the reward contract, not staking — merge those txs so local Pending can resolve.
+        // Season reward `claim()` calls hit the reward contracts, not staking — merge those txs so local Pending can resolve.
         try {
-          const rewardAddr = String(HPP_STAKING_REWARD_ADDRESS || '').trim();
-          if (rewardAddr && /^0x[a-fA-F0-9]{40}$/i.test(rewardAddr)) {
+          const seenHashes = new Set(items.map((it) => String(it?.hash || '').toLowerCase()).filter(Boolean));
+          for (const { address: rewardAddr } of rewardContracts) {
             const rewardBaseUrl = `${lambdaBase}/blockscout/${network}/api/v2/addresses/${rewardAddr}/transactions`;
             let nextRewardUrl: string | null = rewardBaseUrl;
             let rewardGuard = 0;
-            const seenHashes = new Set(items.map((it) => String(it?.hash || '').toLowerCase()).filter(Boolean));
             while (nextRewardUrl && rewardGuard < 200) {
               const resp = await retryApiCall(() =>
                 axios.get<BlockscoutPageResponse<BlockscoutTx>>(nextRewardUrl!, { headers: { accept: 'application/json' } }),
@@ -564,7 +567,7 @@ export default function StakingClient() {
           }
         } catch {}
 
-        const rewardAddrLc = String(HPP_STAKING_REWARD_ADDRESS || '').trim().toLowerCase();
+        const rewardAddrSet = new Set(rewardContracts.map((r) => r.address.toLowerCase()));
         const normalizeTxMethod = (it: BlockscoutTx) => {
           const raw = String(it?.method || it?.decoded_input?.method_call || '').trim().toLowerCase();
           const p = raw.indexOf('(');
@@ -579,11 +582,11 @@ export default function StakingClient() {
           if (typeof cc === 'string' && /^0x[a-fA-F0-9]{40}$/i.test(cc.trim())) return false;
           return true;
         });
-        // Reward contract: only show user txs whose top-level call is `claim` (hide approve, transfer, etc.)
-        if (rewardAddrLc && /^0x[a-f0-9]{40}$/.test(rewardAddrLc)) {
+        // Reward contracts: only show user txs whose top-level call is `claim` (hide approve, transfer, etc.)
+        if (rewardAddrSet.size > 0) {
           items = items.filter((it) => {
             const toLc = String(it?.to?.hash || '').toLowerCase();
-            if (toLc !== rewardAddrLc) return true;
+            if (!rewardAddrSet.has(toLc)) return true;
             return normalizeTxMethod(it) === 'claim';
           });
         }
@@ -629,7 +632,7 @@ export default function StakingClient() {
         // Fallback amount for withdraw/claim from token transfers if missing
         try {
           const needAmount = mapped.filter((m) => !m.amount);
-          const tokenAddr = (process.env.NEXT_PUBLIC_HPP_TOKEN_CONTRACT || '').toLowerCase();
+          const tokenAddr = HPP_TOKEN_ADDRESS.toLowerCase();
           if (needAmount.length > 0 && tokenAddr) {
             // 1) Fast path: address-level token transfers (single request; includes withdraw amounts)
             try {
@@ -637,7 +640,6 @@ export default function StakingClient() {
               let nextTokUrl: string | null = `${tokenTransfersPath}?type=`;
               let tokGuard = 0;
               const stakingLc = String(HPP_STAKING_ADDRESS || '').toLowerCase();
-              const rewardLc = String(HPP_STAKING_REWARD_ADDRESS || '').toLowerCase();
               const byHashQuick = new Map<string, string>();
               while (nextTokUrl && tokGuard < 200) {
                 const addrTResp = await retryApiCall(() =>
@@ -660,9 +662,8 @@ export default function StakingClient() {
                         fromLc === stakingLc &&
                         (method === 'transfer' || method === 'withdraw' || method === ''));
                     const isClaimIn =
-                      !!rewardLc &&
                       toLc === walletLc &&
-                      fromLc === rewardLc &&
+                      rewardAddrSet.has(fromLc) &&
                       (method === 'claim' || method === 'transfer' || method === '');
                     if (!isWithdrawIn && !isClaimIn) continue;
                     const txHash = String(tr?.transaction_hash || tr?.tx_hash || tr?.hash || '');
@@ -707,7 +708,7 @@ export default function StakingClient() {
         dispatch(setActivitiesLoading(false));
       }
     },
-    [isConnected, address, HPP_STAKING_ADDRESS, HPP_STAKING_REWARD_ADDRESS, HPP_CHAIN_ID, dispatch],
+    [isConnected, address, HPP_STAKING_ADDRESS, HPP_TOKEN_ADDRESS, rewardContracts, HPP_CHAIN_ID, dispatch],
   );
 
   // Fetch activities on mount and when wallet connection changes
@@ -1005,7 +1006,7 @@ export default function StakingClient() {
       setClaimableInitialized(true);
       return;
     }
-    if (!HPP_STAKING_REWARD_ADDRESS) {
+    if (rewardContracts.length === 0) {
       setClaimableWei(BigInt(0));
       setIsClaimableLoading(false);
       setClaimableInitialized(true);
@@ -1013,20 +1014,31 @@ export default function StakingClient() {
     }
     try {
       setIsClaimableLoading(true);
-      const amount = (await publicClient.readContract({
-        address: HPP_STAKING_REWARD_ADDRESS as `0x${string}`,
-        abi: hppStakingRewardAbi,
-        functionName: 'getClaimableAmount',
-        args: [address as `0x${string}`],
-      })) as bigint;
-      setClaimableWei(typeof amount === 'bigint' && amount > BigInt(0) ? amount : BigInt(0));
+      // Sum claimable amounts across every season's reward contract.
+      const amounts = await Promise.all(
+        rewardContracts.map(({ address: rewardAddress }) =>
+          publicClient
+            .readContract({
+              address: rewardAddress,
+              abi: hppStakingRewardAbi,
+              functionName: 'getClaimableAmount',
+              args: [address as `0x${string}`],
+            })
+            .catch(() => BigInt(0)),
+        ),
+      );
+      const total = amounts.reduce((sum: bigint, a) => {
+        const wei = typeof a === 'bigint' && a > BigInt(0) ? a : BigInt(0);
+        return sum + wei;
+      }, BigInt(0));
+      setClaimableWei(total);
     } catch {
       setClaimableWei(BigInt(0));
     } finally {
       setIsClaimableLoading(false);
       setClaimableInitialized(true);
     }
-  }, [publicClient, address, isConnected, HPP_STAKING_REWARD_ADDRESS]);
+  }, [publicClient, address, isConnected, rewardContracts]);
 
   const onStake = async () => {
     try {
@@ -1278,10 +1290,13 @@ export default function StakingClient() {
     }
   };
 
+  // Claims sequentially from every season's reward contract that has a claimable balance —
+  // the combined "Rewards Available" amount can span multiple seasons, but each is a separate
+  // on-chain claim(), so the wallet prompts once per season with a balance.
   const onClaimRewards = async () => {
     try {
       if (!address || !isConnected) return;
-      if (!HPP_STAKING_REWARD_ADDRESS) {
+      if (rewardContracts.length === 0) {
         showToast('Error', 'Reward contract is not configured.', 'error');
         return;
       }
@@ -1292,63 +1307,75 @@ export default function StakingClient() {
         return;
       }
 
-      let rewardWei = BigInt(0);
-      try {
-        const amount = (await publicClient.readContract({
-          address: HPP_STAKING_REWARD_ADDRESS as `0x${string}`,
-          abi: hppStakingRewardAbi,
-          functionName: 'getClaimableAmount',
-          args: [address as `0x${string}`],
-        })) as bigint;
-        rewardWei = typeof amount === 'bigint' && amount > BigInt(0) ? amount : BigInt(0);
-      } catch {
-        rewardWei = BigInt(0);
-      }
-      if (rewardWei <= BigInt(0)) {
-        return;
-      }
-
       const hppWalletClient =
         walletClient ?? (await getWalletClient(wagmiConfig, { account: address, chainId: HPP_CHAIN_ID }));
 
       setIsSubmitting(true);
-      showToast('Waiting for Claim Rewards...', 'Please confirm in your wallet.', 'loading');
-      const txHashReward = await hppWalletClient.writeContract({
-        address: HPP_STAKING_REWARD_ADDRESS as `0x${string}`,
-        abi: hppStakingRewardAbi,
-        functionName: 'claim',
-        args: [],
-        account: address as `0x${string}`,
-        chain: hppChain,
-      });
+      let claimedAny = false;
 
-      const receiptReward = await publicClient.waitForTransactionReceipt({
-        hash: txHashReward as `0x${string}`,
-      });
-      if (receiptReward.status === 'success') {
-        const txUrlReward = getHppExplorerTxUrl(txHashReward);
-        showToast('Claim confirmed', 'Your reward has been claimed successfully.', 'success', {
-          text: 'View on Explorer',
-          url: txUrlReward,
-        });
-        const claimAmountReward = formatUnits(rewardWei, DECIMALS);
-        const amountDisplayReward = `${formatTokenBalance(claimAmountReward, 3)} HPP`;
-        dispatch(
-          addLocalActivity({
-            id: txHashReward,
-            date: dayjs().format('YYYY-MM-DD HH:mm'),
-            action: 'Claim',
-            amount: amountDisplayReward,
-            status: 'Pending',
-            isLocal: true,
-          }),
-        );
+      for (const { address: rewardAddress, season } of rewardContracts) {
+        const seasonLabel = `Season ${season}`;
+
+        let rewardWei = BigInt(0);
+        try {
+          const amount = (await publicClient.readContract({
+            address: rewardAddress,
+            abi: hppStakingRewardAbi,
+            functionName: 'getClaimableAmount',
+            args: [address as `0x${string}`],
+          })) as bigint;
+          rewardWei = typeof amount === 'bigint' && amount > BigInt(0) ? amount : BigInt(0);
+        } catch {
+          rewardWei = BigInt(0);
+        }
+        if (rewardWei <= BigInt(0)) continue;
+
+        try {
+          showToast(`Waiting for ${seasonLabel} Claim...`, 'Please confirm in your wallet.', 'loading');
+          const txHashReward = await hppWalletClient.writeContract({
+            address: rewardAddress,
+            abi: hppStakingRewardAbi,
+            functionName: 'claim',
+            args: [],
+            account: address as `0x${string}`,
+            chain: hppChain,
+          });
+
+          const receiptReward = await publicClient.waitForTransactionReceipt({
+            hash: txHashReward as `0x${string}`,
+          });
+          if (receiptReward.status === 'success') {
+            claimedAny = true;
+            const txUrlReward = getHppExplorerTxUrl(txHashReward);
+            showToast(`${seasonLabel} claim confirmed`, 'Your reward has been claimed successfully.', 'success', {
+              text: 'View on Explorer',
+              url: txUrlReward,
+            });
+            const claimAmountReward = formatUnits(rewardWei, DECIMALS);
+            const amountDisplayReward = `${formatTokenBalance(claimAmountReward, 3)} HPP`;
+            dispatch(
+              addLocalActivity({
+                id: txHashReward,
+                date: dayjs().format('YYYY-MM-DD HH:mm'),
+                action: 'Claim',
+                amount: amountDisplayReward,
+                status: 'Pending',
+                isLocal: true,
+              }),
+            );
+          } else {
+            showToast(`${seasonLabel} claim failed`, 'Transaction was rejected or failed.', 'error');
+          }
+        } catch {
+          showToast(`${seasonLabel} claim failed`, 'Failed to process claim request.', 'error');
+        }
+      }
+
+      if (claimedAny) {
         setTimeout(() => fetchActivities(), 2000);
         await fetchHppBalance();
-        await fetchClaimable();
-      } else {
-        showToast('Claim failed', 'Transaction was rejected or failed.', 'error');
       }
+      await fetchClaimable();
     } catch (_e) {
       showToast('Error', 'Failed to process claim request.', 'error');
     } finally {
@@ -2020,7 +2047,7 @@ export default function StakingClient() {
                                     isClaimableLoading ||
                                     !claimableInitialized ||
                                     claimableWei <= BigInt(0) ||
-                                    !HPP_STAKING_REWARD_ADDRESS
+                                    rewardContracts.length === 0
                                   }
                                   className={`!rounded-[5px] disabled:!opacity-100 ${
                                     !isConnected ||
@@ -2028,7 +2055,7 @@ export default function StakingClient() {
                                     isClaimableLoading ||
                                     !claimableInitialized ||
                                     claimableWei <= BigInt(0) ||
-                                    !HPP_STAKING_REWARD_ADDRESS
+                                    rewardContracts.length === 0
                                       ? '!bg-black/50 !text-white/50'
                                       : '!text-[#5DF23F]'
                                   }`}

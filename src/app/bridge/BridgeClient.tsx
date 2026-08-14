@@ -8,6 +8,7 @@ import Button from '@/components/ui/Button';
 import Header from '@/components/ui/Header';
 import Footer from '@/components/ui/Footer';
 import { navItems, legalLinks } from '@/config/navigation';
+import { getEthContracts, getHppChainContracts } from '@/config/coreContracts';
 import { ARB, Orbiter, EthereumIcon, SepoliaIcon, USDCIcon, USDCEIcon, HPPTickerIcon } from '@/assets/icons';
 import { bridgeData } from '@/static/uiData';
 import FaqSection from '@/components/ui/Faq';
@@ -422,8 +423,8 @@ export default function BridgeClient() {
   const selectedChainEnv = (process.env.NEXT_PUBLIC_CHAIN || 'mainnet').toLowerCase();
   const isSepoliaEnv = selectedChainEnv === 'sepolia';
   const bridgeTrackingApiBase = process.env.NEXT_PUBLIC_BRIDGE_TRACKING_API_BASE;
-  const L1_HPP_ADDRESS = process.env.NEXT_PUBLIC_ETH_HPP_TOKEN_CONTRACT as `0x${string}` | undefined;
-  const L2_HPP_ADDRESS = process.env.NEXT_PUBLIC_HPP_TOKEN_CONTRACT as `0x${string}` | undefined;
+  const L1_HPP_ADDRESS: `0x${string}` | undefined = getEthContracts().hppToken;
+  const L2_HPP_ADDRESS: `0x${string}` | undefined = getHppChainContracts().hppToken;
 
   useEffect(() => {
     setSelectedRoute(nativeRouteFromBridgeUrlToken(bridgeUrlToken));
@@ -1080,11 +1081,7 @@ export default function BridgeClient() {
   const onBridgeHpp = async () => {
     try {
       if (!L1_HPP_ADDRESS || !L2_HPP_ADDRESS) {
-        showToast(
-          'Configuration missing',
-          'Set NEXT_PUBLIC_ETH_HPP_TOKEN_CONTRACT and NEXT_PUBLIC_HPP_TOKEN_CONTRACT.',
-          'error',
-        );
+        showToast('Configuration missing', 'HPP token contract addresses are not configured.', 'error');
         return;
       }
       if (!address || !isConnected) {

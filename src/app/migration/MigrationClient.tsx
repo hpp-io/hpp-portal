@@ -17,6 +17,7 @@ import {
   useWaitForTransactionReceipt,
 } from "wagmi";
 import { navItems, legalLinks } from "@/config/navigation";
+import { getEthContracts } from "@/config/coreContracts";
 import { parseUnits, formatUnits, erc20Abi } from "viem";
 import Big from "big.js";
 import dayjs from "dayjs";
@@ -199,17 +200,17 @@ export default function MigrationClient({ token = "AERGO" }: { token?: Migration
     });
   };
 
-  // Token Contract Addresses (single source)
-  // Build-time provides environment-specific values for these variables.
-  const HPP_TOKEN_ADDRESS = process.env.NEXT_PUBLIC_ETH_HPP_TOKEN_CONTRACT as `0x${string}`;
+  // Token Contract Addresses (single source) — see src/config/coreContracts.ts
+  const ethContracts = getEthContracts();
+  const HPP_TOKEN_ADDRESS = ethContracts.hppToken;
   const ADDRESSES = {
     AERGO: {
-      token: process.env.NEXT_PUBLIC_ETH_AERGO_TOKEN_CONTRACT as `0x${string}`,
-      migration: process.env.NEXT_PUBLIC_ETH_AERGO_HPP_MIGRATION_CONTRACT as `0x${string}`,
+      token: ethContracts.aergoToken,
+      migration: ethContracts.aergoMigration,
     },
     AQT: {
-      token: process.env.NEXT_PUBLIC_ETH_AQT_TOKEN_CONTRACT as `0x${string}`,
-      migration: process.env.NEXT_PUBLIC_ETH_AQT_HPP_MIGRATION_CONTRACT as `0x${string}`,
+      token: ethContracts.aqtToken,
+      migration: ethContracts.aqtMigration,
     },
   } as const;
   const FROM_TOKEN_ADDRESS = ADDRESSES[token].token;
