@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useEffect, useCallback } from 'react';
+import React, { useMemo, useEffect, useCallback, useState } from 'react';
 import '@reown/appkit-ui';
 import Button from '@/components/ui/Button';
 import WalletButton from '@/components/ui/WalletButton';
@@ -62,20 +62,7 @@ function getActivityPaginationItems(total: number, current: number): (number | '
   return items;
 }
 
-type DashboardSectionProps = {
-  /**
-   * TEMP(unclaimed-reward-from-rewards-available):
-   * Same value as Staking tab "Rewards Available" (`getClaimableAmount` on reward contract).
-   * TODO: Replace with dedicated staking API and remove these props.
-   */
-  rewardsAvailableDisplay: string;
-  rewardsAvailableLoading: boolean;
-};
-
-export default function DashboardSection({
-  rewardsAvailableDisplay,
-  rewardsAvailableLoading,
-}: DashboardSectionProps) {
+export default function DashboardSection() {
   const dispatch = useAppDispatch();
   const { address, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
@@ -107,34 +94,57 @@ export default function DashboardSection({
     [activityPageCount, activityPage],
   );
 
-  /**
-   * TEMP(total-rewards-claimed-from-activity-log):
-   * Sum Season 1 reward claims from Activity Log until a dedicated staking API exists.
-   * — Includes rows with action "Claim" (reward contract), not unstake "Withdraw".
-   * — Only "Completed" txs (Blockscout-indexed); rows without amount are skipped.
-   * TODO: Replace with API (e.g. wallet rewards claimed endpoint) and delete this block.
-   */
-  const totalS1RewardsClaimedDisplay = useMemo(() => {
-    if (!isConnected) return null;
-    let sum = new Big(0);
-    for (const tx of activities ?? []) {
-      if (tx.action?.toLowerCase() !== 'claim') continue;
-      if (tx.status !== 'Completed') continue;
-      const numeric = String(tx.amount ?? '')
-        .replace(/,/g, '')
-        .replace(/\s*HPP\s*$/i, '')
-        .trim();
-      if (!numeric) continue;
-      try {
-        const v = new Big(numeric);
-        if (v.gt(0)) sum = sum.plus(v);
-      } catch {
-        /* skip unparseable amount */
-      }
+  // Staking reward totals (claimed + unclaimed, across every season) from the portal backend's
+  // event-sourced index of the HPP_StakingReward_S* contracts — see hpp-portal-backend's
+  // src/jobs/stakingRewardIndexer.ts. Claiming itself still happens on-chain (Staking tab).
+  const [stakingRewardTotals, setStakingRewardTotals] = useState<{
+    unclaimedTotal: string;
+    claimedTotal: string;
+  } | null>(null);
+  const [stakingRewardTotalsLoading, setStakingRewardTotalsLoading] = useState(false);
+
+  const fetchStakingRewardTotals = useCallback(async () => {
+    if (!isConnected || !address) {
+      setStakingRewardTotals(null);
+      setStakingRewardTotalsLoading(false);
+      return;
     }
-    if (sum.lte(0)) return '0';
-    return formatTokenBalance(sum.toString(), 2);
-  }, [activities, isConnected]);
+    try {
+      setStakingRewardTotalsLoading(true);
+      const network = (process.env.NEXT_PUBLIC_CHAIN || 'mainnet').toLowerCase() === 'sepolia' ? 'sepolia' : 'mainnet';
+      const resp = await axios.get(
+        `${process.env.NEXT_PUBLIC_HPP_PORTAL_API_URL}/api/staking/rewards?walletAddress=${address}&network=${network}`,
+        { headers: { accept: 'application/json' } },
+      );
+      const data = resp?.data as { data?: { unclaimedTotal?: string; claimedTotal?: string } } | undefined;
+      if (data?.data) {
+        setStakingRewardTotals({
+          unclaimedTotal: data.data.unclaimedTotal ?? '0',
+          claimedTotal: data.data.claimedTotal ?? '0',
+        });
+      } else {
+        setStakingRewardTotals(null);
+      }
+    } catch {
+      setStakingRewardTotals(null);
+    } finally {
+      setStakingRewardTotalsLoading(false);
+    }
+  }, [isConnected, address]);
+
+  useEffect(() => {
+    fetchStakingRewardTotals();
+  }, [fetchStakingRewardTotals]);
+
+  const unclaimedRewardDisplay = useMemo(() => {
+    if (!stakingRewardTotals) return '0';
+    return formatTokenBalance(stakingRewardTotals.unclaimedTotal, 2);
+  }, [stakingRewardTotals]);
+
+  const totalRewardsClaimedDisplay = useMemo(() => {
+    if (!stakingRewardTotals) return '0';
+    return formatTokenBalance(stakingRewardTotals.claimedTotal, 2);
+  }, [stakingRewardTotals]);
 
   // Fetch wallet Expected APR based on current staked amount
   const fetchWalletExpectedApr = useCallback(async () => {
@@ -364,9 +374,14 @@ export default function DashboardSection({
                 <div className="text-[#bfbfbf] text-base leading-[1.5] tracking-[0.8px] font-normal">
                   Total Rewards Claimed
                 </div>
-                <div className="mt-2.5 text-white text-xl font-normal leading-[24px] tracking-[0]">
-                  {/* TEMP: total-rewards-claimed-from-activity-log — swap for API later */}
-                  {isConnected ? `${totalS1RewardsClaimedDisplay} HPP` : '- HPP'}
+                <div className="mt-2.5 flex items-center justify-center min-[640px]:justify-start gap-2">
+                  {isConnected && stakingRewardTotalsLoading ? (
+                    <DotLottieReact src="/lotties/Loading.lottie" autoplay loop style={{ width: 32, height: 32 }} />
+                  ) : (
+                    <span className="text-white text-xl font-normal leading-[24px] tracking-[0]">
+                      {isConnected ? `${totalRewardsClaimedDisplay} HPP` : '- HPP'}
+                    </span>
+                  )}
                 </div>
               </div>
               <div className="bg-[#121212] px-5 py-7.5 border-t border-[#2D2D2D] min-[640px]:border-l min-[640px]:border-[#2D2D2D] min-[1000px]:border-l">
@@ -374,12 +389,11 @@ export default function DashboardSection({
                   Unclaimed Reward
                 </div>
                 <div className="mt-2.5 flex items-center justify-center min-[640px]:justify-start gap-2">
-                  {/* TEMP: unclaimed-reward-from-rewards-available — swap for API later */}
-                  {isConnected && rewardsAvailableLoading ? (
+                  {isConnected && stakingRewardTotalsLoading ? (
                     <DotLottieReact src="/lotties/Loading.lottie" autoplay loop style={{ width: 32, height: 32 }} />
                   ) : (
                     <span className="text-white text-xl font-normal leading-[24px] tracking-[0]">
-                      {isConnected ? `${rewardsAvailableDisplay} HPP` : '- HPP'}
+                      {isConnected ? `${unclaimedRewardDisplay} HPP` : '- HPP'}
                     </span>
                   )}
                 </div>

@@ -74,6 +74,12 @@ const activitiesSlice = createSlice({
       // Remove local activity by id (when Blockscout data is available)
       state.activities = state.activities.filter((a) => a.id !== action.payload);
     },
+    updateLocalActivityStatus: (state, action: PayloadAction<{ id: string; status: string }>) => {
+      // Flip a single local activity's status (e.g. Pending -> Completed once Blockscout
+      // confirms it) without waiting for the next full activities fetch.
+      const activity = state.activities.find((a) => a.id === action.payload.id);
+      if (activity) activity.status = action.payload.status;
+    },
   },
 });
 
@@ -83,6 +89,7 @@ export const {
   setActivityPage,
   addLocalActivity,
   removeLocalActivity,
+  updateLocalActivityStatus,
   updateBlockscoutActivities,
 } = activitiesSlice.actions;
 export default activitiesSlice.reducer;

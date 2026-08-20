@@ -57,6 +57,7 @@ import {
   setActivitiesLoading,
   setActivityPage,
   addLocalActivity,
+  updateLocalActivityStatus,
   updateBlockscoutActivities,
   setHppBalance,
   setIsHppBalanceLoading,
@@ -87,45 +88,6 @@ interface AprApiResponse {
   data?: AprApiData;
 }
 
-interface BlockscoutTx {
-  hash: string;
-  method?: string;
-  result?: string;
-  status?: string;
-  revert_reason?: unknown;
-  timestamp?: string;
-  from?: { hash: string };
-  to?: { hash: string };
-  created_contract?: { hash: string } | string | boolean | null;
-  decoded_input?: {
-    method_call?: string;
-    parameters?: Array<{ name: string; value: unknown }>;
-  };
-  date?: string;
-  action?: string;
-  amount?: string;
-  id?: string;
-}
-
-interface BlockscoutTokenTransfer {
-  transaction_hash?: string;
-  tx_hash?: string;
-  hash?: string;
-  method?: string;
-  from?: { hash: string };
-  to?: { hash: string };
-  token?: { address_hash: string; decimals?: number | string };
-  total?: { value?: string; decimals?: number | string };
-  value?: string;
-  amount?: string;
-  token_decimals?: number | string;
-}
-
-interface BlockscoutPageResponse<T> {
-  items?: T[];
-  next_page_params?: unknown;
-}
-
 function formatHppClaimWeiDisplay(wei: bigint, decimals: number): string {
   if (wei <= BigInt(0)) return '0';
   const val = formatUnits(wei, decimals);
@@ -134,44 +96,6 @@ function formatHppClaimWeiDisplay(wei: bigint, decimals: number): string {
     if (v.gt(0) && v.lt(new Big('0.01'))) return '≈0.01';
   } catch {}
   return formatTokenBalance(val, 2);
-}
-
-/** Blockscout v2 list pagination: stable cursor fields + any extra *primitive* keys from `next_page_params` (never stringify objects). */
-function blockscoutTxListNextUrl(
-  pathWithoutQuery: string,
-  np: unknown,
-  forcedIfMissing?: Record<string, string>,
-): string | null {
-  if (np == null || typeof np !== 'object' || Array.isArray(np)) return null;
-  const o = np as Record<string, unknown>;
-  if (Object.keys(o).length === 0) return null;
-  const qs = new URLSearchParams();
-  const setKnown = (key: string) => {
-    const v = o[key];
-    if (v === undefined || v === null) return;
-    qs.set(key, String(v));
-  };
-  setKnown('index');
-  setKnown('value');
-  setKnown('hash');
-  setKnown('inserted_at');
-  setKnown('block_number');
-  setKnown('fee');
-  setKnown('items_count');
-  const known = new Set(['index', 'value', 'hash', 'inserted_at', 'block_number', 'fee', 'items_count']);
-  for (const [k, v] of Object.entries(o)) {
-    if (known.has(k)) continue;
-    if (v === undefined || v === null) continue;
-    const t = typeof v;
-    if (t === 'string' || t === 'number' || t === 'boolean') qs.set(k, String(v));
-  }
-  if (forcedIfMissing) {
-    for (const [k, v] of Object.entries(forcedIfMissing)) {
-      if (!qs.has(k)) qs.set(k, v);
-    }
-  }
-  const s = qs.toString();
-  return s ? `${pathWithoutQuery}?${s}` : null;
 }
 
 const VALID_TOP_TABS = ['overview', 'staking', 'dashboard'] as const;
@@ -468,247 +392,43 @@ export default function StakingClient() {
     fetchWalletApr();
   }, [fetchWalletApr]);
 
-  // Fetch activity list from Blockscout (staking interactions + HPP token transfers)
+  // Fetch activity list — indexed by hpp-portal-backend (Stake/Unstake/Withdraw from
+  // HPPCustodyStaking events, Claim synthesized from claimed reward grants), replacing what
+  // used to be a live multi-page Blockscout scan (staking tx history + every reward contract's
+  // tx history + a token-transfers fallback pass just to backfill withdraw()/claim() amounts).
   const fetchActivities = useCallback(
     async () => {
-      if (!isConnected || !address || !HPP_STAKING_ADDRESS) {
+      if (!isConnected || !address) {
         dispatch(setActivities([]));
         dispatch(setActivitiesLoading(false));
         return;
       }
-      const lambdaBase = process.env.NEXT_PUBLIC_HPP_BLOCKSCOUT_PROXY_URL;
-      if (!lambdaBase) {
-        console.error('NEXT_PUBLIC_HPP_BLOCKSCOUT_PROXY_URL is not defined');
-        dispatch(setActivitiesLoading(false));
-        return;
-      }
-      const MAX_RETRIES = 3;
-      const RETRY_DELAY = 2000; // 2 seconds
-
       try {
         dispatch(setActivitiesLoading(true));
-        // Blockscout API v2 via Lambda proxy: addresses/{staking}/transactions and filter by caller wallet (fetch all pages)
-        const isMainnet = HPP_CHAIN_ID === 190415;
-        const network = isMainnet ? 'mainnet' : 'sepolia';
-        const baseUrl = `${lambdaBase}/blockscout/${network}/api/v2/addresses/${HPP_STAKING_ADDRESS}/transactions`;
-        // Helper function to check if error is Internal Server Error
-        const isInternalServerError = (err: unknown): boolean => {
-          const e = err as { response?: { status?: number; data?: { message?: string } }; message?: string };
-          return (
-            e?.response?.status === 500 ||
-            e?.response?.data?.message === 'Internal Server Error' ||
-            (typeof e?.message === 'string' && e.message.includes('Internal Server Error'))
-          );
+        const network = (process.env.NEXT_PUBLIC_CHAIN || 'mainnet').toLowerCase() === 'sepolia' ? 'sepolia' : 'mainnet';
+        const resp = await axios.get(
+          `${process.env.NEXT_PUBLIC_HPP_PORTAL_API_URL}/api/staking/activity?walletAddress=${address}&network=${network}`,
+          { headers: { accept: 'application/json' } },
+        );
+        const data = resp?.data as {
+          data?: { activities?: { id: string; timestamp: string; action: string; amount: string; status: string }[] };
         };
-
-        // Helper function to retry API call with exponential backoff
-        const retryApiCall = async <T,>(apiCall: () => Promise<T>, callRetryCount = 0): Promise<T> => {
-          try {
-            return await apiCall();
-          } catch (err: unknown) {
-            if (isInternalServerError(err) && callRetryCount < MAX_RETRIES) {
-              const delay = RETRY_DELAY * (callRetryCount + 1);
-              await new Promise((resolve) => setTimeout(resolve, delay));
-              return retryApiCall(apiCall, callRetryCount + 1);
-            }
-            throw err;
-          }
-        };
-
-        let items: BlockscoutTx[] = [];
-        try {
-          let nextUrl: string | null = baseUrl;
-          let guard = 0;
-          while (nextUrl && guard < 200) {
-            const resp = await retryApiCall(() => axios.get<BlockscoutPageResponse<BlockscoutTx>>(nextUrl!, { headers: { accept: 'application/json' } }));
-            const pageItems: BlockscoutTx[] = resp?.data?.items ?? [];
-            if (Array.isArray(pageItems) && pageItems.length > 0) items.push(...pageItems);
-            const np = resp?.data?.next_page_params;
-            const next = blockscoutTxListNextUrl(baseUrl, np);
-            if (!next || pageItems.length === 0) {
-              nextUrl = null;
-              break;
-            }
-            nextUrl = next;
-            guard += 1;
-          }
-        } catch {}
-
-        // Season reward `claim()` calls hit the reward contracts, not staking — merge those txs so local Pending can resolve.
-        try {
-          const seenHashes = new Set(items.map((it) => String(it?.hash || '').toLowerCase()).filter(Boolean));
-          for (const { address: rewardAddr } of rewardContracts) {
-            const rewardBaseUrl = `${lambdaBase}/blockscout/${network}/api/v2/addresses/${rewardAddr}/transactions`;
-            let nextRewardUrl: string | null = rewardBaseUrl;
-            let rewardGuard = 0;
-            while (nextRewardUrl && rewardGuard < 200) {
-              const resp = await retryApiCall(() =>
-                axios.get<BlockscoutPageResponse<BlockscoutTx>>(nextRewardUrl!, { headers: { accept: 'application/json' } }),
-              );
-              const pageItems: BlockscoutTx[] = resp?.data?.items ?? [];
-              if (Array.isArray(pageItems) && pageItems.length > 0) {
-                for (const it of pageItems) {
-                  const h = String(it?.hash || '').toLowerCase();
-                  if (h && !seenHashes.has(h)) {
-                    items.push(it);
-                    seenHashes.add(h);
-                  }
-                }
-              }
-              const np = resp?.data?.next_page_params;
-              const next = blockscoutTxListNextUrl(rewardBaseUrl, np);
-              if (!next || pageItems.length === 0) {
-                nextRewardUrl = null;
-                break;
-              }
-              nextRewardUrl = next;
-              rewardGuard += 1;
-            }
-          }
-        } catch {}
-
-        const rewardAddrSet = new Set(rewardContracts.map((r) => r.address.toLowerCase()));
-        const normalizeTxMethod = (it: BlockscoutTx) => {
-          const raw = String(it?.method || it?.decoded_input?.method_call || '').trim().toLowerCase();
-          const p = raw.indexOf('(');
-          return p >= 0 ? raw.slice(0, p) : raw;
-        };
-        // Exclude contract-deployment txs (Blockscout sets `created_contract` / method label)
-        items = items.filter((it) => {
-          if (normalizeTxMethod(it) === 'created_contract') return false;
-          const cc = it?.created_contract;
-          if (cc == null || cc === false) return true;
-          if (typeof cc === 'object' && (cc as { hash?: string }).hash) return false;
-          if (typeof cc === 'string' && /^0x[a-fA-F0-9]{40}$/i.test(cc.trim())) return false;
-          return true;
-        });
-        // Reward contracts: only show user txs whose top-level call is `claim` (hide approve, transfer, etc.)
-        if (rewardAddrSet.size > 0) {
-          items = items.filter((it) => {
-            const toLc = String(it?.to?.hash || '').toLowerCase();
-            if (!rewardAddrSet.has(toLc)) return true;
-            return normalizeTxMethod(it) === 'claim';
-          });
-        }
-
-        const walletLc = address.toLowerCase();
-        let mapped = Array.isArray(items)
-          ? items
-              .filter((it) => String(it?.from?.hash || '').toLowerCase() === walletLc)
-              .map((it) => {
-                const method = String(it.method || it?.decoded_input?.method_call || '').toLowerCase();
-                // Status mapping
-                const res = String(it.result || '').toLowerCase();
-                const ok = String(it.status || '').toLowerCase() === 'ok';
-                const hasRevert = !!it.revert_reason;
-                const status =
-                  hasRevert || res === 'failed' ? 'Rejected' : ok && res === 'success' ? 'Completed' : 'Pending';
-                // Amount from decoded parameters (18 decimals)
-                let amountDisplay: string | undefined;
-                try {
-                  const params = it?.decoded_input?.parameters ?? [];
-                  const p = Array.isArray(params) ? params.find((x) => x?.name === 'amount') : null;
-                  if (p?.value) {
-                    const units = formatUnits(BigInt(String(p.value)), 18);
-                    amountDisplay = `${formatTokenBalance(units, 3)} HPP`;
-                  }
-                } catch {}
-                const actionDisplay = method ? method.charAt(0).toUpperCase() + method.slice(1) : 'Contract Call';
-                return {
-                  id: String(it.hash),
-                  date: dayjs(new Date(String(it.timestamp)).getTime()).format('YYYY-MM-DD HH:mm'),
-                  action: actionDisplay,
-                  amount: amountDisplay,
-                  status,
-                };
-              })
-              .sort((a, b) => {
-                // Parse dates for accurate comparison
-                const dateA = new Date(a.date.replace(' ', 'T')).getTime();
-                const dateB = new Date(b.date.replace(' ', 'T')).getTime();
-                return dateB - dateA; // Most recent first (descending)
-              })
-          : [];
-        // Fallback amount for withdraw/claim from token transfers if missing
-        try {
-          const needAmount = mapped.filter((m) => !m.amount);
-          const tokenAddr = HPP_TOKEN_ADDRESS.toLowerCase();
-          if (needAmount.length > 0 && tokenAddr) {
-            // 1) Fast path: address-level token transfers (single request; includes withdraw amounts)
-            try {
-              const tokenTransfersPath = `${lambdaBase}/blockscout/${network}/api/v2/addresses/${address}/token-transfers`;
-              let nextTokUrl: string | null = `${tokenTransfersPath}?type=`;
-              let tokGuard = 0;
-              const stakingLc = String(HPP_STAKING_ADDRESS || '').toLowerCase();
-              const byHashQuick = new Map<string, string>();
-              while (nextTokUrl && tokGuard < 200) {
-                const addrTResp = await retryApiCall(() =>
-                  axios.get<BlockscoutPageResponse<BlockscoutTokenTransfer>>(nextTokUrl!, { headers: { accept: 'application/json' } }),
-                );
-                const addrTItems: BlockscoutTokenTransfer[] = addrTResp?.data?.items ?? [];
-                if (Array.isArray(addrTItems) && addrTItems.length > 0) {
-                  for (const tr of addrTItems) {
-                    const tokenLc = String(tr?.token?.address_hash || '').toLowerCase();
-                    if (tokenLc !== tokenAddr) continue;
-                    const method = String(tr?.method || '').toLowerCase();
-                    const toLc = String(tr?.to?.hash || '').toLowerCase();
-                    const fromLc = String(tr?.from?.hash || '').toLowerCase();
-                    // withdraw(): no amount in calldata — match legacy Blockscout rows OR staking→wallet HPP transfer
-                    const isWithdrawIn =
-                      (tokenLc === tokenAddr && method === 'withdraw' && toLc === walletLc) ||
-                      (tokenLc === tokenAddr &&
-                        toLc === walletLc &&
-                        !!stakingLc &&
-                        fromLc === stakingLc &&
-                        (method === 'transfer' || method === 'withdraw' || method === ''));
-                    const isClaimIn =
-                      toLc === walletLc &&
-                      rewardAddrSet.has(fromLc) &&
-                      (method === 'claim' || method === 'transfer' || method === '');
-                    if (!isWithdrawIn && !isClaimIn) continue;
-                    const txHash = String(tr?.transaction_hash || tr?.tx_hash || tr?.hash || '');
-                    if (!txHash) continue;
-                    const dec =
-                      Number(tr?.token?.decimals) || Number(tr?.total?.decimals) || Number(tr?.token_decimals) || 18;
-                    const raw = String(tr?.total?.value ?? tr?.value ?? tr?.amount ?? '0');
-                    try {
-                      const units = formatUnits(BigInt(raw), Number.isFinite(dec) ? dec : 18);
-                      byHashQuick.set(txHash.toLowerCase(), `${formatTokenBalance(units, 3)} HPP`);
-                    } catch {}
-                  }
-                }
-                const np = addrTResp?.data?.next_page_params;
-                const next = blockscoutTxListNextUrl(tokenTransfersPath, np, { type: '' });
-                if (!next || addrTItems.length === 0) break;
-                nextTokUrl = next;
-                tokGuard += 1;
-              }
-              if (byHashQuick.size > 0) {
-                mapped = mapped.map((m) => {
-                  if (!m.amount) {
-                    const v = byHashQuick.get(String(m.id).toLowerCase());
-                    if (v) return { ...m, amount: v };
-                  }
-                  return m;
-                });
-              }
-            } catch {}
-          }
-        } catch {
-          // ignore transfer backfill failures
-        }
-        // Update Blockscout activities while preserving local activities
-        // The reducer will handle merging and preserving local activities automatically
+        const mapped = (data?.data?.activities ?? []).map((a) => ({
+          id: a.id,
+          date: dayjs(a.timestamp).format('YYYY-MM-DD HH:mm'),
+          action: a.action,
+          amount: `${formatTokenBalance(a.amount, 3)} HPP`,
+          status: a.status,
+        }));
         dispatch(updateBlockscoutActivities(mapped));
       } catch {
-        // On error, preserve local activities and only clear Blockscout data
-        // Use updateBlockscoutActivities with empty array to clear Blockscout data but keep local activities
+        // On error, preserve local activities and only clear the indexed data
         dispatch(updateBlockscoutActivities([]));
       } finally {
         dispatch(setActivitiesLoading(false));
       }
     },
-    [isConnected, address, HPP_STAKING_ADDRESS, HPP_TOKEN_ADDRESS, rewardContracts, HPP_CHAIN_ID, dispatch],
+    [isConnected, address, dispatch],
   );
 
   // Fetch activities on mount and when wallet connection changes
@@ -729,19 +449,42 @@ export default function StakingClient() {
     }
   }, [topTab, isConnected, address, HPP_STAKING_ADDRESS, fetchActivities]);
 
-  // Poll for activities when there are local pending activities
+  // Poll Blockscout directly for local pending activities, one tx at a time — much lighter
+  // than re-running the full activity fetch, and resolves in ~seconds since Blockscout indexes
+  // fast, instead of waiting on the backend indexer's 30s poll (or a first-time backfill).
   useEffect(() => {
     const localPendingActivities = activities.filter((a) => a.isLocal && a.status === 'Pending');
     if (localPendingActivities.length === 0) return;
     if (!isConnected || !address) return;
+    const lambdaBase = process.env.NEXT_PUBLIC_HPP_BLOCKSCOUT_PROXY_URL;
+    if (!lambdaBase) return;
+    const network = HPP_CHAIN_ID === 190415 ? 'mainnet' : 'sepolia';
 
-    // Poll every 5 seconds to check if pending activities have been indexed
-    const intervalId = setInterval(() => {
-      fetchActivities();
-    }, 5000);
+    const checkPending = async () => {
+      for (const activity of localPendingActivities) {
+        try {
+          const resp = await axios.get(
+            `${lambdaBase}/blockscout/${network}/api/v2/transactions/${activity.id}`,
+            { headers: { accept: 'application/json' } },
+          );
+          const result = String(resp?.data?.result || '').toLowerCase();
+          const ok = String(resp?.data?.status || '').toLowerCase() === 'ok';
+          const hasRevert = !!resp?.data?.revert_reason;
+          if (hasRevert || result === 'failed') {
+            dispatch(updateLocalActivityStatus({ id: activity.id, status: 'Rejected' }));
+          } else if (ok && result === 'success') {
+            dispatch(updateLocalActivityStatus({ id: activity.id, status: 'Completed' }));
+          }
+          // Otherwise Blockscout hasn't indexed it yet either — leave as Pending, retry next tick.
+        } catch {
+          // Not indexed yet (404) or a transient error — leave as Pending, retry next tick.
+        }
+      }
+    };
 
+    const intervalId = setInterval(checkPending, 5000);
     return () => clearInterval(intervalId);
-  }, [activities, isConnected, address, fetchActivities]);
+  }, [activities, isConnected, address, dispatch, HPP_CHAIN_ID]);
 
   // Do NOT force reconnect when user is disconnected.
   // Only align chain when already connected.
@@ -972,11 +715,11 @@ export default function StakingClient() {
           const h = Math.floor((remaining % 86400) / 3600);
           const m = Math.floor((remaining % 3600) / 60);
           const s = Math.floor(remaining % 60);
-          note = `You will be able to claim in ${String(d).padStart(2, '0')}:${String(h).padStart(2, '0')}:${String(
+          note = `You will be able to withdraw in ${String(d).padStart(2, '0')}:${String(h).padStart(2, '0')}:${String(
             m,
           ).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
         } else {
-          note = 'You are able to claim.';
+          note = 'You are able to withdraw.';
         }
 
         items.push({
@@ -1256,12 +999,12 @@ export default function StakingClient() {
 
       const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash as `0x${string}` });
       if (receipt.status !== 'success') {
-        showToast('Claim failed', 'Transaction was rejected or failed.', 'error');
+        showToast('Withdraw failed', 'Transaction was rejected or failed.', 'error');
         return;
       }
 
       const txUrl = getHppExplorerTxUrl(txHash);
-      showToast('Claim confirmed', 'Your unstaked HPP has been claimed successfully.', 'success', {
+      showToast('Withdraw confirmed', 'Your unstaked HPP has been withdrawn successfully.', 'success', {
         text: 'View on Explorer',
         url: txUrl,
       });
@@ -2148,11 +1891,11 @@ export default function StakingClient() {
                                     >
                                       {tx.cooling ? (
                                         <>
-                                          You will be able to claim in{' '}
+                                          You will be able to withdraw in{' '}
                                           <span className="tabular-nums tracking-[0.1em]">{countdown}</span>
                                         </>
                                       ) : (
-                                        'You are able to claim.'
+                                        'You are able to withdraw.'
                                       )}
                                     </div>
                                   </div>
@@ -2168,10 +1911,7 @@ export default function StakingClient() {
               ) : topTab === 'overview' ? (
                 <OverviewSection />
               ) : (
-                <DashboardSection
-                  rewardsAvailableDisplay={rewardClaimableDisplay}
-                  rewardsAvailableLoading={isClaimableLoading || !claimableInitialized}
-                />
+                <DashboardSection />
               )}
             </div>
           </div>
