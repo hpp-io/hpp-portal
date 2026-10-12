@@ -11,6 +11,8 @@ export interface DiscourseTopic {
   /** Present on many Discourse API responses; merged into `excerpt` when normalizing. */
   excerpt_text?: string;
   image_url?: string | null;
+  /** `false` when staff unlisted/hid the topic in Discourse. Absent = treated as visible. */
+  visible?: boolean;
 }
 
 interface DiscourseCategoryResponse {
@@ -85,7 +87,7 @@ function topicsFromJson(json: unknown): DiscourseTopic[] {
         ? ((json as DiscourseCategoryResponse).topic_list?.topics ?? [])
         : []
   ) as DiscourseTopic[];
-  return raw.map(normalizeTopic);
+  return raw.filter((t) => t.visible !== false).map(normalizeTopic);
 }
 
 /**
