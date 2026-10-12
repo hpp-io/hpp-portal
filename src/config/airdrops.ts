@@ -14,6 +14,8 @@ type StaticAirdropEventConfig = AirdropEventData & {
   /** ISO 8601 claim window, used to auto-derive `status` — falls back to the literal `status` field when absent. */
   claimStartAt?: string;
   claimEndAt?: string;
+  /** Hides a past campaign from the `/airdrop` listing while keeping its detail page (and any shared links) reachable. */
+  unlisted?: boolean;
 };
 
 const isSepoliaChain = () => (process.env.NEXT_PUBLIC_CHAIN || "mainnet").toLowerCase() === "sepolia";
@@ -158,6 +160,32 @@ export const STATIC_AIRDROP_EVENTS: Record<AirdropType, StaticAirdropEventConfig
         "35,000 HPP tokens will be distributed to users who participated in the Party Knights Ambassador Program.",
     },
     {
+      id: "hpp-party-knights-3",
+      name: "HPP Party Knights #3",
+      eventName: "HPP",
+      reward: 35000,
+      starts: "9/14/26",
+      ends: "10/13/26",
+      status: "On-Going",
+      icon: "HPPTickerIcon",
+      imageUrl: "PartyKnightsAirdrop",
+      description:
+        "According to the [Launch of the HPP Party Knights Ambassador Program](https://agora.hpp.io/proposal/12), 35,000 HPP tokens are being distributed to members who participated in the HPP Party Knights Ambassador Cohort 3.",
+      claimPeriodStart: "2026.9.14, 09:00 UTC",
+      claimPeriodEnd: "2026.10.13, 09:00 UTC",
+      claimStartAt: "2026-09-14T09:00:00Z",
+      claimEndAt: "2026-10-13T09:00:00Z",
+      eligibilityDescription: "Connect your wallet to check airdrop eligibility.",
+      // No Sepolia deployment for this cohort — mainnet-only, like the Genesis airdrop.
+      contract: "0x0Cbe6f6e2B42389bC61d81079feecEAD936DD5A1", // HPP Mainnet
+      adminApiBaseUrl: isSepoliaChain()
+        ? "https://partyknights-admin-preview.hpp.io"
+        : "https://partyknights-admin-prod.hpp.io",
+      faqCampaignName: "Party Knights Airdrop #3",
+      faqEligibilityAnswer:
+        "35,000 HPP tokens will be distributed to users who participated in the Party Knights Ambassador Program.",
+    },
+    {
       id: "hpp-party-knights-4",
       name: "HPP Party Knights #4",
       eventName: "HPP",
@@ -214,7 +242,7 @@ export const STATIC_AIRDROP_EVENTS: Record<AirdropType, StaticAirdropEventConfig
 };
 
 export function getStaticAirdropEvents(type: AirdropType): AirdropEventData[] {
-  return (STATIC_AIRDROP_EVENTS[type] ?? []).map(withComputedStatus);
+  return (STATIC_AIRDROP_EVENTS[type] ?? []).filter((e) => !e.unlisted).map(withComputedStatus);
 }
 
 export function getStaticAirdropById(id: string): AirdropEventData | null {
