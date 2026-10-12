@@ -22,16 +22,17 @@ jobs:
 
       - run: yarn install --frozen-lockfile
 
-      - name: Type check
-        run: npx tsc --noEmit
-
-      - name: Lint
-        run: yarn lint
-
       # Builds with the committed defaults only (no .env) — catches export/prerender breakage
-      # without needing production config on PRs from forks.
+      # without needing production config on PRs from forks. Runs first because it generates
+      # the gitignored next-env.d.ts (image module types) that `tsc` needs.
       - name: Build
         run: yarn build
         env:
           # AppKit throws at prerender without a project ID; any non-empty value works for a build check.
           NEXT_PUBLIC_APP_KIT_PROJECT_ID: ci-placeholder
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: yarn lint
