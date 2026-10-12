@@ -17,6 +17,8 @@ type EthContracts = {
 type HppChainContracts = {
   hppToken: `0x${string}`;
   staking: `0x${string}`;
+  /** Canonical Multicall3 — same address on both networks, confirmed deployed via eth_getCode. */
+  multicall3: `0x${string}`;
 };
 
 const ETH_CONTRACTS: Record<"sepolia" | "mainnet", EthContracts> = {
@@ -40,10 +42,12 @@ const HPP_CHAIN_CONTRACTS: Record<"sepolia" | "mainnet", HppChainContracts> = {
   sepolia: {
     hppToken: "0x8ebCaf48D2D91b8CEcF1668A4519823881Bf8fc3",
     staking: "0x5EE0eC62A90216bd278e0315363cA324c148DE3b",
+    multicall3: "0xcA11bde05977b3631167028862bE2a173976CA11",
   },
   mainnet: {
     hppToken: "0xB48334E7938367bC24Fe1F19000D6f06C622E6c7",
     staking: "0x2B8C91561EaEbCa494Cb8867020B447459eeB65E",
+    multicall3: "0xcA11bde05977b3631167028862bE2a173976CA11",
   },
 };
 

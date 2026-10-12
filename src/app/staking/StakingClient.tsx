@@ -305,6 +305,7 @@ export default function StakingClient() {
   const hppChainContracts = getHppChainContracts();
   const HPP_TOKEN_ADDRESS = hppChainContracts.hppToken;
   const HPP_STAKING_ADDRESS = hppChainContracts.staking;
+  const HPP_MULTICALL3_ADDRESS = hppChainContracts.multicall3;
   // Every staking reward contract ever deployed, oldest season first — see src/config/stakingRewards.ts.
   const rewardContracts = useMemo(() => getStakingRewardContracts(), []);
   const DECIMALS = 18;
@@ -682,23 +683,19 @@ export default function StakingClient() {
       }> = [];
       const nowSec = Math.floor(Date.now() / 1000);
 
-      const contracts = Array.from({ length: count }, (_, rel) => ({
-        address: HPP_STAKING_ADDRESS,
-        abi: hppStakingAbi,
-        functionName: 'getCooldown' as const,
-        args: [address as `0x${string}`, BigInt(rel)],
-      }));
-
-      const results = (await Promise.all(
-        contracts.map((c, rel) =>
-          publicClient.readContract({
-            address: c.address,
-            abi: c.abi,
-            functionName: c.functionName,
-            args: [address as `0x${string}`, BigInt(rel)] as readonly [`0x${string}`, bigint],
-          }),
-        ),
-      )) as unknown as Array<[bigint, bigint]>;
+      // One multicall instead of `count` parallel RPC calls — a wallet with many cooldown
+      // entries was firing that many simultaneous requests at the public RPC and tripping its
+      // rate limit.
+      const results = (await publicClient.multicall({
+        multicallAddress: HPP_MULTICALL3_ADDRESS,
+        allowFailure: false,
+        contracts: Array.from({ length: count }, (_, rel) => ({
+          address: HPP_STAKING_ADDRESS,
+          abi: hppStakingAbi,
+          functionName: 'getCooldown' as const,
+          args: [address as `0x${string}`, BigInt(rel)] as const,
+        })),
+      })) as unknown as Array<[bigint, bigint]>;
 
       results.forEach(([amountBn, unlockTimeBn]) => {
         const amountStr = formatTokenBalance(formatUnits(amountBn, DECIMALS), 3);
@@ -740,7 +737,7 @@ export default function StakingClient() {
       dispatch(setIsCooldownsLoading(false));
       dispatch(setCooldownsInitialized(true));
     }
-  }, [publicClient, address, isConnected, HPP_STAKING_ADDRESS, cooldownSeconds, dispatch]);
+  }, [publicClient, address, isConnected, HPP_STAKING_ADDRESS, HPP_MULTICALL3_ADDRESS, cooldownSeconds, dispatch]);
 
   const fetchClaimable = useCallback(async () => {
     if (!isConnected || !address) {
@@ -1143,25 +1140,27 @@ export default function StakingClient() {
     }
   }, [activeTab, fetchHppBalance, fetchStakedTotal, fetchCooldowns, fetchCooldownDuration, fetchClaimable, dispatch]);
 
-  // Refetch balances when returning to this browser tab/window.
+  // Refetch balances when returning to this browser tab/window — debounced, since
+  // visibilitychange and focus both fire for the same "switched back" moment (doubling the
+  // burst), and each refetch is several uncoalesced on-chain calls that were contributing to
+  // the public RPC's rate limit for anyone alt-tabbing frequently while the page is open.
+  const lastForegroundRefetchRef = React.useRef(0);
   React.useEffect(() => {
-    const refetchOnForeground = () => {
-      if (document.visibilityState === 'visible') {
-        fetchHppBalance();
-        fetchStakedTotal();
-        void fetchClaimable();
-      }
-    };
-    const refetchOnWindowFocus = () => {
+    const REFETCH_COOLDOWN_MS = 30_000;
+    const refetchOnReturn = () => {
+      if (document.visibilityState !== 'visible') return;
+      const now = Date.now();
+      if (now - lastForegroundRefetchRef.current < REFETCH_COOLDOWN_MS) return;
+      lastForegroundRefetchRef.current = now;
       fetchHppBalance();
       fetchStakedTotal();
       void fetchClaimable();
     };
-    document.addEventListener('visibilitychange', refetchOnForeground);
-    window.addEventListener('focus', refetchOnWindowFocus);
+    document.addEventListener('visibilitychange', refetchOnReturn);
+    window.addEventListener('focus', refetchOnReturn);
     return () => {
-      document.removeEventListener('visibilitychange', refetchOnForeground);
-      window.removeEventListener('focus', refetchOnWindowFocus);
+      document.removeEventListener('visibilitychange', refetchOnReturn);
+      window.removeEventListener('focus', refetchOnReturn);
     };
   }, [fetchHppBalance, fetchStakedTotal, fetchClaimable]);
 
