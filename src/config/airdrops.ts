@@ -158,6 +158,32 @@ export const STATIC_AIRDROP_EVENTS: Record<AirdropType, StaticAirdropEventConfig
         "35,000 HPP tokens will be distributed to users who participated in the Party Knights Ambassador Program.",
     },
     {
+      id: "hpp-party-knights-4",
+      name: "HPP Party Knights #4",
+      eventName: "HPP",
+      reward: 35000,
+      starts: "10/14/26",
+      ends: "11/13/26",
+      status: "On-Going",
+      icon: "HPPTickerIcon",
+      imageUrl: "PartyKnightsAirdrop",
+      description:
+        "According to the [Launch of the HPP Party Knights Ambassador Program](https://agora.hpp.io/proposal/12), 35,000 HPP tokens are being distributed to members who participated in the HPP Party Knights Ambassador Cohort 4.",
+      claimPeriodStart: "2026.10.14, 09:00 UTC",
+      claimPeriodEnd: "2026.11.13, 09:00 UTC",
+      claimStartAt: "2026-10-14T09:00:00Z",
+      claimEndAt: "2026-11-13T09:00:00Z",
+      eligibilityDescription: "Connect your wallet to check airdrop eligibility.",
+      // No Sepolia deployment for this cohort — mainnet-only, like the Genesis airdrop.
+      contract: "0xFA8EA1e3465477C7CF8d605E5163a5AC9889908D", // HPP Mainnet
+      adminApiBaseUrl: isSepoliaChain()
+        ? "https://partyknights-admin-preview.hpp.io"
+        : "https://partyknights-admin-prod.hpp.io",
+      faqCampaignName: "Party Knights Airdrop #4",
+      faqEligibilityAnswer:
+        "35,000 HPP tokens will be distributed to users who participated in the Party Knights Ambassador Program.",
+    },
+    {
       id: "hpp-booost-1",
       name: "Booost Airdrop #1",
       eventName: "DApp",
